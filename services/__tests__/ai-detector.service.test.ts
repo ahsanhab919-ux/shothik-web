@@ -27,7 +27,7 @@ vi.mock('@/lib/tool-errors', () => ({
 }));
 
 import api from '@/lib/api';
-import { getCachedResult } from '@/lib/result-cache';
+import { computeContentHash, getCachedResult, setCachedResult } from '@/lib/result-cache';
 import {
   aiDetectorCheck,
   fetchAiDetectorSections,
@@ -44,7 +44,9 @@ const mockedApiPost = api.post as Mock;
 const mockedApiGet = api.get as Mock;
 const mockedApiPut = api.put as Mock;
 const mockedApiDelete = api.delete as Mock;
+const mockedComputeContentHash = computeContentHash as Mock;
 const mockedGetCachedResult = getCachedResult as Mock;
+const mockedSetCachedResult = setCachedResult as Mock;
 
 describe('ai-detector.service', () => {
   beforeEach(() => {
@@ -67,6 +69,34 @@ describe('ai-detector.service', () => {
       const result = await aiDetectorCheck({ text: 'Cached text' });
       expect(result).toEqual(cached);
       expect(mockedApiPost).not.toHaveBeenCalled();
+    });
+
+    it('includes extra payload keys in the cache key deterministically', async () => {
+      mockedApiPost.mockResolvedValue({ data: { success: true } });
+
+      await aiDetectorCheck({ text: 'Hello', b: 2, a: 1 });
+
+      expect(mockedComputeContentHash).toHaveBeenCalledWith(
+        'Hello',
+        '[["a",1],["b",2]]',
+      );
+    });
+
+    it('does not short-circuit on stale cache entries', async () => {
+      const staleCached = { success: true, data: { score: 42 } };
+      const fresh = { success: true, data: { score: 99 } };
+      mockedGetCachedResult.mockReturnValueOnce({ data: staleCached, stale: true });
+      mockedApiPost.mockResolvedValue({ data: fresh });
+
+      const result = await aiDetectorCheck({ text: 'Hello world' });
+
+      expect(result).toEqual(fresh);
+      expect(mockedApiPost).toHaveBeenCalledTimes(1);
+      expect(mockedSetCachedResult).toHaveBeenCalledWith(
+        'ai_detector',
+        'mock-hash',
+        fresh,
+      );
     });
   });
 
