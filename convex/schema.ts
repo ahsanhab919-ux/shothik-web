@@ -49,16 +49,32 @@ export default defineSchema({
   }).index("by_project", ["projectId"]),
 
   chapters: defineTable({
-    projectId: v.id("projects"),
+    // Host (writing-studio) chapters are project-scoped. These three were
+    // required; they are relaxed to optional so the engine's book-scoped
+    // chapters can coexist in the same table. Existing project chapters are
+    // unaffected (they still carry projectId/title/order). No Convex function
+    // currently reads/writes this table, so relaxing carries no runtime risk.
+    projectId: v.optional(v.id("projects")),
     userId: v.string(),
-    title: v.string(),
+    title: v.optional(v.string()),
     content: v.optional(v.string()),
-    order: v.number(),
+    order: v.optional(v.number()),
+    // --- engine (book-service) fields — additive, book-scoped chapters ---
+    bookId: v.optional(v.id("books")),
+    index: v.optional(v.number()),
+    intent: v.optional(v.string()),
+    status: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("accepted"),
+      v.literal("rejected")
+    )),
+    attempts: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_project", ["projectId"])
-    .index("by_project_and_order", ["projectId", "order"]),
+    .index("by_project_and_order", ["projectId", "order"])
+    .index("by_book", ["bookId", "userId", "index"]),
 
   versions: defineTable({
     projectId: v.id("projects"),
@@ -70,6 +86,27 @@ export default defineSchema({
   })
     .index("by_project", ["projectId"])
     .index("by_project_and_date", ["projectId", "createdAt"]),
+
+  // New table for the engine's book-service. No host equivalent exists.
+  // Records each generation attempt for a chapter (gate results, tokens, model).
+  chapterAttempts: defineTable({
+    userId: v.string(),
+    bookId: v.id("books"),
+    index: v.number(),
+    attempt: v.number(),
+    status: v.union(
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("failed")
+    ),
+    gateIssues: v.array(v.string()),
+    tokensUsed: v.optional(v.number()),
+    modelHandle: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_book", ["bookId", "userId"])
+    .index("by_user", ["userId"]),
 
   books: defineTable({
     userId: v.string(),
@@ -158,6 +195,25 @@ export default defineSchema({
       v.literal("community_preview_posted")
     )),
     twinId: v.optional(v.id("twins")),
+    // --- engine (book-service) fields — additive, non-destructive ---
+    // The engine's book domain (ported from Mongoose) reuses this table.
+    // `engineStatus` holds the generation-run lifecycle and is deliberately
+    // separate from the host's publishing-workflow `status` above so the two
+    // state machines never collide.
+    author: v.optional(v.string()),
+    kind: v.optional(v.union(v.literal("fiction"), v.literal("nonfiction"))),
+    sourceKind: v.optional(v.union(v.literal("outline"), v.literal("manuscript"))),
+    engineStatus: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed")
+    )),
+    plan: v.optional(v.array(v.object({
+      index: v.number(),
+      intent: v.string(),
+      beats: v.array(v.string()),
+    }))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
