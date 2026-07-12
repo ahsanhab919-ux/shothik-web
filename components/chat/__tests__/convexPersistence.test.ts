@@ -91,6 +91,85 @@ describe("createConvexPersistence — id resolution for delete (F1)", () => {
     expect(deleteMessagesAfter).toHaveBeenCalledWith({ messageId: "server_a" });
   });
 
+  // Flushes queued microtasks so the adapter's async append reaches the point
+  // where it awaits deps.appendMessage (and the test's resolver is assigned).
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+
+  it("deleteMessage fired BEFORE the append resolves awaits it and uses the server id", async () => {
+    let resolveAppend!: (id: string) => void;
+    const appendMessage = vi.fn(
+      () => new Promise<string>((res) => (resolveAppend = res)),
+    );
+    const deleteMessage = vi.fn(async () => undefined);
+    const adapter = createConvexPersistence(
+      baseDeps({ getActiveId: () => "conv_1", appendMessage, deleteMessage }),
+    );
+
+    // Fire-and-forget append (NOT awaited), then delete before it resolves.
+    const appendP = adapter.appendMessage({ id: "client_1", role: "assistant", content: "x" });
+    const delP = adapter.deleteMessage!("client_1");
+    await flush();
+
+    // The delete must be serialized behind the in-flight append: no raw client
+    // id reaches the server before the append resolves.
+    expect(deleteMessage).not.toHaveBeenCalled();
+
+    resolveAppend("server_1");
+    await Promise.all([appendP, delP]);
+
+    expect(deleteMessage).toHaveBeenCalledTimes(1);
+    expect(deleteMessage).toHaveBeenCalledWith({ messageId: "server_1" });
+  });
+
+  it("regenerate-style deleteMessagesAfter BEFORE the append resolves awaits it and uses the server id", async () => {
+    let resolveAppend!: (id: string) => void;
+    const appendMessage = vi.fn(
+      () => new Promise<string>((res) => (resolveAppend = res)),
+    );
+    const deleteMessagesAfter = vi.fn(async () => undefined);
+    const adapter = createConvexPersistence(
+      baseDeps({ getActiveId: () => "conv_1", appendMessage, deleteMessagesAfter }),
+    );
+
+    const appendP = adapter.appendMessage({ id: "client_a", role: "assistant", content: "y" });
+    const delP = adapter.deleteMessagesAfter!("client_a");
+    await flush();
+
+    expect(deleteMessagesAfter).not.toHaveBeenCalled();
+
+    resolveAppend("server_a");
+    await Promise.all([appendP, delP]);
+
+    // Exactly one correct server-side delete, keyed by the RESOLVED server id.
+    expect(deleteMessagesAfter).toHaveBeenCalledTimes(1);
+    expect(deleteMessagesAfter).toHaveBeenCalledWith({ messageId: "server_a" });
+  });
+
+  it("a FAILED append does not hang resolveServerId; the delete degrades gracefully", async () => {
+    let rejectAppend!: (e: unknown) => void;
+    const appendMessage = vi.fn(
+      () => new Promise<string>((_res, rej) => (rejectAppend = rej)),
+    );
+    const deleteMessage = vi.fn(async () => undefined);
+    const adapter = createConvexPersistence(
+      baseDeps({ getActiveId: () => "conv_1", appendMessage, deleteMessage }),
+    );
+
+    // Swallow the append rejection like useChatStream's fire-and-forget catch.
+    const appendP = Promise.resolve(
+      adapter.appendMessage({ id: "client_1", role: "assistant", content: "x" }),
+    ).catch(() => {});
+    const delP = adapter.deleteMessage!("client_1");
+    await flush();
+
+    rejectAppend(new Error("append failed"));
+    await Promise.all([appendP, delP]);
+
+    // No hang: the delete resolves, best-effort falling back to the raw id.
+    expect(deleteMessage).toHaveBeenCalledTimes(1);
+    expect(deleteMessage).toHaveBeenCalledWith({ messageId: "client_1" });
+  });
+
   it("reset() clears the in-flight create so a new turn creates a fresh conversation", async () => {
     const createConversation = vi.fn(async () => "conv_1");
     let activeId: string | null = null;

@@ -154,9 +154,13 @@ export const deleteMessagesAfter = mutation({
       .withIndex("by_conversation", (q: any) => q.eq("conversationId", target.conversationId))
       .collect();
 
+    // Use Convex's monotonic, unique `_creationTime` for the boundary rather
+    // than `createdAt` (a non-unique Date.now()): a same-millisecond user +
+    // assistant pair must not cause the preceding user row to be deleted, since
+    // regenerate re-streams without re-inserting the user message.
     let deleted = 0;
     for (const message of messages) {
-      if (message.createdAt >= target.createdAt) {
+      if (message._creationTime >= target._creationTime) {
         await ctx.db.delete(message._id);
         deleted += 1;
       }

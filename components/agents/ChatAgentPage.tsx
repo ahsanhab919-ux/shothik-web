@@ -133,7 +133,7 @@ export default function ChatAgentPage() {
         })),
       );
     }
-  }, [isAuthenticated, activeId, activeData, isStreaming, setMessages]);
+  }, [authReady, isAuthenticated, activeId, activeData, isStreaming, setMessages]);
 
   // Logged-out: load localStorage history once auth has resolved. Guarded on
   // `authReady` so we never seed logged-out history into an authed session

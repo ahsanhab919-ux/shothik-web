@@ -350,6 +350,36 @@ describe("deleteMessagesAfter (target + all later, scoped to the conversation)",
     expect((await db.get(cid))?.updatedAt).toBeGreaterThan(1);
   });
 
+  it("preserves the preceding user row when it shares the target's createdAt (tie boundary)", async () => {
+    const cid = db.seed("conversations", { userId: USER, title: "t", createdAt: 1, updatedAt: 1 });
+    // User + assistant written in the SAME millisecond (identical createdAt),
+    // but the user row is inserted first so it has a smaller _creationTime.
+    const user = db.seed("messages", {
+      conversationId: cid,
+      userId: USER,
+      role: "user",
+      content: "u1",
+      createdAt: 100,
+    });
+    const assistant = db.seed("messages", {
+      conversationId: cid,
+      userId: USER,
+      role: "assistant",
+      content: "a1",
+      createdAt: 100,
+    });
+
+    const deleted = await run(conversations.deleteMessagesAfter, ctxFor(db, USER), {
+      messageId: assistant,
+    });
+
+    // Only the assistant is removed; the same-createdAt user row survives so
+    // regenerate (which does not re-insert the user) keeps the turn intact.
+    expect(deleted).toBe(1);
+    expect(await db.get(user)).not.toBeNull();
+    expect(await db.get(assistant)).toBeNull();
+  });
+
   it("rejects when the target message belongs to another user", async () => {
     const cid = db.seed("conversations", { userId: USER, title: "t", createdAt: 1, updatedAt: 1 });
     const mid = db.seed("messages", {
