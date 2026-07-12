@@ -232,15 +232,18 @@ describe("saveChapterRecord", () => {
 describe("recordChapterAttempt", () => {
   it("inserts and maps an attempt", async () => {
     mutation.mockResolvedValue({
-      _id: "att_1",
-      userId: USER,
-      bookId: "book_1",
-      index: 0,
-      attempt: 1,
-      status: "accepted",
-      gateIssues: [],
-      createdAt: 1,
-      updatedAt: 1,
+      status: "ok",
+      attempt: {
+        _id: "att_1",
+        userId: USER,
+        bookId: "book_1",
+        index: 0,
+        attempt: 1,
+        status: "accepted",
+        gateIssues: [],
+        createdAt: 1,
+        updatedAt: 1,
+      },
     });
     const attempt = await recordChapterAttempt(USER, {
       bookId: "book_1",
@@ -252,7 +255,7 @@ describe("recordChapterAttempt", () => {
     expect(attempt).toMatchObject({ id: "att_1", attempt: 1, status: "accepted" });
   });
 
-  it("enforces MAX_CHAPTER_ATTEMPTS", async () => {
+  it("enforces MAX_CHAPTER_ATTEMPTS in the service layer (no storage call)", async () => {
     await expect(
       recordChapterAttempt(USER, {
         bookId: "book_1",
@@ -263,6 +266,22 @@ describe("recordChapterAttempt", () => {
       })
     ).rejects.toMatchObject({ code: "LIMIT_EXCEEDED" });
     expect(mutation).not.toHaveBeenCalled();
+  });
+
+  it("maps a server-side limit_exceeded result to LIMIT_EXCEEDED", async () => {
+    // The mutation may reject even when the attempt number looks in-range, if
+    // the server already has MAX_CHAPTER_ATTEMPTS recorded for that chapter.
+    mutation.mockResolvedValue({ status: "limit_exceeded", attempt: null });
+    await expect(
+      recordChapterAttempt(USER, {
+        bookId: "book_1",
+        index: 0,
+        attempt: MAX_CHAPTER_ATTEMPTS,
+        status: "failed",
+        gateIssues: [],
+      })
+    ).rejects.toMatchObject({ code: "LIMIT_EXCEEDED" });
+    expect(mutation).toHaveBeenCalledTimes(1);
   });
 });
 

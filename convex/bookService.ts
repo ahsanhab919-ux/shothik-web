@@ -13,6 +13,11 @@
 import { internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
+// Server-side guard against runaway generation. Kept in sync with the service
+// layer's MAX_CHAPTER_ATTEMPTS (lib/book/types.ts); enforced here as a
+// defence-in-depth cap independent of any caller.
+const MAX_CHAPTER_ATTEMPTS = 3;
+
 const planValidator = v.array(
   v.object({
     index: v.number(),
@@ -72,11 +77,15 @@ export const createBook = internalMutation({
 export const listBooks = internalQuery({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const books = await ctx.db
       .query("books")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .order("desc")
       .collect();
+    // The `books` table is shared with the host publishing workflow, whose rows
+    // leave `engineStatus` undefined. Only surface engine-owned rows so host
+    // books never leak into engine logic.
+    return books.filter((book) => book.engineStatus !== undefined);
   },
 });
 
@@ -84,7 +93,11 @@ export const getBook = internalQuery({
   args: { userId: v.string(), bookId: v.id("books") },
   handler: async (ctx, args) => {
     const book = await ctx.db.get(args.bookId);
-    if (!book || book.userId !== args.userId) return null;
+    // Reject host-owned rows (no engineStatus): the engine must not read a
+    // publishing-workflow book through its own accessors.
+    if (!book || book.userId !== args.userId || book.engineStatus === undefined) {
+      return null;
+    }
     return book;
   },
 });
@@ -98,8 +111,10 @@ export const claimBookForRun = internalMutation({
     if (!book || book.userId !== args.userId) {
       return { status: "not_found" as const, book: null };
     }
-    const current = book.engineStatus ?? "draft";
-    if (current !== "draft") {
+    // Only an engine-owned draft is claimable. A host-owned book leaves
+    // engineStatus undefined, which is (correctly) not "draft" — do NOT treat
+    // it as an implicit draft the way the old `engineStatus ?? "draft"` did.
+    if (book.engineStatus !== "draft") {
       return { status: "conflict" as const, book };
     }
     const now = Date.now();
@@ -121,6 +136,15 @@ export const resetBookToDraft = internalMutation({
       .collect();
     for (const chapter of chapters) {
       await ctx.db.delete(chapter._id);
+    }
+    // Also clear chapterAttempts; leaving them orphaned corrupts
+    // getChapterProgress / listChapterAttempts after a reset.
+    const attempts = await ctx.db
+      .query("chapterAttempts")
+      .withIndex("by_book", (q) => q.eq("bookId", args.bookId).eq("userId", args.userId))
+      .collect();
+    for (const attempt of attempts) {
+      await ctx.db.delete(attempt._id);
     }
     const now = Date.now();
     await ctx.db.patch(args.bookId, { engineStatus: "draft", updatedAt: now });
@@ -198,6 +222,16 @@ export const recordChapterAttempt = internalMutation({
     modelHandle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Defence-in-depth cap: reject once this chapter already has
+    // MAX_CHAPTER_ATTEMPTS recorded attempts, independent of the caller.
+    const existing = await ctx.db
+      .query("chapterAttempts")
+      .withIndex("by_book", (q) => q.eq("bookId", args.bookId).eq("userId", args.userId))
+      .collect();
+    const countForIndex = existing.filter((a) => a.index === args.index).length;
+    if (countForIndex >= MAX_CHAPTER_ATTEMPTS) {
+      return { status: "limit_exceeded" as const, attempt: null };
+    }
     const now = Date.now();
     const id = await ctx.db.insert("chapterAttempts", {
       userId: args.userId,
@@ -211,7 +245,7 @@ export const recordChapterAttempt = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
-    return await ctx.db.get(id);
+    return { status: "ok" as const, attempt: await ctx.db.get(id) };
   },
 });
 

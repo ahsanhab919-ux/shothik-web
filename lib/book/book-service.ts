@@ -257,7 +257,7 @@ export async function recordChapterAttempt(
       `attempt ${input.attempt} exceeds MAX_CHAPTER_ATTEMPTS (${MAX_CHAPTER_ATTEMPTS})`
     );
   }
-  const doc = await runBookMutation<any>("bookService:recordChapterAttempt", {
+  const result = await runBookMutation<any>("bookService:recordChapterAttempt", {
     userId,
     bookId: input.bookId,
     index: input.index,
@@ -267,7 +267,13 @@ export async function recordChapterAttempt(
     tokensUsed: input.tokensUsed,
     modelHandle: input.modelHandle,
   });
-  return mapAttempt(doc);
+  if (result?.status === "limit_exceeded") {
+    throw new BookServiceError(
+      "LIMIT_EXCEEDED",
+      `chapter ${input.index} has reached MAX_CHAPTER_ATTEMPTS (${MAX_CHAPTER_ATTEMPTS})`
+    );
+  }
+  return mapAttempt(result.attempt);
 }
 
 export async function listChapterAttempts(
