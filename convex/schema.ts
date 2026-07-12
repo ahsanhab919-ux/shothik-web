@@ -1202,4 +1202,34 @@ export default defineSchema({
     .index("by_actor_time", ["actorId", "timestamp"])
     .index("by_action_time", ["action", "timestamp"])
     .index("by_request", ["requestId"]),
+
+  conversations: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    model: v.optional(v.string()),
+    pinned: v.optional(v.boolean()),
+    archived: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_updated", ["userId", "updatedAt"]),
+
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.string(),
+    role: v.union(
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("system"),
+    ),
+    content: v.string(),
+    clientId: v.optional(v.string()),
+    error: v.optional(v.boolean()),
+    metadata: v.optional(v.any()),
+    attachments: v.optional(v.array(v.any())),
+    createdAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_user", ["userId"]),
 });

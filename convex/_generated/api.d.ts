@@ -14,6 +14,7 @@ import type * as auditEvents from "../auditEvents.js";
 import type * as billing from "../billing.js";
 import type * as books from "../books.js";
 import type * as channels from "../channels.js";
+import type * as conversations from "../conversations.js";
 import type * as credits from "../credits.js";
 import type * as earnings from "../earnings.js";
 import type * as forums from "../forums.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   billing: typeof billing;
   books: typeof books;
   channels: typeof channels;
+  conversations: typeof conversations;
   credits: typeof credits;
   earnings: typeof earnings;
   forums: typeof forums;
