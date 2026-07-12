@@ -1,4 +1,4 @@
-import ChatAgentPage from "@/components/agents/ChatAgentPage";
+import ChatAgentPageV2 from "@/components/agents/ChatAgentPageV2";
 
 export const metadata = {
   title: "AI Chat — Shothik AI",
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function ChatPage() {
-  return <ChatAgentPage />;
+  return <ChatAgentPageV2 />;
 }
