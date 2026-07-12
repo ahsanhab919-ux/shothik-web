@@ -4,6 +4,7 @@ import { twinApi, createTwinClient } from "@/lib/twin-convex";
 import { checkAbility, logRouteActivity } from "@/lib/twin-route-guard";
 import { executeTask } from "@/lib/twin/task-executor";
 import { getStyleProfile } from "@/lib/twin/get-style-profile";
+import { resolveWritingMd, computeVoiceDriftFindings } from "@/lib/twin/writing-voice";
 
 export async function GET(req: NextRequest) {
   const auth = await authenticateTwinRequest(req);
@@ -122,6 +123,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const styleProfile = await getStyleProfile(convex, auth.userId);
+      const writingMd = await resolveWritingMd(auth.userId);
 
       const result = await executeTask(
         {
@@ -137,8 +139,11 @@ export async function POST(req: NextRequest) {
           goals: profile.goals,
           languages: profile.languages,
         },
-        styleProfile
+        styleProfile,
+        writingMd
       );
+
+      const voiceDriftFindings = computeVoiceDriftFindings(result, writingMd);
 
       await convex.mutation(twinApi.twin.updateTaskStatus, {
         taskId,
@@ -146,7 +151,7 @@ export async function POST(req: NextRequest) {
         result,
       });
 
-      return NextResponse.json({ taskId, status: "completed", result }, { status: 201 });
+      return NextResponse.json({ taskId, status: "completed", result, voiceDriftFindings }, { status: 201 });
     } catch (execErr) {
       console.error("[twin/tasks POST] execution failed:", execErr);
       await convex.mutation(twinApi.twin.updateTaskStatus, {

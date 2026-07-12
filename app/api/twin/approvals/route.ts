@@ -4,6 +4,7 @@ import { twinApi, createTwinClient } from "@/lib/twin-convex";
 import { checkAbility, logRouteActivity } from "@/lib/twin-route-guard";
 import { executeTask } from "@/lib/twin/task-executor";
 import { getStyleProfile } from "@/lib/twin/get-style-profile";
+import { resolveWritingMd, computeVoiceDriftFindings } from "@/lib/twin/writing-voice";
 
 export async function GET(req: NextRequest) {
   const auth = await authenticateTwinRequest(req);
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = targetApproval.payload as Record<string, unknown> | undefined;
+    let voiceDriftFindings: import("@/lib/re-educator/types").Issue[] = [];
 
     if (body.action === "approve") {
       await convex.mutation(twinApi.twin.approveAction, { approvalId: body.approvalId });
@@ -69,6 +71,7 @@ export async function POST(req: NextRequest) {
             });
 
             const styleProfile = await getStyleProfile(convex, auth.userId);
+            const writingMd = await resolveWritingMd(auth.userId);
 
             const taskResult = await executeTask(
               {
@@ -84,8 +87,11 @@ export async function POST(req: NextRequest) {
                 goals: profile.goals,
                 languages: profile.languages,
               },
-              styleProfile
+              styleProfile,
+              writingMd
             );
+
+            voiceDriftFindings = computeVoiceDriftFindings(taskResult, writingMd);
 
             await convex.mutation(twinApi.twin.updateTaskStatus, {
               taskId: taskIdFromPayload,
@@ -124,7 +130,7 @@ export async function POST(req: NextRequest) {
       targetResource: `approval:${body.approvalId as string}`,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, voiceDriftFindings });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to process approval";
     return NextResponse.json({ error: message }, { status: 400 });

@@ -72,9 +72,10 @@ const TASK_CONFIG: Record<string, { temperature: number; maxTokens: number }> = 
 export async function executeTask(
   task: TaskInput,
   profile: TwinProfile,
-  styleProfile?: StyleProfile | null
+  styleProfile?: StyleProfile | null,
+  writingMd?: string | null
 ): Promise<string> {
-  const personaPrompt = buildPersonaPrompt(profile, styleProfile);
+  const personaPrompt = buildPersonaPrompt(profile, styleProfile, writingMd);
   const taskPrompt = TASK_PROMPTS[task.taskType](task);
   const config = TASK_CONFIG[task.taskType] ?? TASK_CONFIG.research;
 
