@@ -99,4 +99,36 @@ describe('getOrCreateWritingProfile', () => {
     expect(createAgent).toHaveBeenCalledTimes(1);
     expect(mutation).toHaveBeenCalledTimes(1);
   });
+
+  it('provisions at most ONE agent under concurrent first-calls (race guard)', async () => {
+    // Both concurrent callers see no existing row (first-request race). Without
+    // the in-flight reservation, each would fire createWritingAgent, orphaning a
+    // Letta agent.
+    query.mockResolvedValue(null);
+    let agentSeq = 0;
+    createAgent.mockImplementation(async () => {
+      // Yield so a second concurrent caller can interleave before we resolve.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      agentSeq += 1;
+      return `agent-${agentSeq}`;
+    });
+    mutation.mockImplementation(async (_path, args) => ({
+      userId: args.userId,
+      lettaAgentId: args.lettaAgentId,
+      blockLabel: args.blockLabel,
+      lastContentLength: args.lastContentLength,
+      lastSyncedAt: 4000,
+    }));
+
+    const [a, b] = await Promise.all([
+      getOrCreateWritingProfile(USER),
+      getOrCreateWritingProfile(USER),
+    ]);
+
+    // Exactly one external agent minted, one row insert, and both callers get it.
+    expect(createAgent).toHaveBeenCalledTimes(1);
+    expect(mutation).toHaveBeenCalledTimes(1);
+    expect(a.lettaAgentId).toBe('agent-1');
+    expect(b.lettaAgentId).toBe('agent-1');
+  });
 });
