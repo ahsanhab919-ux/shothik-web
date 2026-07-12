@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { resolveChatModel } from "./models";
 
 const SYSTEM_PROMPT = `You are Shothik, an intelligent AI assistant built for university students and STEM researchers. You help with:
 - Academic writing, research, and study questions
@@ -35,10 +36,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { messages, context } = body as {
+    const { messages, context, model } = body as {
       messages: { role: "user" | "assistant"; content: string }[];
       context?: string;
+      model?: string;
     };
+
+    const resolvedModel = resolveChatModel(model);
 
     if (!messages || messages.length === 0) {
       return new Response(JSON.stringify({ error: "Messages are required" }), {
@@ -80,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     const geminiRes = await fetch(
-      `${baseUrl}/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
+      `${baseUrl}/models/${resolvedModel}:streamGenerateContent?alt=sse&key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
