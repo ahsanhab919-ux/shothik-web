@@ -7,11 +7,13 @@ vi.mock('@/lib/llm/gateway', () => ({
 }));
 
 import { completeForTool } from '@/lib/llm/gateway';
+import { DEFAULT_WRITING_MD } from '@/lib/letta';
 import type { Issue } from '@/lib/re-educator/types';
 import {
   passesVoiceGate,
   extractBannedPhrases,
   generateWithVoiceGate,
+  hasTimeBudget,
   DRIFT_RATIO_THRESHOLD,
 } from './writing-voice';
 
@@ -74,6 +76,29 @@ describe('passesVoiceGate', () => {
     expect(gate.blockingFindings).toHaveLength(2);
     expect(2 / 3).toBeGreaterThan(DRIFT_RATIO_THRESHOLD);
   });
+
+  // F4: the denominator is now the QUALIFYING-sentence count (drifted / qualifying),
+  // so a lone drift in a single-qualifying-sentence doc is ratio 1.0 and blocks —
+  // whereas diluting it with many short/non-qualifying sentences would not.
+  it('blocks a single drift when it is the only qualifying sentence (ratio 1.0)', () => {
+    const gate = passesVoiceGate([issue('info')], 1);
+    expect(gate.passed).toBe(false);
+    expect(gate.blockingFindings).toHaveLength(1);
+  });
+
+  it('does NOT block a single drift diluted across many qualifying sentences', () => {
+    const gate = passesVoiceGate([issue('info')], 20); // ratio 0.05 <= 0.30
+    expect(gate.passed).toBe(true);
+    expect(gate.blockingFindings).toHaveLength(0);
+  });
+});
+
+describe('hasTimeBudget', () => {
+  it('is true while elapsed < budget and false once the budget is reached', () => {
+    expect(hasTimeBudget(1000, 1000 + 59_999, 60_000)).toBe(true);
+    expect(hasTimeBudget(1000, 1000 + 60_000, 60_000)).toBe(false);
+    expect(hasTimeBudget(1000, 1000 + 90_000, 60_000)).toBe(false);
+  });
 });
 
 describe('extractBannedPhrases', () => {
@@ -87,6 +112,26 @@ describe('extractBannedPhrases', () => {
 
   it('returns [] for undefined input', () => {
     expect(extractBannedPhrases(undefined)).toEqual([]);
+  });
+
+  // F1: the shipped default ships a combined "## Do / Don't" heading with empty
+  // inline sub-labels — it must yield NO banned phrases (and never "Do:"/"Don't:").
+  it('yields no bogus banned phrases from the DEFAULT_WRITING_MD scaffold', () => {
+    const banned = extractBannedPhrases(DEFAULT_WRITING_MD);
+    expect(banned).toEqual([]);
+    expect(banned).not.toContain('Do:');
+    expect(banned).not.toContain("Don't:");
+  });
+
+  it('parses a combined "## Do / Don\'t" heading into bare Don\'t terms only', () => {
+    const md = [
+      '## Do / Don\'t',
+      '- Do: use short warm sentences',
+      '- Don\'t: use jargon',
+      '- Don\'t: say synergy',
+    ].join('\n');
+    // The Do rule is excluded; Don't items lose their label prefix.
+    expect(extractBannedPhrases(md)).toEqual(['use jargon', 'say synergy']);
   });
 });
 
@@ -150,6 +195,31 @@ describe('generateWithVoiceGate', () => {
     expect(res.repairAttempts).toBe(2);
     expect(res.text).toBe(BANNED);
     expect(res.finalFindings.length).toBeGreaterThan(0);
+  });
+
+  it('stops issuing new attempts once the wall-clock budget is exceeded (best-effort)', async () => {
+    // Each generation advances the fake clock past the budget; the first attempt
+    // always runs, then the budget check short-circuits any repair.
+    let t = 0;
+    complete.mockImplementation(async () => {
+      t += 100_000; // one generation blows the 60s budget
+      return { text: BANNED };
+    });
+
+    const res = await generateWithVoiceGate({
+      task: TASK,
+      profile: PROFILE,
+      writingMd: WRITING_MD,
+      maxTotalMs: 60_000,
+      now: () => t,
+    });
+
+    // Only the first generation ran; no repair was issued.
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(res.voiceGatePassed).toBe(false);
+    expect(res.bestEffort).toBe(true);
+    expect(res.repairAttempts).toBe(0);
+    expect(res.text).toBe(BANNED);
   });
 
   it('is a no-op gate (1 generation, passed) when writingMd is absent', async () => {

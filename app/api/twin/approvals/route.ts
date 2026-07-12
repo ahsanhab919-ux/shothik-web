@@ -107,6 +107,8 @@ export async function POST(req: NextRequest) {
           }
         } catch (execErr) {
           console.error("[twin/approvals POST] task execution after approval failed:", execErr);
+          // Execution produced no text, so the gate did not pass for this work.
+          voiceGatePassed = false;
           await convex.mutation(twinApi.twin.updateTaskStatus, {
             taskId: taskIdFromPayload,
             status: "failed",

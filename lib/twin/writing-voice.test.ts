@@ -4,12 +4,15 @@ import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 vi.mock('@/lib/writingProfile', () => ({
   getOrCreateWritingProfile: vi.fn(),
 }));
-vi.mock('@/lib/letta', () => ({
-  getWritingMd: vi.fn(),
-}));
+// Keep the real DEFAULT_WRITING_MD constant (compared against in resolveWritingMd)
+// while stubbing only the network seam.
+vi.mock('@/lib/letta', async (importActual) => {
+  const actual = await importActual<typeof import('@/lib/letta')>();
+  return { getWritingMd: vi.fn(), DEFAULT_WRITING_MD: actual.DEFAULT_WRITING_MD };
+});
 
 import { getOrCreateWritingProfile } from '@/lib/writingProfile';
-import { getWritingMd } from '@/lib/letta';
+import { getWritingMd, DEFAULT_WRITING_MD } from '@/lib/letta';
 import { resolveWritingMd, computeVoiceDriftFindings } from './writing-voice';
 
 const getProfile = getOrCreateWritingProfile as unknown as Mock;
@@ -35,6 +38,28 @@ describe('resolveWritingMd', () => {
     getProfile.mockResolvedValue({ lettaAgentId: 'agent-1' });
     getMd.mockResolvedValue({ content: '   ' });
     expect(await resolveWritingMd('user-1')).toBeUndefined();
+  });
+
+  it('returns undefined for the untouched DEFAULT_WRITING_MD scaffold', async () => {
+    getProfile.mockResolvedValue({ lettaAgentId: 'agent-1' });
+    getMd.mockResolvedValue({ content: DEFAULT_WRITING_MD });
+    expect(await resolveWritingMd('user-1')).toBeUndefined();
+  });
+
+  it('returns undefined when the scaffold is edited but still all placeholders', async () => {
+    getProfile.mockResolvedValue({ lettaAgentId: 'agent-1' });
+    // Reordered / reformatted default with only placeholder bodies → still "no voice".
+    getMd.mockResolvedValue({
+      content: '# WRITING.md\n\n## Voice & Tone\n_placeholder_\n\n## Do / Don\'t\n- Do:\n- Don\'t:\n',
+    });
+    expect(await resolveWritingMd('user-1')).toBeUndefined();
+  });
+
+  it('returns the content for a real edited profile', async () => {
+    getProfile.mockResolvedValue({ lettaAgentId: 'agent-1' });
+    const edited = '# WRITING.md\n\n## Do / Don\'t\n- Do: write warmly\n- Don\'t: use jargon\n';
+    getMd.mockResolvedValue({ content: edited });
+    expect(await resolveWritingMd('user-1')).toBe(edited);
   });
 
   it('falls back to undefined (no throw) when Letta is unavailable', async () => {
