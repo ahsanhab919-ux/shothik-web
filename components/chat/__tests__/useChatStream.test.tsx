@@ -95,6 +95,102 @@ describe("useChatStream", () => {
     expect(stored.some((m: any) => m.content === "ok")).toBe(true);
   });
 
+  it("authed regenerate deletes the superseded assistant server-side and does NOT re-insert the user message", async () => {
+    fetchMock.mockResolvedValue(
+      sseResponse(['data: {"content":"first"}\n\n', 'data: {"done":true}\n\n']).response,
+    );
+    const appendMessage = vi.fn();
+    const deleteMessagesAfter = vi.fn();
+    const { result } = renderHook(() =>
+      useChatStream({ persistence: { appendMessage, deleteMessagesAfter } }),
+    );
+
+    await act(async () => {
+      await result.current.send("hi");
+    });
+    const firstAssistant = result.current.messages.find((m) => m.role === "assistant");
+    expect(firstAssistant?.content).toBe("first");
+
+    fetchMock.mockResolvedValue(
+      sseResponse(['data: {"content":"second"}\n\n', 'data: {"done":true}\n\n']).response,
+    );
+    await act(async () => {
+      await result.current.regenerate();
+    });
+
+    // superseded assistant dropped server-side, keyed by the assistant's id
+    expect(deleteMessagesAfter).toHaveBeenCalledTimes(1);
+    expect(deleteMessagesAfter).toHaveBeenCalledWith(firstAssistant?.id);
+
+    // no duplicate user row persisted, and exactly one user remains in the UI
+    const userAppends = appendMessage.mock.calls.filter((c) => c[0].role === "user");
+    expect(userAppends.length).toBe(1);
+    expect(result.current.messages.filter((m) => m.role === "user").length).toBe(1);
+    expect(result.current.messages.find((m) => m.role === "assistant")?.content).toBe("second");
+  });
+
+  it("authed deleteMessage calls the Convex delete adapter (not just local state)", async () => {
+    fetchMock.mockResolvedValue(
+      sseResponse(['data: {"content":"ok"}\n\n', 'data: {"done":true}\n\n']).response,
+    );
+    const appendMessage = vi.fn();
+    const deleteMessage = vi.fn();
+    const { result } = renderHook(() =>
+      useChatStream({ persistence: { appendMessage, deleteMessage } }),
+    );
+    await act(async () => {
+      await result.current.send("hi");
+    });
+    const assistant = result.current.messages.find((m) => m.role === "assistant");
+
+    act(() => {
+      result.current.deleteMessage(assistant!.id);
+    });
+
+    expect(deleteMessage).toHaveBeenCalledWith(assistant!.id);
+    expect(result.current.messages.some((m) => m.id === assistant!.id)).toBe(false);
+  });
+
+  it("skips a malformed data: line but keeps streaming (F5 parse guard)", async () => {
+    fetchMock.mockResolvedValue(
+      sseResponse([
+        "data: not-json\n\n",
+        'data: {"content":"ok"}\n\n',
+        'data: {"done":true}\n\n',
+      ]).response,
+    );
+    const { result } = renderHook(() => useChatStream({ persistence: null }));
+    await act(async () => {
+      await result.current.send("hi");
+    });
+    const assistant = result.current.messages.find((m) => m.role === "assistant");
+    expect(assistant?.content).toBe("ok");
+    expect(assistant?.error).toBeFalsy();
+  });
+
+  it("surfaces an intentional data.error as an error message (F5 parse guard)", async () => {
+    fetchMock.mockResolvedValue(sseResponse(['data: {"error":"boom"}\n\n']).response);
+    const { result } = renderHook(() => useChatStream({ persistence: null }));
+    await act(async () => {
+      await result.current.send("hi");
+    });
+    const assistant = result.current.messages.find((m) => m.role === "assistant");
+    expect(assistant?.error).toBe(true);
+  });
+
+  it("does not persist anywhere while auth is unresolved (no adapter, no storageKey)", async () => {
+    fetchMock.mockResolvedValue(
+      sseResponse(['data: {"content":"ok"}\n\n', 'data: {"done":true}\n\n']).response,
+    );
+    const { result } = renderHook(() => useChatStream({ persistence: null }));
+    await act(async () => {
+      await result.current.send("hi");
+    });
+    // During the auth-loading window ChatAgentPage passes neither a persistence
+    // adapter nor a storageKey, so nothing must reach localStorage (F2).
+    expect(localStorage.length).toBe(0);
+  });
+
   it("stop() aborts the in-flight request", async () => {
     const abortSpy = vi.spyOn(AbortController.prototype, "abort");
     const handle = sseResponse(['data: {"content":"partial"}\n\n'], true);

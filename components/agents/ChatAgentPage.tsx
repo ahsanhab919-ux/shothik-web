@@ -10,7 +10,11 @@ import { Transcript } from "@/components/chat/Transcript";
 import { Composer, CHAT_MODEL_OPTIONS } from "@/components/chat/Composer";
 import { ChatHistorySidebar } from "@/components/chat/ChatHistorySidebar";
 import { useChatStream } from "@/components/chat/useChatStream";
-import type { ChatMessage, ChatPersistence } from "@/components/chat/types";
+import {
+  createConvexPersistence,
+  type ConvexPersistence,
+} from "@/components/chat/convexPersistence";
+import type { ChatMessage } from "@/components/chat/types";
 
 const STORAGE_KEY = "shothik_chat_history";
 const MAX_STORED = 200;
@@ -30,65 +34,85 @@ function loadLocalHistory(): ChatMessage[] {
 
 export default function ChatAgentPage() {
   const { t } = useTranslation();
-  const { isAuthenticated } = useConvexAuth();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const authReady = !isLoading;
 
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [activeId, setActiveId] = useState<Id<"conversations"> | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [includeArchived, setIncludeArchived] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const activeIdRef = useRef<Id<"conversations"> | null>(null);
   const seededRef = useRef<string | null>(null);
+  const modelRef = useRef(model);
   activeIdRef.current = activeId;
+  modelRef.current = model;
 
   const conversations = useQuery(
     api.conversations.listConversations,
-    isAuthenticated ? {} : "skip",
+    authReady && isAuthenticated ? { includeArchived } : "skip",
   );
   const activeData = useQuery(
     api.conversations.getConversation,
-    isAuthenticated && activeId ? { conversationId: activeId } : "skip",
+    authReady && isAuthenticated && activeId ? { conversationId: activeId } : "skip",
   );
 
   const createConversation = useMutation(api.conversations.createConversation);
   const appendMessageMut = useMutation(api.conversations.appendMessage);
+  const deleteMessageMut = useMutation(api.conversations.deleteMessage);
+  const deleteMessagesAfterMut = useMutation(api.conversations.deleteMessagesAfter);
   const renameConversation = useMutation(api.conversations.renameConversation);
   const deleteConversationMut = useMutation(api.conversations.deleteConversation);
   const setConversationFlags = useMutation(api.conversations.setConversationFlags);
 
-  const persistence = useMemo<ChatPersistence | null>(() => {
-    if (!isAuthenticated) return null;
-    return {
-      appendMessage: async (message: ChatMessage) => {
-        let cid = activeIdRef.current;
-        if (!cid) {
-          cid = await createConversation({ model });
-          activeIdRef.current = cid;
-          seededRef.current = cid;
-          setActiveId(cid);
-        }
-        await appendMessageMut({
-          conversationId: cid,
-          role: message.role,
-          content: message.content,
-          clientId: message.id,
-          error: message.error,
-          attachments: message.attachments,
-        });
+  // Authenticated persistence adapter. Held in a ref so its serialized
+  // creation promise + client→server id map survive re-renders; rebuilt only
+  // when auth resolves. Gated on `authReady` so nothing persists to the wrong
+  // store during token resolution (F2).
+  const persistenceRef = useRef<ConvexPersistence | null>(null);
+  const persistence = useMemo<ConvexPersistence | null>(() => {
+    if (!authReady || !isAuthenticated) {
+      persistenceRef.current = null;
+      return null;
+    }
+    const adapter = createConvexPersistence({
+      getModel: () => modelRef.current,
+      getActiveId: () => activeIdRef.current,
+      setActiveId: (id) => {
+        activeIdRef.current = id as Id<"conversations">;
+        seededRef.current = id;
+        setActiveId(id as Id<"conversations">);
       },
-    };
-  }, [isAuthenticated, model, createConversation, appendMessageMut]);
+      createConversation: (a) => createConversation(a),
+      appendMessage: (a) =>
+        appendMessageMut(a as Parameters<typeof appendMessageMut>[0]),
+      deleteMessage: (a) =>
+        deleteMessageMut(a as Parameters<typeof deleteMessageMut>[0]),
+      deleteMessagesAfter: (a) =>
+        deleteMessagesAfterMut(a as Parameters<typeof deleteMessagesAfterMut>[0]),
+    });
+    persistenceRef.current = adapter;
+    return adapter;
+  }, [
+    authReady,
+    isAuthenticated,
+    createConversation,
+    appendMessageMut,
+    deleteMessageMut,
+    deleteMessagesAfterMut,
+  ]);
 
   const { messages, setMessages, send, stop, regenerate, deleteMessage, isStreaming } =
     useChatStream({
       model,
       persistence,
-      storageKey: isAuthenticated ? undefined : STORAGE_KEY,
+      storageKey: authReady && !isAuthenticated ? STORAGE_KEY : undefined,
       maxStored: MAX_STORED,
     });
 
   // Seed transcript from the substrate (authed) once per conversation switch.
   useEffect(() => {
-    if (!isAuthenticated || isStreaming) return;
+    if (!authReady || !isAuthenticated || isStreaming) return;
     if (activeId === null) {
       if (seededRef.current !== null) {
         seededRef.current = null;
@@ -111,18 +135,23 @@ export default function ChatAgentPage() {
     }
   }, [isAuthenticated, activeId, activeData, isStreaming, setMessages]);
 
-  // Logged-out: load localStorage history on mount.
+  // Logged-out: load localStorage history once auth has resolved. Guarded on
+  // `authReady` so we never seed logged-out history into an authed session
+  // during token resolution (F2).
   useEffect(() => {
-    if (isAuthenticated) return;
+    if (!authReady || isAuthenticated) return;
     setMessages(loadLocalHistory());
-  }, [isAuthenticated, setMessages]);
+  }, [authReady, isAuthenticated, setMessages]);
 
+  // Smooth-scroll only when the message COUNT changes, not on every streamed
+  // token, to avoid per-chunk re-scroll jank.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages.length]);
 
   const handleNew = useCallback(() => {
     stop();
+    persistenceRef.current?.reset();
     seededRef.current = null;
     activeIdRef.current = null;
     setActiveId(null);
@@ -133,6 +162,7 @@ export default function ChatAgentPage() {
   const handleSelect = useCallback(
     (id: string) => {
       stop();
+      persistenceRef.current?.reset();
       setActiveId(id as Id<"conversations">);
       setSidebarOpen(false);
     },
@@ -157,6 +187,20 @@ export default function ChatAgentPage() {
   const visibleMessages = messages.filter((m) => m.role !== "system");
   const isEmpty = visibleMessages.length === 0;
 
+  // While auth is resolving, do not render the composer/transcript so no send
+  // can persist to the wrong store during the loading window (F2).
+  if (!authReady) {
+    return (
+      <div className="flex h-[calc(100dvh-64px)] items-center justify-center">
+        <div
+          className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-brand"
+          role="status"
+          aria-label="Loading"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-[calc(100dvh-64px)]">
       {isAuthenticated && sidebarOpen && (
@@ -169,6 +213,8 @@ export default function ChatAgentPage() {
             updatedAt: c.updatedAt,
           }))}
           activeId={activeId}
+          includeArchived={includeArchived}
+          onIncludeArchivedChange={setIncludeArchived}
           onSelect={handleSelect}
           onNew={handleNew}
           onRename={(id, title) =>

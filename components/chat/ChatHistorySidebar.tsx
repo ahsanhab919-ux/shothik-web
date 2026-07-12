@@ -25,6 +25,8 @@ export interface ConversationSummary {
 export interface ChatHistorySidebarProps {
   conversations: ConversationSummary[];
   activeId: string | null;
+  includeArchived?: boolean;
+  onIncludeArchivedChange?: (value: boolean) => void;
   onSelect: (id: string) => void;
   onNew: () => void;
   onRename: (id: string, title: string) => void;
@@ -37,6 +39,8 @@ export interface ChatHistorySidebarProps {
 export function ChatHistorySidebar({
   conversations,
   activeId,
+  includeArchived = false,
+  onIncludeArchivedChange,
   onSelect,
   onNew,
   onRename,
@@ -74,6 +78,17 @@ export function ChatHistorySidebar({
           <MessageSquarePlus className="h-4 w-4" />
           New chat
         </button>
+        {onIncludeArchivedChange && (
+          <label className="mt-2 flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={includeArchived}
+              onChange={(e) => onIncludeArchivedChange(e.target.checked)}
+              aria-label="Show archived conversations"
+            />
+            Show archived
+          </label>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">

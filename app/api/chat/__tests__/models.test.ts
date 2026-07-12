@@ -18,9 +18,13 @@ describe("resolveChatModel (backward-compatible model selection)", () => {
     expect(resolveChatModel(42 as unknown)).toBe("gemini-2.5-flash");
   });
 
-  it("only allow-lists gemini ids that the repo already references", () => {
-    for (const id of ALLOWED_CHAT_MODELS) {
-      expect(id.startsWith("gemini-")).toBe(true);
-    }
+  it("pins the exact allow-list (all ids verified as referenced across the repo)", () => {
+    expect([...ALLOWED_CHAT_MODELS]).toEqual([
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-2.5-pro",
+      "gemini-1.5-pro",
+      "gemini-1.5-flash",
+    ]);
   });
 });

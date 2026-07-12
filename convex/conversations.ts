@@ -47,8 +47,9 @@ export const getConversation = query({
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUserId(ctx);
     const conversation = await ctx.db.get(args.conversationId);
-    if (!conversation) return null;
-    if (conversation.userId !== userId) throw new Error("Unauthorized");
+    // Align the missing-id and foreign-id responses so a caller cannot
+    // distinguish "exists but not yours" from "doesn't exist".
+    if (!conversation || conversation.userId !== userId) throw new Error("Unauthorized");
 
     const messages = await ctx.db
       .query("messages")
@@ -117,6 +118,53 @@ export const appendMessage = mutation({
     await ctx.db.patch(args.conversationId, patch);
 
     return messageId;
+  },
+});
+
+export const deleteMessage = mutation({
+  args: { messageId: v.id("messages") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserId(ctx);
+    const message = await ctx.db.get(args.messageId);
+    if (!message) throw new Error("Message not found");
+    if (message.userId !== userId) throw new Error("Unauthorized");
+    const conversation = await ctx.db.get(message.conversationId);
+    if (!conversation || conversation.userId !== userId) throw new Error("Unauthorized");
+
+    await ctx.db.delete(args.messageId);
+    await ctx.db.patch(message.conversationId, { updatedAt: Date.now() });
+  },
+});
+
+// Deletes the target message and every message created after it in the same
+// conversation (used by regenerate to drop a superseded assistant turn while
+// keeping the preceding user message).
+export const deleteMessagesAfter = mutation({
+  args: { messageId: v.id("messages") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserId(ctx);
+    const target = await ctx.db.get(args.messageId);
+    if (!target) throw new Error("Message not found");
+    if (target.userId !== userId) throw new Error("Unauthorized");
+    const conversation = await ctx.db.get(target.conversationId);
+    if (!conversation || conversation.userId !== userId) throw new Error("Unauthorized");
+
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_conversation", (q: any) => q.eq("conversationId", target.conversationId))
+      .collect();
+
+    let deleted = 0;
+    for (const message of messages) {
+      if (message.createdAt >= target.createdAt) {
+        await ctx.db.delete(message._id);
+        deleted += 1;
+      }
+    }
+    if (deleted > 0) {
+      await ctx.db.patch(target.conversationId, { updatedAt: Date.now() });
+    }
+    return deleted;
   },
 });
 

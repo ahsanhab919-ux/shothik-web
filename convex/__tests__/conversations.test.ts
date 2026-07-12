@@ -259,6 +259,123 @@ describe("deleteConversation (cascade)", () => {
   });
 });
 
+describe("deleteMessage (ownership + updatedAt bump)", () => {
+  it("deletes an owned message and bumps the conversation updatedAt", async () => {
+    const cid = db.seed("conversations", {
+      userId: USER,
+      title: "t",
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const mid = db.seed("messages", {
+      conversationId: cid,
+      userId: USER,
+      role: "assistant",
+      content: "hi",
+      createdAt: 5,
+    });
+    expect(db.count("messages")).toBe(1);
+
+    await run(conversations.deleteMessage, ctxFor(db, USER), { messageId: mid });
+
+    expect(await db.get(mid)).toBeNull();
+    expect(db.count("messages")).toBe(0);
+    expect((await db.get(cid))?.updatedAt).toBeGreaterThan(1);
+  });
+
+  it("rejects deleting another user's message", async () => {
+    const cid = db.seed("conversations", { userId: USER, title: "t", createdAt: 1, updatedAt: 1 });
+    const mid = db.seed("messages", {
+      conversationId: cid,
+      userId: USER,
+      role: "user",
+      content: "mine",
+      createdAt: 5,
+    });
+    await expect(
+      run(conversations.deleteMessage, ctxFor(db, OTHER), { messageId: mid }),
+    ).rejects.toThrow(/Unauthorized/);
+    expect(await db.get(mid)).not.toBeNull();
+  });
+
+  it("throws for a nonexistent message", async () => {
+    await expect(
+      run(conversations.deleteMessage, ctxFor(db, USER), { messageId: "messages_missing" }),
+    ).rejects.toThrow(/Message not found/);
+  });
+});
+
+describe("deleteMessagesAfter (target + all later, scoped to the conversation)", () => {
+  it("deletes the target and every later message in that conversation only", async () => {
+    const cid = db.seed("conversations", { userId: USER, title: "t", createdAt: 1, updatedAt: 1 });
+    const other = db.seed("conversations", { userId: USER, title: "o", createdAt: 1, updatedAt: 1 });
+    const m1 = db.seed("messages", {
+      conversationId: cid,
+      userId: USER,
+      role: "user",
+      content: "u1",
+      createdAt: 10,
+    });
+    const m2 = db.seed("messages", {
+      conversationId: cid,
+      userId: USER,
+      role: "assistant",
+      content: "a1",
+      createdAt: 20,
+    });
+    const m3 = db.seed("messages", {
+      conversationId: cid,
+      userId: USER,
+      role: "assistant",
+      content: "a2",
+      createdAt: 30,
+    });
+    const om = db.seed("messages", {
+      conversationId: other,
+      userId: USER,
+      role: "assistant",
+      content: "other",
+      createdAt: 25,
+    });
+
+    const deleted = await run(conversations.deleteMessagesAfter, ctxFor(db, USER), {
+      messageId: m2,
+    });
+
+    expect(deleted).toBe(2); // m2 + m3
+    expect(await db.get(m1)).not.toBeNull(); // preceding user kept
+    expect(await db.get(m2)).toBeNull();
+    expect(await db.get(m3)).toBeNull();
+    expect(await db.get(om)).not.toBeNull(); // other conversation untouched
+    expect((await db.get(cid))?.updatedAt).toBeGreaterThan(1);
+  });
+
+  it("rejects when the target message belongs to another user", async () => {
+    const cid = db.seed("conversations", { userId: USER, title: "t", createdAt: 1, updatedAt: 1 });
+    const mid = db.seed("messages", {
+      conversationId: cid,
+      userId: USER,
+      role: "assistant",
+      content: "a",
+      createdAt: 20,
+    });
+    await expect(
+      run(conversations.deleteMessagesAfter, ctxFor(db, OTHER), { messageId: mid }),
+    ).rejects.toThrow(/Unauthorized/);
+    expect(await db.get(mid)).not.toBeNull();
+  });
+});
+
+describe("getConversation (existence oracle)", () => {
+  it("throws Unauthorized for a missing id, matching the foreign-id response", async () => {
+    await expect(
+      run(conversations.getConversation, ctxFor(db, USER), {
+        conversationId: "conversations_missing",
+      }),
+    ).rejects.toThrow(/Unauthorized/);
+  });
+});
+
 describe("setConversationFlags", () => {
   it("sets pinned and archived flags for the owner", async () => {
     const id = await run(conversations.createConversation, ctxFor(db, USER), {});
