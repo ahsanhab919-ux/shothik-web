@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateTwinRequest, requireAuth } from "@/lib/twin-api-auth";
 import { twinApi, createTwinClient } from "@/lib/twin-convex";
 import { checkAbility, logRouteActivity } from "@/lib/twin-route-guard";
-import { executeTask } from "@/lib/twin/task-executor";
 import { getStyleProfile } from "@/lib/twin/get-style-profile";
-import { resolveWritingMd, computeVoiceDriftFindings } from "@/lib/twin/writing-voice";
+import { resolveWritingMd, generateWithVoiceGate } from "@/lib/twin/writing-voice";
 
 export async function GET(req: NextRequest) {
   const auth = await authenticateTwinRequest(req);
@@ -55,6 +54,9 @@ export async function POST(req: NextRequest) {
 
     const payload = targetApproval.payload as Record<string, unknown> | undefined;
     let voiceDriftFindings: import("@/lib/re-educator/types").Issue[] = [];
+    let voiceGatePassed = true;
+    let repairAttempts = 0;
+    let bestEffort = false;
 
     if (body.action === "approve") {
       await convex.mutation(twinApi.twin.approveAction, { approvalId: body.approvalId });
@@ -73,13 +75,13 @@ export async function POST(req: NextRequest) {
             const styleProfile = await getStyleProfile(convex, auth.userId);
             const writingMd = await resolveWritingMd(auth.userId);
 
-            const taskResult = await executeTask(
-              {
+            const gateResult = await generateWithVoiceGate({
+              task: {
                 title: payload.title as string,
                 description: payload.description as string | undefined,
                 taskType: payload.taskType as "research" | "writing" | "analysis" | "summary",
               },
-              {
+              profile: {
                 name: profile.name,
                 persona: profile.persona,
                 expertiseAreas: profile.expertiseAreas,
@@ -88,10 +90,14 @@ export async function POST(req: NextRequest) {
                 languages: profile.languages,
               },
               styleProfile,
-              writingMd
-            );
+              writingMd,
+            });
 
-            voiceDriftFindings = computeVoiceDriftFindings(taskResult, writingMd);
+            const taskResult = gateResult.text;
+            voiceDriftFindings = gateResult.finalFindings;
+            voiceGatePassed = gateResult.voiceGatePassed;
+            repairAttempts = gateResult.repairAttempts;
+            bestEffort = gateResult.bestEffort;
 
             await convex.mutation(twinApi.twin.updateTaskStatus, {
               taskId: taskIdFromPayload,
@@ -130,7 +136,7 @@ export async function POST(req: NextRequest) {
       targetResource: `approval:${body.approvalId as string}`,
     });
 
-    return NextResponse.json({ success: true, voiceDriftFindings });
+    return NextResponse.json({ success: true, voiceDriftFindings, voiceGatePassed, repairAttempts, bestEffort });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to process approval";
     return NextResponse.json({ error: message }, { status: 400 });
