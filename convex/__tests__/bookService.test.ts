@@ -212,3 +212,35 @@ describe("recordChapterAttempt (server-side cap)", () => {
     expect(result.status).toBe("ok");
   });
 });
+
+describe("resetBookToDraft (engine-ownership guard)", () => {
+  it("rejects a host-owned book and does NOT stamp engineStatus:draft onto it", async () => {
+    const id = db.seed("books", { userId: USER, title: "Host", status: "submitted" });
+    const result = await run(bookService.resetBookToDraft, ctx, { userId: USER, bookId: id });
+    expect(result.status).toBe("not_found");
+    expect((await db.get(id))?.engineStatus).toBeUndefined();
+  });
+
+  it("resets a genuine engine-owned book", async () => {
+    const id = db.seed("books", { userId: USER, title: "Engine", engineStatus: "running" });
+    const result = await run(bookService.resetBookToDraft, ctx, { userId: USER, bookId: id });
+    expect(result.status).toBe("ok");
+    expect((await db.get(id))?.engineStatus).toBe("draft");
+  });
+});
+
+describe("setBookStatus (engine-ownership guard)", () => {
+  it("rejects a host-owned book and leaves engineStatus undefined", async () => {
+    const id = db.seed("books", { userId: USER, title: "Host", status: "submitted" });
+    const result = await run(bookService.setBookStatus, ctx, { userId: USER, bookId: id, status: "draft" });
+    expect(result.status).toBe("not_found");
+    expect((await db.get(id))?.engineStatus).toBeUndefined();
+  });
+
+  it("updates status on a genuine engine-owned book", async () => {
+    const id = db.seed("books", { userId: USER, title: "Engine", engineStatus: "running" });
+    const result = await run(bookService.setBookStatus, ctx, { userId: USER, bookId: id, status: "completed" });
+    expect(result.status).toBe("ok");
+    expect((await db.get(id))?.engineStatus).toBe("completed");
+  });
+});

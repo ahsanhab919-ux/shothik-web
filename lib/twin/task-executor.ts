@@ -2,7 +2,7 @@ import { completeForTool } from '@/lib/llm/gateway';
 import { buildPersonaPrompt } from './persona-prompt-builder';
 import type { StyleProfile } from './style-extractor';
 
-interface TwinProfile {
+export interface TwinProfile {
   name: string;
   persona?: string;
   expertiseAreas?: string[];
@@ -11,7 +11,7 @@ interface TwinProfile {
   languages?: string[];
 }
 
-interface TaskInput {
+export interface TaskInput {
   title: string;
   description?: string;
   taskType: 'research' | 'writing' | 'analysis' | 'summary';
@@ -72,11 +72,20 @@ const TASK_CONFIG: Record<string, { temperature: number; maxTokens: number }> = 
 export async function executeTask(
   task: TaskInput,
   profile: TwinProfile,
-  styleProfile?: StyleProfile | null
+  styleProfile?: StyleProfile | null,
+  writingMd?: string | null,
+  repairFeedback?: string
 ): Promise<string> {
-  const personaPrompt = buildPersonaPrompt(profile, styleProfile);
-  const taskPrompt = TASK_PROMPTS[task.taskType](task);
+  const personaPrompt = buildPersonaPrompt(profile, styleProfile, writingMd);
   const config = TASK_CONFIG[task.taskType] ?? TASK_CONFIG.research;
+
+  // On a repair attempt, append the voice-gate feedback to the task prompt so the
+  // regeneration steers back toward the author's WRITING.md voice. Mirrors the
+  // book engine's repair block (lib/book/provider.ts buildChapterPrompt).
+  let taskPrompt = TASK_PROMPTS[task.taskType](task);
+  if (repairFeedback && repairFeedback.trim()) {
+    taskPrompt += `\n\n${repairFeedback.trim()}`;
+  }
 
   const response = await completeForTool('twin-task', {
     prompt: taskPrompt,

@@ -221,6 +221,38 @@ export default defineSchema({
     .index("by_user_status", ["userId", "status"])
     .index("by_status", ["status"]),
 
+  // --- Second Me satellite tables (engine Step 3a) — additive, userId-keyed ---
+  // These enrich the existing twins subsystem in place; they add NO behavior to
+  // any twin function. CRITICAL: sealed BYOK keys live here, keyed by
+  // {userId, purpose}, and NEVER on the transferable twins row. There is no
+  // twinId on this table by design, so a twin ownership transfer can never carry
+  // the previous owner's keys.
+  secondMeKeyCustody: defineTable({
+    userId: v.string(),
+    purpose: v.string(),
+    // Vault envelope only (crypto-vault seal output). Never plaintext.
+    sealedKey: v.string(),
+    provider: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_purpose", ["userId", "purpose"]),
+
+  // One writing profile per user: the metadata mirror of their Letta writing
+  // agent (which owns their WRITING.md). Keyed by userId.
+  writingProfiles: defineTable({
+    userId: v.string(),
+    lettaAgentId: v.string(),
+    blockLabel: v.string(),
+    modelHandle: v.optional(v.string()),
+    embeddingHandle: v.optional(v.string()),
+    lastContentLength: v.number(),
+    lastSyncedAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   contentPurchases: defineTable({
     userId: v.string(),
     bookId: v.id("books"),
@@ -691,6 +723,10 @@ export default defineSchema({
     registrationToken: v.optional(v.string()),
     masterEmail: v.optional(v.string()),
     masterName: v.optional(v.string()),
+    // Additive (engine Step 3a): links a twin to its Letta writing agent for the
+    // 3b voice-profile wiring. Optional so no existing twin row breaks, and it is
+    // the ONLY twins change here — no key material ever lives on this row.
+    lettaAgentId: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateTwinRequest, requireAuth } from "@/lib/twin-api-auth";
 import { twinApi, createTwinClient } from "@/lib/twin-convex";
 import { checkAbility, logRouteActivity } from "@/lib/twin-route-guard";
-import { executeTask } from "@/lib/twin/task-executor";
 import { getStyleProfile } from "@/lib/twin/get-style-profile";
+import { resolveWritingMd, generateWithVoiceGate } from "@/lib/twin/writing-voice";
 
 export async function GET(req: NextRequest) {
   const auth = await authenticateTwinRequest(req);
@@ -122,14 +122,15 @@ export async function POST(req: NextRequest) {
 
     try {
       const styleProfile = await getStyleProfile(convex, auth.userId);
+      const writingMd = await resolveWritingMd(auth.userId);
 
-      const result = await executeTask(
-        {
+      const gateResult = await generateWithVoiceGate({
+        task: {
           title: body.title as string,
           description: body.description as string | undefined,
           taskType: body.taskType as "research" | "writing" | "analysis" | "summary",
         },
-        {
+        profile: {
           name: profile.name,
           persona: profile.persona,
           expertiseAreas: profile.expertiseAreas,
@@ -137,8 +138,11 @@ export async function POST(req: NextRequest) {
           goals: profile.goals,
           languages: profile.languages,
         },
-        styleProfile
-      );
+        styleProfile,
+        writingMd,
+      });
+
+      const result = gateResult.text;
 
       await convex.mutation(twinApi.twin.updateTaskStatus, {
         taskId,
@@ -146,7 +150,15 @@ export async function POST(req: NextRequest) {
         result,
       });
 
-      return NextResponse.json({ taskId, status: "completed", result }, { status: 201 });
+      return NextResponse.json({
+        taskId,
+        status: "completed",
+        result,
+        voiceDriftFindings: gateResult.finalFindings,
+        voiceGatePassed: gateResult.voiceGatePassed,
+        repairAttempts: gateResult.repairAttempts,
+        bestEffort: gateResult.bestEffort,
+      }, { status: 201 });
     } catch (execErr) {
       console.error("[twin/tasks POST] execution failed:", execErr);
       await convex.mutation(twinApi.twin.updateTaskStatus, {

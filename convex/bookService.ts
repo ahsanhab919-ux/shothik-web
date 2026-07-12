@@ -127,7 +127,10 @@ export const resetBookToDraft = internalMutation({
   args: { userId: v.string(), bookId: v.id("books") },
   handler: async (ctx, args) => {
     const book = await ctx.db.get(args.bookId);
-    if (!book || book.userId !== args.userId) {
+    // Engine-ownership guard: a host publishing-workflow row leaves
+    // engineStatus undefined. Reject it so a reset can never stamp
+    // engineStatus:"draft" onto a host book and make it engine-claimable.
+    if (!book || book.userId !== args.userId || book.engineStatus === undefined) {
       return { status: "not_found" as const, book: null };
     }
     const chapters = await ctx.db
@@ -263,7 +266,10 @@ export const setBookStatus = internalMutation({
   args: { userId: v.string(), bookId: v.id("books"), status: engineStatusValidator },
   handler: async (ctx, args) => {
     const book = await ctx.db.get(args.bookId);
-    if (!book || book.userId !== args.userId) {
+    // Engine-ownership guard: reject host publishing-workflow rows (undefined
+    // engineStatus) so a status change can never convert a host book into an
+    // engine-owned one.
+    if (!book || book.userId !== args.userId || book.engineStatus === undefined) {
       return { status: "not_found" as const, book: null };
     }
     const now = Date.now();
