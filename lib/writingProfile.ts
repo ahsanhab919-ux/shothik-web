@@ -1,19 +1,21 @@
 /**
  * Server-side helper: get-or-create a user's WRITING.md profile + Letta agent.
  *
- * PORT STATUS (shothik-web / Step 2): The original engine version persisted the
- * profile in a Mongoose `WritingProfile` model. shothik-web has no equivalent
- * Convex table yet, so — per the Step-2 contract's "do not invent a parallel
- * store / do not silently fake persistence" rule — the persistence path is left
- * as a clearly-marked NotImplemented stub rather than a fabricated backend.
- *
- * The public shape (`getOrCreateWritingProfile` → a record exposing
- * `lettaAgentId` and an optional `modelHandle`) is preserved so the book `run`
- * and `regenerate` routes type-check against the real contract. Wiring this onto
- * a Convex `writingProfiles` table (mirroring convex/bookService.ts) is the
- * documented follow-up before the BYOK run path can execute end-to-end.
+ * Keeps the "one agent per user" invariant and lazily provisions a Letta agent
+ * (with the default WRITING.md) the first time a user opens the feature. The
+ * profile row lives on the additive Convex `writingProfiles` table, reached
+ * through the mockable `convex-second-me-client` transport (mirroring
+ * convex/bookService.ts). Letta-agent provisioning is delegated to lib/letta.ts.
  */
-import { createWritingAgent, DEFAULT_WRITING_MD, WRITING_MD_BLOCK_LABEL } from '@/lib/letta';
+import {
+  createWritingAgent,
+  DEFAULT_WRITING_MD,
+  WRITING_MD_BLOCK_LABEL,
+} from '@/lib/letta';
+import {
+  runSecondMeQuery,
+  runSecondMeMutation,
+} from '@/lib/second-me/convex-second-me-client';
 
 /**
  * Non-secret view of a user's writing profile. Mirrors the fields the engine's
@@ -29,34 +31,55 @@ export interface WritingProfileRecord {
   lastSyncedAt?: number;
 }
 
-/** Thrown by not-yet-wired persistence paths. Documented follow-up. */
-export class NotImplementedError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'NotImplementedError';
-  }
+/** Shape of a `writingProfiles` Convex doc as returned by the transport. */
+interface WritingProfileDoc {
+  userId: string;
+  lettaAgentId: string;
+  blockLabel: string;
+  modelHandle?: string;
+  embeddingHandle?: string;
+  lastContentLength?: number;
+  lastSyncedAt?: number;
+}
+
+function toRecord(doc: WritingProfileDoc): WritingProfileRecord {
+  return {
+    userId: doc.userId,
+    lettaAgentId: doc.lettaAgentId,
+    blockLabel: doc.blockLabel,
+    modelHandle: doc.modelHandle,
+    lastContentLength: doc.lastContentLength,
+    lastSyncedAt: doc.lastSyncedAt,
+  };
 }
 
 /**
  * Get-or-create the user's WRITING.md profile.
  *
- * TODO(step-3): persist on a Convex `writingProfiles` table (one row per user,
- * holding `lettaAgentId` + metadata), replacing the Mongoose store the engine
- * used. Until then this throws so no caller silently runs against a fake store.
- * The Letta-agent provisioning logic is retained above the throw as the shape
- * the Convex mutation should reproduce (create agent once, then upsert the row).
+ * First-time users get ONE Letta agent that owns their WRITING.md, then a row
+ * is inserted. Idempotent: a returning user's existing row short-circuits before
+ * any Letta round-trip, so no duplicate agent is ever provisioned.
  */
 export async function getOrCreateWritingProfile(
-  _userId: string
+  userId: string
 ): Promise<WritingProfileRecord> {
-  // Provisioning shape preserved for the follow-up (see TODO): a first-time user
-  // gets ONE Letta agent that owns their WRITING.md, then a row is upserted.
-  void createWritingAgent;
-  void DEFAULT_WRITING_MD;
-  void WRITING_MD_BLOCK_LABEL;
-  throw new NotImplementedError(
-    'getOrCreateWritingProfile: writing-profile persistence is not yet wired onto ' +
-      'a Convex table in shothik-web. Follow-up: add a convex/writingProfiles store ' +
-      'mirroring convex/bookService.ts before enabling the BYOK book run path.'
+  const existing = await runSecondMeQuery<WritingProfileDoc | null>(
+    'secondMePersistence:getWritingProfile',
+    { userId }
   );
+  if (existing) return toRecord(existing);
+
+  // First time: provision a Letta agent that owns this user's WRITING.md.
+  const agentId = await createWritingAgent(userId, DEFAULT_WRITING_MD);
+
+  const doc = await runSecondMeMutation<WritingProfileDoc>(
+    'secondMePersistence:createWritingProfile',
+    {
+      userId,
+      lettaAgentId: agentId,
+      blockLabel: WRITING_MD_BLOCK_LABEL,
+      lastContentLength: DEFAULT_WRITING_MD.length,
+    }
+  );
+  return toRecord(doc);
 }
