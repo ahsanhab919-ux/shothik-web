@@ -216,6 +216,11 @@ export const softDeleteConversation = mutation({
   },
 });
 
+// Compatibility aliases for older chat substrate callers/tests.
+export const deleteConversation = softDeleteConversation;
+export const setPinned = pinConversation;
+export const setArchived = archiveConversation;
+
 export const searchConversations = query({
   args: {
     query: v.string(),

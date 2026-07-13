@@ -10,10 +10,11 @@ import { useChatHistory } from "@/hooks/useChatHistory";
 import { Transcript, type TranscriptMessage } from "@/components/chat/Transcript";
 import { Composer } from "@/components/chat/Composer";
 
-const SURFACE = "agents-chat";
+const SURFACE = "flagship";
 const MODEL = "gemini-2.5-flash";
 const LEGACY_STORAGE_KEY = "shothik_chat_history";
 const MIGRATED_FLAG = "shothik_chat_migrated_v2";
+const chatApi = api as any;
 
 type LegacyMessage = {
   id: string;
@@ -47,13 +48,12 @@ export default function ChatAgentPageV2() {
   const hydratedRef = useRef(false);
 
   const { conversations } = useChatHistory({ surface: SURFACE });
-  const createConversation = useMutation(api.conversations.createConversation);
-  const addMessage = useMutation(api.messages.addMessage);
-  const updateMessage = useMutation(api.messages.updateMessage);
-  const deleteMessage = useMutation(api.messages.deleteMessage);
+  const createConversation = useMutation(chatApi.conversations.createConversation);
+  const addMessage = useMutation(chatApi.messages.addMessage);
+  const deleteMessage = useMutation(chatApi.messages.deleteMessage);
 
   const persistedMessages = useQuery(
-    api.messages.listMessages,
+    chatApi.messages.listMessages,
     conversationId ? { conversationId } : "skip"
   );
 
@@ -115,7 +115,7 @@ export default function ChatAgentPageV2() {
         const newId = (await createConversation({
           surface: SURFACE,
           title: legacy[0]?.content?.slice(0, 60) || "Imported Chat",
-          model: MODEL,
+          modelHandle: MODEL,
         })) as Id<"conversations">;
         for (const m of legacy) {
           await addMessage({
@@ -146,7 +146,7 @@ export default function ChatAgentPageV2() {
         const id = (await createConversation({
           surface: SURFACE,
           title: firstText.slice(0, 60) || "New Chat",
-          model: MODEL,
+          modelHandle: MODEL,
         })) as Id<"conversations">;
         setConversationId(id);
         hydratedRef.current = true;
@@ -219,7 +219,7 @@ export default function ChatAgentPageV2() {
               role: "assistant",
               content: finalText,
               model: MODEL,
-              status: "complete",
+              status: "completed",
             });
           } catch {}
         }
@@ -238,7 +238,7 @@ export default function ChatAgentPageV2() {
         role: "user",
         content: userText,
         timestamp: Date.now(),
-        status: "complete",
+        status: "completed",
       };
       const assistantId = crypto.randomUUID();
       const assistantMsg: TranscriptMessage = {
@@ -262,7 +262,7 @@ export default function ChatAgentPageV2() {
             conversationId: convId,
             role: "user",
             content: userText,
-            status: "complete",
+            status: "completed",
           });
         } catch {}
       }

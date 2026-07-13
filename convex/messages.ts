@@ -127,6 +127,51 @@ export const appendAssistantPlaceholder = mutation({
   },
 });
 
+// Compatibility mutation matching the earlier PR-7 API shape.
+export const addMessage = mutation({
+  args: {
+    conversationId: v.id("conversations"),
+    role: v.union(
+      v.literal("system"),
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("tool")
+    ),
+    content: v.string(),
+    model: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    await requireConversation(ctx, args.conversationId, userId);
+
+    const normalizedStatus =
+      args.status === "streaming" ||
+      args.status === "completed" ||
+      args.status === "stopped" ||
+      args.status === "error"
+        ? args.status
+        : "completed";
+
+    const normalizedFormat =
+      args.role === "assistant" ? "markdown" : "plain";
+
+    const id = await insertMessage(ctx, {
+      conversationId: args.conversationId,
+      userId,
+      role: args.role,
+      content: args.content,
+      contentFormat: normalizedFormat,
+      status: normalizedStatus,
+      modelHandle: args.model,
+      metadata: args.metadata,
+    });
+    await touchConversation(ctx, args.conversationId, args.content, args.model, 1);
+    return await ctx.db.get(id);
+  },
+});
+
 export const appendUserMessageInternal = internalMutation({
   args: {
     conversationId: v.id("conversations"),
@@ -259,6 +304,41 @@ export const failAssistantMessageInternal = internalMutation({
   },
 });
 
+export const updateMessage = mutation({
+  args: {
+    messageId: v.id("messages"),
+    content: v.optional(v.string()),
+    status: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const message = await requireMessage(ctx, args.messageId, userId);
+    const patch: Record<string, unknown> = {};
+
+    if (args.content !== undefined) patch.content = args.content;
+    if (
+      args.status === "streaming" ||
+      args.status === "completed" ||
+      args.status === "stopped" ||
+      args.status === "error"
+    ) {
+      patch.status = args.status;
+    }
+    if (args.metadata !== undefined) patch.metadata = args.metadata;
+    if (Object.keys(patch).length === 0) {
+      return await ctx.db.get(args.messageId);
+    }
+
+    patch.updatedAt = Date.now();
+    await ctx.db.patch(args.messageId, patch);
+    if (typeof args.content === "string") {
+      await touchConversation(ctx, message.conversationId, args.content, message.modelHandle, 0);
+    }
+    return await ctx.db.get(args.messageId);
+  },
+});
+
 export const deleteMessage = mutation({
   args: {
     messageId: v.id("messages"),
@@ -266,15 +346,13 @@ export const deleteMessage = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const message = await requireMessage(ctx, args.messageId, userId);
+    const conversation = await requireConversation(ctx, message.conversationId, userId);
     await ctx.db.delete(args.messageId);
 
-    const conversation = await ctx.db.get(message.conversationId);
-    if (conversation) {
-      await ctx.db.patch(message.conversationId, {
-        messageCount: Math.max(0, (conversation.messageCount ?? 0) - 1),
-        updatedAt: Date.now(),
-      });
-    }
+    await ctx.db.patch(message.conversationId, {
+      messageCount: Math.max(0, (conversation.messageCount ?? 0) - 1),
+      updatedAt: Date.now(),
+    });
     return { success: true };
   },
 });

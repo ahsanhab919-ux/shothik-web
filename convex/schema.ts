@@ -1296,48 +1296,4 @@ export default defineSchema({
     .index("by_action_time", ["action", "timestamp"])
     .index("by_request", ["requestId"]),
 
-  conversations: defineTable({
-    userId: v.string(),
-    title: v.string(),
-    surface: v.string(),
-    status: v.string(),
-    pinned: v.optional(v.boolean()),
-    archived: v.optional(v.boolean()),
-    lastMessageAt: v.optional(v.number()),
-    model: v.optional(v.string()),
-    metadata: v.optional(v.any()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_surface", ["userId", "surface"])
-    .index("by_user_updated", ["userId", "updatedAt"]),
-
-  messages: defineTable({
-    conversationId: v.id("conversations"),
-    userId: v.string(),
-    role: v.union(
-      v.literal("user"),
-      v.literal("assistant"),
-      v.literal("system"),
-    ),
-    content: v.string(),
-    status: v.optional(v.string()),
-    model: v.optional(v.string()),
-    metadata: v.optional(v.any()),
-    createdAt: v.number(),
-  })
-    .index("by_conversation", ["conversationId", "createdAt"])
-    .index("by_user", ["userId"]),
-
-  chatSessions: defineTable({
-    userId: v.string(),
-    title: v.string(),
-    surface: v.string(),
-    status: v.string(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_updated", ["userId", "updatedAt"]),
 });
