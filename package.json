@@ -117,7 +117,7 @@
     "lucide-react": "^0.576.0",
     "mammoth": "^1.11.0",
     "markdown-it": "14.1.1",
-    "marked": "^16.4.1",
+    "marked": "^18.0.0",
     "marked-react": "^3.0.2",
     "mind-elixir": "^5.3.5",
     "mongoose": "^9.1.1",
