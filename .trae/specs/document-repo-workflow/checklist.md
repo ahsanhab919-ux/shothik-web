@@ -1,0 +1,6 @@
+- [x] Spec captures the real repo architecture (Next.js App Router + Convex + external integrations) and names the primary folders correctly.
+- [x] Spec describes current runtime entry points and request flow without contradicting README.md.
+- [x] Spec defines a branching model that matches CI triggers and aligns with branch protection policy (including the optional `develop` branch).
+- [x] Spec includes an execution runbook for local development and repo-scoped validation commands.
+- [x] Spec includes CI quality gates and clearly distinguishes required checks vs optional/manual checks.
+- [x] Spec includes environment variable contract guidance (public vs server-only) without including any secret values.
