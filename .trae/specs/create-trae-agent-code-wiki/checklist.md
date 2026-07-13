@@ -1,0 +1,7 @@
+- [x] Wiki document exists as a single Markdown file and is easy to navigate (TOC, headings, internal links).
+- [x] Architecture overview explains the main runtime components and how they interact.
+- [x] Major modules/packages are listed with responsibilities aligned to actual folder structure.
+- [x] Key classes/functions (or equivalent key symbols) are documented with accurate file path references.
+- [x] Dependency relationships include both internal module boundaries and major external libraries/frameworks.
+- [x] “How to run” section includes install/setup/dev/test/build steps and matches actual repository scripts/tooling.
+- [x] No secrets or credentials are included; configuration is described using placeholders and references to existing repo docs.
