@@ -1,7 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ChatMessage,
   ConversationSummary,
@@ -10,72 +9,185 @@ import type {
   SearchConversationsInput,
 } from "./types";
 
-const chatApi = api as any;
+async function readJson<T>(response: Response): Promise<T> {
+  const json = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message =
+      (json as { error?: string } | null)?.error ||
+      `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+  return (json as { data: T }).data;
+}
+
+function toSearchParams(input: Record<string, string | number | boolean | undefined>) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(input)) {
+    if (value === undefined || value === "") continue;
+    params.set(key, String(value));
+  }
+  return params.toString();
+}
+
+export const chatQueryKeys = {
+  all: ["chat"] as const,
+  conversations: (input?: ListConversationsInput) => ["chat", "conversations", input ?? {}] as const,
+  conversation: (conversationId?: string | null) => ["chat", "conversation", conversationId ?? null] as const,
+  search: (input: SearchConversationsInput | "skip") => ["chat", "search", input] as const,
+  messages: (conversationId?: string | null, limit = 200) =>
+    ["chat", "messages", conversationId ?? null, limit] as const,
+};
 
 export function useConversationHistory(input?: ListConversationsInput) {
-  return useQuery(chatApi.conversations.listConversations, input ?? {});
+  const query = useQuery({
+    queryKey: chatQueryKeys.conversations(input),
+    queryFn: async () => {
+      const query = toSearchParams({
+        surface: input?.surface,
+        status: input?.status,
+        includeTemporary: input?.includeTemporary,
+        limit: input?.limit,
+      });
+      return readJson<ConversationSummary[]>(
+        await fetch(`/api/chat/conversations${query ? `?${query}` : ""}`, {
+          credentials: "same-origin",
+        })
+      );
+    },
+  });
+  return query.data;
 }
 
 export function useConversationSearch(input: SearchConversationsInput | "skip") {
-  return useQuery(chatApi.conversations.searchConversations, input);
+  const query = useQuery({
+    queryKey: chatQueryKeys.search(input),
+    enabled: input !== "skip",
+    queryFn: async () => {
+      if (input === "skip") return [];
+      const query = toSearchParams({
+        query: input.query,
+        surface: input.surface,
+        limit: input.limit,
+      });
+      return readJson<ConversationSummary[]>(
+        await fetch(`/api/chat/conversations?${query}`, {
+          credentials: "same-origin",
+        })
+      );
+    },
+  });
+  return query.data;
 }
 
 export function useConversation(conversationId?: string | null) {
-  return useQuery(
-    chatApi.conversations.getConversation,
-    conversationId ? { conversationId: conversationId as any } : "skip"
-  ) as ConversationSummary | null | undefined;
+  const query = useQuery({
+    queryKey: chatQueryKeys.conversation(conversationId),
+    enabled: Boolean(conversationId),
+    queryFn: async () =>
+      readJson<ConversationSummary>(
+        await fetch(`/api/chat/conversations/${conversationId}`, {
+          credentials: "same-origin",
+        })
+      ),
+  });
+  return query.data;
 }
 
-export function useConversationMessages(conversationId?: string | null, limit = 200) {
-  return useQuery(
-    chatApi.messages.listMessages,
-    conversationId ? { conversationId: conversationId as any, limit } : "skip"
-  ) as ChatMessage[] | undefined;
+export function useConversationMessages(
+  conversationId?: string | null,
+  limit = 200,
+  refetchInterval: number | false = false
+) {
+  const query = useQuery({
+    queryKey: chatQueryKeys.messages(conversationId, limit),
+    enabled: Boolean(conversationId),
+    refetchInterval,
+    queryFn: async () =>
+      readJson<ChatMessage[]>(
+        await fetch(`/api/chat/conversations/${conversationId}/messages?limit=${limit}`, {
+          credentials: "same-origin",
+        })
+      ),
+  });
+  return query.data;
 }
 
 export function useChatService() {
-  const createConversation = useMutation(chatApi.conversations.createConversation);
-  const renameConversation = useMutation(chatApi.conversations.renameConversation);
-  const pinConversation = useMutation(chatApi.conversations.pinConversation);
-  const archiveConversation = useMutation(chatApi.conversations.archiveConversation);
-  const softDeleteConversation = useMutation(chatApi.conversations.softDeleteConversation);
-  const appendUserMessage = useMutation(chatApi.messages.appendUserMessage);
-  const appendAssistantPlaceholder = useMutation(chatApi.messages.appendAssistantPlaceholder);
-  const deleteMessage = useMutation(chatApi.messages.deleteMessage);
+  const queryClient = useQueryClient();
+
+  const createConversation = useMutation({
+    mutationFn: async (input: CreateConversationInput) =>
+      readJson<ConversationSummary>(
+        await fetch("/api/chat/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        })
+      ),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: chatQueryKeys.all });
+    },
+  });
+
+  const updateConversation = useMutation({
+    mutationFn: async ({
+      conversationId,
+      payload,
+    }: {
+      conversationId: string;
+      payload: Record<string, unknown>;
+    }) =>
+      readJson<ConversationSummary>(
+        await fetch(`/api/chat/conversations/${conversationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+      ),
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: chatQueryKeys.all }),
+        queryClient.invalidateQueries({
+          queryKey: chatQueryKeys.conversation(variables.conversationId),
+        }),
+      ]);
+    },
+  });
+
+  const deleteConversation = useMutation({
+    mutationFn: async (conversationId: string) =>
+      readJson<{ success: true }>(
+        await fetch(`/api/chat/conversations/${conversationId}`, {
+          method: "DELETE",
+        })
+      ),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: chatQueryKeys.all });
+    },
+  });
+
+  const deleteMessage = useMutation({
+    mutationFn: async (messageId: string) =>
+      readJson<{ success: true }>(
+        await fetch(`/api/chat/messages/${messageId}`, {
+          method: "DELETE",
+        })
+      ),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: chatQueryKeys.all });
+    },
+  });
 
   return {
-    createConversation: async (input: CreateConversationInput) => {
-      return await createConversation(input as any);
-    },
-    renameConversation: async (conversationId: string, title: string) => {
-      return await renameConversation({ conversationId: conversationId as any, title });
-    },
-    pinConversation: async (conversationId: string, pinned: boolean) => {
-      return await pinConversation({ conversationId: conversationId as any, pinned });
-    },
-    archiveConversation: async (conversationId: string, archived: boolean) => {
-      return await archiveConversation({ conversationId: conversationId as any, archived });
-    },
-    deleteConversation: async (conversationId: string) => {
-      return await softDeleteConversation({ conversationId: conversationId as any });
-    },
-    appendUserMessage: async (conversationId: string, content: string) => {
-      return await appendUserMessage({
-        conversationId: conversationId as any,
-        content,
-        contentFormat: "plain",
-      });
-    },
-    appendAssistantPlaceholder: async (conversationId: string, modelHandle?: string, parentMessageId?: string) => {
-      return await appendAssistantPlaceholder({
-        conversationId: conversationId as any,
-        modelHandle,
-        ...(parentMessageId ? { parentMessageId: parentMessageId as any } : {}),
-      });
-    },
-    deleteMessage: async (messageId: string) => {
-      return await deleteMessage({ messageId: messageId as any });
-    },
+    createConversation: async (input: CreateConversationInput) => createConversation.mutateAsync(input),
+    renameConversation: async (conversationId: string, title: string) =>
+      updateConversation.mutateAsync({ conversationId, payload: { title } }),
+    pinConversation: async (conversationId: string, pinned: boolean) =>
+      updateConversation.mutateAsync({ conversationId, payload: { pinned } }),
+    archiveConversation: async (conversationId: string, archived: boolean) =>
+      updateConversation.mutateAsync({ conversationId, payload: { archived } }),
+    deleteConversation: async (conversationId: string) =>
+      deleteConversation.mutateAsync(conversationId),
+    deleteMessage: async (messageId: string) => deleteMessage.mutateAsync(messageId),
   };
 }

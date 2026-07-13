@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback } from "react";
-import type { Id } from "@/convex/_generated/dataModel";
 import { useChatService, useConversationHistory, useConversationSearch } from "@/lib/chat/service";
 import type {
   ConversationStatus,
@@ -59,26 +58,26 @@ export function useChatHistory(options: UseChatHistoryOptions = {}) {
   );
 
   const rename = useCallback(
-    (conversationId: Id<"conversations">, title: string) =>
-      renameConversation(String(conversationId), title),
+    (conversationId: string, title: string) =>
+      renameConversation(conversationId, title),
     [renameConversation]
   );
 
   const remove = useCallback(
-    (conversationId: Id<"conversations">) =>
-      deleteConversation(String(conversationId)),
+    (conversationId: string) =>
+      deleteConversation(conversationId),
     [deleteConversation]
   );
 
   const pin = useCallback(
-    (conversationId: Id<"conversations">, pinned: boolean) =>
-      pinConversation(String(conversationId), pinned),
+    (conversationId: string, pinned: boolean) =>
+      pinConversation(conversationId, pinned),
     [pinConversation]
   );
 
   const archive = useCallback(
-    (conversationId: Id<"conversations">, archived: boolean) =>
-      archiveConversation(String(conversationId), archived),
+    (conversationId: string, archived: boolean) =>
+      archiveConversation(conversationId, archived),
     [archiveConversation]
   );
 

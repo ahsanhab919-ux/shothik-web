@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { Composer } from "@/components/chat/Composer";
 import { Transcript } from "@/components/chat/Transcript";
-import { useChatService, useConversationMessages } from "@/lib/chat/service";
+import { chatQueryKeys, useChatService, useConversationMessages } from "@/lib/chat/service";
 import type { ChatMessage } from "@/lib/chat/types";
 import { useTranslation } from "@/i18n";
 import { useChatHistory } from "@/hooks/useChatHistory";
@@ -17,8 +18,9 @@ export default function ChatAgentPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const queryClient = useQueryClient();
   const { t } = useTranslation();
-  const messages = useConversationMessages(conversationId);
+  const messages = useConversationMessages(conversationId, 200, loading ? 750 : false);
   const { deleteMessage } = useChatService();
   const { conversations } = useChatHistory({ surface: "flagship", limit: 20 });
 
@@ -87,17 +89,22 @@ export default function ChatAgentPage() {
             const data = JSON.parse(line.slice(6));
             if (data.type === "conversation" && data.conversationId) {
               setConversationId(data.conversationId);
+              await queryClient.invalidateQueries({
+                queryKey: chatQueryKeys.messages(data.conversationId, 200),
+              });
             }
             if (data.type === "error") {
               throw new Error(data.error);
             }
             if (data.type === "done") {
+              await queryClient.invalidateQueries({ queryKey: chatQueryKeys.all });
               break;
             }
           } catch {}
         }
       }
     } finally {
+      await queryClient.invalidateQueries({ queryKey: chatQueryKeys.all });
       setLoading(false);
       abortRef.current = null;
       inputRef.current?.focus();
