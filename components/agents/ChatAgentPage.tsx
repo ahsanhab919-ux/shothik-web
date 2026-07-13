@@ -127,7 +127,7 @@ export default function ChatAgentPage() {
               messages={visibleMessages as ChatMessage[]}
               isStreaming={loading}
               onCopy={(message) => navigator.clipboard.writeText(message.content)}
-              onDelete={(message) => deleteMessage(String(message._id))}
+              onDelete={(message) => deleteMessage(String("_id" in message ? message._id : message.id))}
               onRegenerate={(message) => {
                 const parentPrompt = visibleMessages.find(
                   (candidate) => String(candidate._id) === String(message.parentMessageId)

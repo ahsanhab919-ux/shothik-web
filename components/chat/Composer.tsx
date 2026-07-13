@@ -1,33 +1,40 @@
 "use client";
 
 import { Send, Square } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
-interface ComposerProps {
+export interface ComposerProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   onStop?: () => void;
   disabled?: boolean;
   isStreaming?: boolean;
+  generating?: boolean;
   placeholder?: string;
   modelHandle?: string;
   onModelChange?: (value: string) => void;
+  footer?: string;
 }
 
-export function Composer({
+export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function Composer({
   value,
   onChange,
   onSubmit,
   onStop,
   disabled,
   isStreaming,
+  generating,
   placeholder,
   modelHandle,
   onModelChange,
-}: ComposerProps) {
+  footer,
+}: ComposerProps, ref) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const activeStreaming = isStreaming ?? generating ?? false;
+
+  useImperativeHandle(ref, () => textareaRef.current as HTMLTextAreaElement, []);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -45,7 +52,7 @@ export function Composer({
             value={modelHandle ?? "gemini-2.5-flash"}
             onChange={(event) => onModelChange?.(event.target.value)}
             className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-            disabled={disabled || isStreaming}
+            disabled={disabled || activeStreaming}
           >
             <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
             <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
@@ -66,8 +73,8 @@ export function Composer({
             disabled={disabled}
             className="min-h-[52px] max-h-40 w-full resize-none border-0 bg-transparent text-sm shadow-none outline-none"
           />
-          {isStreaming ? (
-            <Button type="button" variant="outline" size="icon" onClick={onStop} aria-label="Stop generation">
+          {activeStreaming ? (
+            <Button type="button" variant="outline" size="icon" onClick={onStop} aria-label="Stop generating">
               <Square className="h-4 w-4" />
             </Button>
           ) : (
@@ -82,7 +89,8 @@ export function Composer({
             </Button>
           )}
         </div>
+        {footer ? <p className="text-center text-xs text-muted-foreground">{footer}</p> : null}
       </div>
     </div>
   );
-}
+});
