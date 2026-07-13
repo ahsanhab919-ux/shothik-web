@@ -28,6 +28,9 @@ ts-debug.log*
 .turbo
 pnpm-debug.log*
 
+# pnpm store
+/.pnpm-store/
+
 # env files
 .env
 .env.local
