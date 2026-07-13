@@ -218,6 +218,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.9)
+      axios:
+        specifier: ^1.7.9
+        version: 1.15.0
       chart.js:
         specifier: ^4.5.1
         version: 4.5.1
@@ -1344,6 +1347,9 @@ packages:
 
   '@kurkle/color@0.3.4':
     resolution: {integrity: sha512-M5UknZPHRu3DEDWoipU6sE8PdkZ6Z/S+v4dD+Ke8IaNlpdSQah50lz1KtcFBa2vsdOnwbbnxJwVM4wty6udA5w==}
+
+  '@letta-ai/letta-client@1.12.1':
+    resolution: {integrity: sha512-rYjXMXpkfssj7VBBX3qCp6mdpNRv6YPNrliYsjkhWoQDqGg3J9bsgIQ28ZhQTddabYxRUIwcdzuaizFx8pvZ7A==}
 
   '@llamaindex/liteparse@1.5.0':
     resolution: {integrity: sha512-m3c/DVbGRbJTRbjPJoeP1IXuzMaAiSYDRsaqOaT3oqMQRS+F7wtWmWqa8ps7ZkD9Ffcw9PfEgrqP80YeyZ6q4A==}
@@ -6453,6 +6459,7 @@ packages:
   recharts@2.15.4:
     resolution: {integrity: sha512-UT/q6fwS3c1dHbXv2uFgYJ9BMFHu3fwnd7AYZaEQhXuYQ4hgsxLvsUXzGdKeZrW5xopzDCvuA2N41WJ88I7zIw==}
     engines: {node: '>=14'}
+    deprecated: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
     peerDependencies:
       react: ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -8151,6 +8158,8 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   '@kurkle/color@0.3.4': {}
+
+  '@letta-ai/letta-client@1.12.1': {}
 
   '@llamaindex/liteparse@1.5.0':
     dependencies:

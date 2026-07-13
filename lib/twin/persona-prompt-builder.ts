@@ -18,7 +18,8 @@ const STYLE_INSTRUCTIONS: Record<string, string> = {
 
 export function buildPersonaPrompt(
   profile: TwinProfile,
-  styleProfile?: StyleProfile | null
+  styleProfile?: StyleProfile | null,
+  writingMd?: string | null
 ): string {
   const parts: string[] = [];
 
@@ -60,6 +61,13 @@ export function buildPersonaPrompt(
     if (styleProfile.writingPatterns.length) {
       parts.push(`Patterns to replicate: ${styleProfile.writingPatterns.join('; ')}`);
     }
+  }
+
+  const learnedVoice = writingMd?.trim();
+  if (learnedVoice) {
+    parts.push('');
+    parts.push('--- Author voice (WRITING.md) — the master\'s learned, evolving voice; honor it above all else ---');
+    parts.push(learnedVoice.slice(0, 4000));
   }
 
   parts.push('');

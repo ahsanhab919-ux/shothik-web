@@ -49,16 +49,32 @@ export default defineSchema({
   }).index("by_project", ["projectId"]),
 
   chapters: defineTable({
-    projectId: v.id("projects"),
+    // Host (writing-studio) chapters are project-scoped. These three were
+    // required; they are relaxed to optional so the engine's book-scoped
+    // chapters can coexist in the same table. Existing project chapters are
+    // unaffected (they still carry projectId/title/order). No Convex function
+    // currently reads/writes this table, so relaxing carries no runtime risk.
+    projectId: v.optional(v.id("projects")),
     userId: v.string(),
-    title: v.string(),
+    title: v.optional(v.string()),
     content: v.optional(v.string()),
-    order: v.number(),
+    order: v.optional(v.number()),
+    // --- engine (book-service) fields — additive, book-scoped chapters ---
+    bookId: v.optional(v.id("books")),
+    index: v.optional(v.number()),
+    intent: v.optional(v.string()),
+    status: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("accepted"),
+      v.literal("rejected")
+    )),
+    attempts: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_project", ["projectId"])
-    .index("by_project_and_order", ["projectId", "order"]),
+    .index("by_project_and_order", ["projectId", "order"])
+    .index("by_book", ["bookId", "userId", "index"]),
 
   versions: defineTable({
     projectId: v.id("projects"),
@@ -70,6 +86,27 @@ export default defineSchema({
   })
     .index("by_project", ["projectId"])
     .index("by_project_and_date", ["projectId", "createdAt"]),
+
+  // New table for the engine's book-service. No host equivalent exists.
+  // Records each generation attempt for a chapter (gate results, tokens, model).
+  chapterAttempts: defineTable({
+    userId: v.string(),
+    bookId: v.id("books"),
+    index: v.number(),
+    attempt: v.number(),
+    status: v.union(
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("failed")
+    ),
+    gateIssues: v.array(v.string()),
+    tokensUsed: v.optional(v.number()),
+    modelHandle: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_book", ["bookId", "userId"])
+    .index("by_user", ["userId"]),
 
   books: defineTable({
     userId: v.string(),
@@ -158,12 +195,63 @@ export default defineSchema({
       v.literal("community_preview_posted")
     )),
     twinId: v.optional(v.id("twins")),
+    // --- engine (book-service) fields — additive, non-destructive ---
+    // The engine's book domain (ported from Mongoose) reuses this table.
+    // `engineStatus` holds the generation-run lifecycle and is deliberately
+    // separate from the host's publishing-workflow `status` above so the two
+    // state machines never collide.
+    author: v.optional(v.string()),
+    kind: v.optional(v.union(v.literal("fiction"), v.literal("nonfiction"))),
+    sourceKind: v.optional(v.union(v.literal("outline"), v.literal("manuscript"))),
+    engineStatus: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed")
+    )),
+    plan: v.optional(v.array(v.object({
+      index: v.number(),
+      intent: v.string(),
+      beats: v.array(v.string()),
+    }))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     .index("by_status", ["status"]),
+
+  // --- Second Me satellite tables (engine Step 3a) — additive, userId-keyed ---
+  // These enrich the existing twins subsystem in place; they add NO behavior to
+  // any twin function. CRITICAL: sealed BYOK keys live here, keyed by
+  // {userId, purpose}, and NEVER on the transferable twins row. There is no
+  // twinId on this table by design, so a twin ownership transfer can never carry
+  // the previous owner's keys.
+  secondMeKeyCustody: defineTable({
+    userId: v.string(),
+    purpose: v.string(),
+    // Vault envelope only (crypto-vault seal output). Never plaintext.
+    sealedKey: v.string(),
+    provider: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_purpose", ["userId", "purpose"]),
+
+  // One writing profile per user: the metadata mirror of their Letta writing
+  // agent (which owns their WRITING.md). Keyed by userId.
+  writingProfiles: defineTable({
+    userId: v.string(),
+    lettaAgentId: v.string(),
+    blockLabel: v.string(),
+    modelHandle: v.optional(v.string()),
+    embeddingHandle: v.optional(v.string()),
+    lastContentLength: v.number(),
+    lastSyncedAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 
   contentPurchases: defineTable({
     userId: v.string(),
@@ -503,6 +591,99 @@ export default defineSchema({
     .index("by_forum", ["forumId"])
     .index("by_forum_time", ["forumId", "createdAt"]),
 
+  conversations: defineTable({
+    userId: v.string(),
+    surface: v.union(
+      v.literal("flagship"),
+      v.literal("writing-studio"),
+      v.literal("sheet"),
+      v.literal("research"),
+      v.literal("book-agent")
+    ),
+    title: v.string(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("archived"),
+      v.literal("deleted")
+    ),
+    pinned: v.boolean(),
+    temporary: v.boolean(),
+    modelHandle: v.optional(v.string()),
+    contextRef: v.optional(v.object({
+      projectId: v.optional(v.id("projects")),
+      bookId: v.optional(v.id("books")),
+      sheetId: v.optional(v.string()),
+      researchId: v.optional(v.string()),
+      localProjectId: v.optional(v.string()),
+      agentType: v.optional(v.string()),
+    })),
+    lastMessageAt: v.number(),
+    lastMessagePreview: v.optional(v.string()),
+    messageCount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_updated", ["userId", "updatedAt"])
+    .index("by_user_surface", ["userId", "surface"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_user_pinned", ["userId", "pinned"]),
+
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.string(),
+    role: v.union(
+      v.literal("system"),
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("tool")
+    ),
+    content: v.string(),
+    contentFormat: v.union(
+      v.literal("markdown"),
+      v.literal("plain")
+    ),
+    status: v.union(
+      v.literal("streaming"),
+      v.literal("completed"),
+      v.literal("stopped"),
+      v.literal("error")
+    ),
+    modelHandle: v.optional(v.string()),
+    parentMessageId: v.optional(v.id("messages")),
+    metadata: v.optional(v.object({
+      tokensUsed: v.optional(v.number()),
+      latencyMs: v.optional(v.number()),
+      errorCode: v.optional(v.string()),
+      citations: v.optional(v.any()),
+      sheetMetadata: v.optional(v.any()),
+      researchMetadata: v.optional(v.any()),
+    })),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_conversation_created", ["conversationId", "createdAt"])
+    .index("by_user", ["userId"]),
+
+  conversationSessions: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.string(),
+    clientSessionId: v.string(),
+    streamState: v.union(
+      v.literal("idle"),
+      v.literal("streaming"),
+      v.literal("stopped"),
+      v.literal("error")
+    ),
+    lastHeartbeatAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_user", ["userId"])
+    .index("by_user_session", ["userId", "clientSessionId"]),
+
   writingAutosaves: defineTable({
     localProjectId: v.string(),
     userId: v.string(),
@@ -635,6 +816,10 @@ export default defineSchema({
     registrationToken: v.optional(v.string()),
     masterEmail: v.optional(v.string()),
     masterName: v.optional(v.string()),
+    // Additive (engine Step 3a): links a twin to its Letta writing agent for the
+    // 3b voice-profile wiring. Optional so no existing twin row breaks, and it is
+    // the ONLY twins change here — no key material ever lives on this row.
+    lettaAgentId: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

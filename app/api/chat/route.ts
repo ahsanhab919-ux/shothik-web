@@ -1,4 +1,15 @@
 import { NextRequest } from "next/server";
+import { getAuthenticatedUser } from "@/lib/server-auth";
+import {
+  appendPersistedAssistantChunk,
+  appendPersistedUserMessage,
+  completePersistedAssistantMessage,
+  createPersistedAssistantMessage,
+  createPersistedConversation,
+  failPersistedAssistantMessage,
+  getConversationForUser,
+  stopPersistedAssistantMessage,
+} from "@/lib/chat/server";
 
 const SYSTEM_PROMPT = `You are Shothik, an intelligent AI assistant built for university students and STEM researchers. You help with:
 - Academic writing, research, and study questions
@@ -26,6 +37,14 @@ function checkLimit(ip: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getAuthenticatedUser();
+    if (!user?._id) {
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const ip = request.headers.get("x-forwarded-for") || "anonymous";
     if (!checkLimit(ip)) {
       return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait a moment." }), {
@@ -35,9 +54,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { messages, context } = body as {
+    const { messages, context, conversationId, surface, modelHandle, contextRef } = body as {
       messages: { role: "user" | "assistant"; content: string }[];
       context?: string;
+      conversationId?: string;
+      surface?: "flagship" | "writing-studio" | "sheet" | "research" | "book-agent";
+      modelHandle?: string;
+      contextRef?: {
+        projectId?: string;
+        bookId?: string;
+        sheetId?: string;
+        researchId?: string;
+        localProjectId?: string;
+        agentType?: string;
+      };
     };
 
     if (!messages || messages.length === 0) {
@@ -58,6 +88,39 @@ export async function POST(request: NextRequest) {
         headers: { "Content-Type": "application/json" },
       });
     }
+
+    const effectiveConversation =
+      conversationId
+        ? await getConversationForUser(conversationId, String(user._id))
+        : await createPersistedConversation({
+            userId: String(user._id),
+            surface: surface ?? "flagship",
+            title: messages.find((m) => m.role === "user")?.content?.slice(0, 80) ?? "New chat",
+            modelHandle: modelHandle ?? "gemini-2.5-flash",
+            temporary: false,
+            contextRef,
+          });
+
+    const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
+    if (!lastUserMessage) {
+      return new Response(JSON.stringify({ error: "A user message is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const persistedUserMessage = await appendPersistedUserMessage({
+      conversationId: String(effectiveConversation._id),
+      userId: String(user._id),
+      content: lastUserMessage.content,
+    });
+
+    const persistedAssistantMessage = await createPersistedAssistantMessage({
+      conversationId: String(effectiveConversation._id),
+      userId: String(user._id),
+      modelHandle: modelHandle ?? "gemini-2.5-flash",
+      parentMessageId: String(persistedUserMessage._id),
+    });
 
     const contents: { role: "user" | "model"; parts: { text: string }[] }[] = [];
 
@@ -80,10 +143,11 @@ export async function POST(request: NextRequest) {
     }
 
     const geminiRes = await fetch(
-      `${baseUrl}/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
+      `${baseUrl}/models/${modelHandle ?? "gemini-2.5-flash"}:streamGenerateContent?alt=sse&key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: request.signal,
         body: JSON.stringify({
           contents,
           system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
@@ -100,11 +164,37 @@ export async function POST(request: NextRequest) {
     if (!geminiRes.ok || !geminiRes.body) {
       const errText = await geminiRes.text().catch(() => "unknown");
       console.error("[chat] Gemini error:", geminiRes.status, errText);
+      await failPersistedAssistantMessage({
+        messageId: String(persistedAssistantMessage._id),
+        userId: String(user._id),
+        errorCode: `provider_${geminiRes.status}`,
+        fallbackText: "Sorry, something went wrong. Please try again.",
+      });
       const errStream = new ReadableStream({
         start(ctrl) {
           ctrl.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ error: `AI service error (${geminiRes.status})` })}\n\n`
+              `data: ${JSON.stringify({
+                type: "conversation",
+                conversationId: String(effectiveConversation._id),
+              })}\n\n`
+            )
+          );
+          ctrl.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "message_start",
+                messageId: String(persistedAssistantMessage._id),
+              })}\n\n`
+            )
+          );
+          ctrl.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "error",
+                messageId: String(persistedAssistantMessage._id),
+                error: `AI service error (${geminiRes.status})`,
+              })}\n\n`
             )
           );
           ctrl.close();
@@ -120,9 +210,36 @@ export async function POST(request: NextRequest) {
         const reader = geminiRes.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        let aborted = false;
+        let failed = false;
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: "conversation",
+              conversationId: String(effectiveConversation._id),
+            })}\n\n`
+          )
+        );
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: "message_start",
+              messageId: String(persistedAssistantMessage._id),
+            })}\n\n`
+          )
+        );
 
         try {
           while (true) {
+            if (request.signal.aborted) {
+              aborted = true;
+              await stopPersistedAssistantMessage({
+                messageId: String(persistedAssistantMessage._id),
+                userId: String(user._id),
+              });
+              break;
+            }
             const { done, value } = await reader.read();
             if (done) break;
 
@@ -139,8 +256,19 @@ export async function POST(request: NextRequest) {
                 const chunk = JSON.parse(raw);
                 const text = chunk?.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (typeof text === "string" && text) {
+                  await appendPersistedAssistantChunk({
+                    messageId: String(persistedAssistantMessage._id),
+                    userId: String(user._id),
+                    delta: text,
+                  });
                   controller.enqueue(
-                    encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`)
+                    encoder.encode(
+                      `data: ${JSON.stringify({
+                        type: "chunk",
+                        messageId: String(persistedAssistantMessage._id),
+                        content: text,
+                      })}\n\n`
+                    )
                   );
                 }
               } catch {
@@ -149,9 +277,45 @@ export async function POST(request: NextRequest) {
           }
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Stream error";
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
+          failed = true;
+          if (err instanceof Error && err.name === "AbortError") {
+            aborted = true;
+            await stopPersistedAssistantMessage({
+              messageId: String(persistedAssistantMessage._id),
+              userId: String(user._id),
+            });
+          } else {
+            await failPersistedAssistantMessage({
+              messageId: String(persistedAssistantMessage._id),
+              userId: String(user._id),
+              errorCode: "stream_error",
+              fallbackText: "Sorry, something went wrong. Please try again.",
+            });
+          }
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "error",
+                messageId: String(persistedAssistantMessage._id),
+                error: msg,
+              })}\n\n`
+            )
+          );
         } finally {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+          if (!aborted && !failed) {
+            await completePersistedAssistantMessage({
+              messageId: String(persistedAssistantMessage._id),
+              userId: String(user._id),
+            });
+          }
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "done",
+                messageId: String(persistedAssistantMessage._id),
+              })}\n\n`
+            )
+          );
           controller.close();
         }
       },
