@@ -19,6 +19,15 @@ const VALID_INTERNAL_PATHS = new Set([
   "forums:createPostInternal",
   "forums:reactToPostInternal",
   "forums:addChatMessageInternal",
+  "conversations:createConversationInternal",
+  "conversations:getConversationInternal",
+  "conversations:touchConversation",
+  "messages:appendUserMessageInternal",
+  "messages:appendAssistantPlaceholderInternal",
+  "messages:appendAssistantChunkInternal",
+  "messages:completeAssistantMessageInternal",
+  "messages:stopAssistantMessageInternal",
+  "messages:failAssistantMessageInternal",
 ]);
 
 async function runInternalMutation(
@@ -51,6 +60,39 @@ async function runInternalMutation(
 
   const data = await res.json();
   if (data.status === "error") throw new Error(data.errorMessage ?? "Convex mutation error");
+  return data.value;
+}
+
+async function runInternalQuery(
+  functionPath: string,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  if (!VALID_INTERNAL_PATHS.has(functionPath)) {
+    throw new Error(`Unknown internal query path: ${functionPath}`);
+  }
+
+  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  if (!url) throw new Error("NEXT_PUBLIC_CONVEX_URL not configured");
+
+  const deployKey = process.env.CONVEX_DEPLOY_KEY;
+  if (!deployKey) throw new Error("CONVEX_DEPLOY_KEY not configured — required for internal queries");
+
+  const res = await fetch(`${url}/api/query`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Convex ${deployKey}`,
+    },
+    body: JSON.stringify({ path: functionPath, args }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Convex internal query failed (${res.status}): ${body}`);
+  }
+
+  const data = await res.json();
+  if (data.status === "error") throw new Error(data.errorMessage ?? "Convex query error");
   return data.value;
 }
 
@@ -171,4 +213,98 @@ export async function addForumChatMessage(
     message,
     ...(replyToId ? { replyToId } : {}),
   }) as Promise<string>;
+}
+
+export async function createConversationInternal(input: {
+  userId: string;
+  surface: "flagship" | "writing-studio" | "sheet" | "research" | "book-agent";
+  title?: string;
+  modelHandle?: string;
+  temporary?: boolean;
+  contextRef?: {
+    projectId?: string;
+    bookId?: string;
+    sheetId?: string;
+    researchId?: string;
+    localProjectId?: string;
+    agentType?: string;
+  };
+}): Promise<any> {
+  return runInternalMutation("conversations:createConversationInternal", input) as Promise<any>;
+}
+
+export async function getConversationInternal(input: {
+  userId: string;
+  conversationId: string;
+}): Promise<any> {
+  return runInternalQuery("conversations:getConversationInternal", input) as Promise<any>;
+}
+
+export async function touchConversationInternal(input: {
+  userId: string;
+  conversationId: string;
+  lastMessagePreview?: string;
+  modelHandle?: string;
+  messageCountDelta?: number;
+}): Promise<any> {
+  return runInternalMutation("conversations:touchConversation", input) as Promise<any>;
+}
+
+export async function appendUserMessageInternal(input: {
+  conversationId: string;
+  userId: string;
+  content: string;
+  contentFormat?: "markdown" | "plain";
+  metadata?: {
+    tokensUsed?: number;
+    latencyMs?: number;
+    errorCode?: string;
+  };
+}): Promise<any> {
+  return runInternalMutation("messages:appendUserMessageInternal", input) as Promise<any>;
+}
+
+export async function appendAssistantPlaceholderInternal(input: {
+  conversationId: string;
+  userId: string;
+  modelHandle?: string;
+  parentMessageId?: string;
+}): Promise<any> {
+  return runInternalMutation("messages:appendAssistantPlaceholderInternal", input) as Promise<any>;
+}
+
+export async function appendAssistantChunkInternal(input: {
+  messageId: string;
+  userId: string;
+  delta: string;
+}): Promise<any> {
+  return runInternalMutation("messages:appendAssistantChunkInternal", input) as Promise<any>;
+}
+
+export async function completeAssistantMessageInternal(input: {
+  messageId: string;
+  userId: string;
+  metadata?: {
+    tokensUsed?: number;
+    latencyMs?: number;
+    errorCode?: string;
+  };
+}): Promise<any> {
+  return runInternalMutation("messages:completeAssistantMessageInternal", input) as Promise<any>;
+}
+
+export async function stopAssistantMessageInternal(input: {
+  messageId: string;
+  userId: string;
+}): Promise<any> {
+  return runInternalMutation("messages:stopAssistantMessageInternal", input) as Promise<any>;
+}
+
+export async function failAssistantMessageInternal(input: {
+  messageId: string;
+  userId: string;
+  errorCode?: string;
+  fallbackText?: string;
+}): Promise<any> {
+  return runInternalMutation("messages:failAssistantMessageInternal", input) as Promise<any>;
 }

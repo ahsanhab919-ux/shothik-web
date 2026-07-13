@@ -591,6 +591,99 @@ export default defineSchema({
     .index("by_forum", ["forumId"])
     .index("by_forum_time", ["forumId", "createdAt"]),
 
+  conversations: defineTable({
+    userId: v.string(),
+    surface: v.union(
+      v.literal("flagship"),
+      v.literal("writing-studio"),
+      v.literal("sheet"),
+      v.literal("research"),
+      v.literal("book-agent")
+    ),
+    title: v.string(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("archived"),
+      v.literal("deleted")
+    ),
+    pinned: v.boolean(),
+    temporary: v.boolean(),
+    modelHandle: v.optional(v.string()),
+    contextRef: v.optional(v.object({
+      projectId: v.optional(v.id("projects")),
+      bookId: v.optional(v.id("books")),
+      sheetId: v.optional(v.string()),
+      researchId: v.optional(v.string()),
+      localProjectId: v.optional(v.string()),
+      agentType: v.optional(v.string()),
+    })),
+    lastMessageAt: v.number(),
+    lastMessagePreview: v.optional(v.string()),
+    messageCount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_updated", ["userId", "updatedAt"])
+    .index("by_user_surface", ["userId", "surface"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_user_pinned", ["userId", "pinned"]),
+
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.string(),
+    role: v.union(
+      v.literal("system"),
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("tool")
+    ),
+    content: v.string(),
+    contentFormat: v.union(
+      v.literal("markdown"),
+      v.literal("plain")
+    ),
+    status: v.union(
+      v.literal("streaming"),
+      v.literal("completed"),
+      v.literal("stopped"),
+      v.literal("error")
+    ),
+    modelHandle: v.optional(v.string()),
+    parentMessageId: v.optional(v.id("messages")),
+    metadata: v.optional(v.object({
+      tokensUsed: v.optional(v.number()),
+      latencyMs: v.optional(v.number()),
+      errorCode: v.optional(v.string()),
+      citations: v.optional(v.any()),
+      sheetMetadata: v.optional(v.any()),
+      researchMetadata: v.optional(v.any()),
+    })),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_conversation_created", ["conversationId", "createdAt"])
+    .index("by_user", ["userId"]),
+
+  conversationSessions: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.string(),
+    clientSessionId: v.string(),
+    streamState: v.union(
+      v.literal("idle"),
+      v.literal("streaming"),
+      v.literal("stopped"),
+      v.literal("error")
+    ),
+    lastHeartbeatAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_user", ["userId"])
+    .index("by_user_session", ["userId", "clientSessionId"]),
+
   writingAutosaves: defineTable({
     localProjectId: v.string(),
     userId: v.string(),
