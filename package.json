@@ -16,6 +16,7 @@
     "security:audit": "pnpm audit --audit-level critical"
   },
   "dependencies": {
+    "axios": "^1.7.9",
     "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@bprogress/next": "^3.2.12",
     "@casl/ability": "^6.8.0",
