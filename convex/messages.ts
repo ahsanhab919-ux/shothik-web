@@ -1,13 +1,21 @@
 import { internalMutation, mutation, query } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 
-async function requireUserId(ctx: any): Promise<string> {
+type Ctx = QueryCtx | MutationCtx;
+
+async function requireUserId(ctx: Ctx): Promise<string> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity?.subject) throw new Error("Authentication required");
   return identity.subject;
 }
 
-async function requireConversation(ctx: any, conversationId: any, userId: string) {
+async function requireConversation(
+  ctx: Ctx,
+  conversationId: Id<"conversations">,
+  userId: string
+): Promise<Doc<"conversations">> {
   const conversation = await ctx.db.get(conversationId);
   if (!conversation || conversation.userId !== userId) {
     throw new Error("Conversation not found");
@@ -15,7 +23,11 @@ async function requireConversation(ctx: any, conversationId: any, userId: string
   return conversation;
 }
 
-async function requireMessage(ctx: any, messageId: any, userId: string) {
+async function requireMessage(
+  ctx: Ctx,
+  messageId: Id<"messages">,
+  userId: string
+): Promise<Doc<"messages">> {
   const message = await ctx.db.get(messageId);
   if (!message || message.userId !== userId) {
     throw new Error("Message not found");
@@ -44,7 +56,13 @@ async function insertMessage(ctx: any, args: any) {
   });
 }
 
-async function touchConversation(ctx: any, conversationId: any, content: string, modelHandle?: string, delta = 1) {
+async function touchConversation(
+  ctx: MutationCtx,
+  conversationId: Id<"conversations">,
+  content: string,
+  modelHandle?: string,
+  delta = 1
+) {
   const conversation = await ctx.db.get(conversationId);
   if (!conversation) return;
   const now = Date.now();
