@@ -378,8 +378,8 @@ importers:
         specifier: ^3.3.7
         version: 3.3.7(react@19.2.0)
       react-data-grid:
-        specifier: 7.0.0-beta.58
-        version: 7.0.0-beta.58(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        specifier: 7.0.0-beta.59
+        version: 7.0.0-beta.59(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react-day-picker:
         specifier: ^9.11.1
         version: 9.14.0(react@19.2.0)
@@ -6290,8 +6290,8 @@ packages:
     peerDependencies:
       react: ^15.3.0 || 16 || 17 || 18
 
-  react-data-grid@7.0.0-beta.58:
-    resolution: {integrity: sha512-ND7BsMOJRF/KHUeKU465AmmofoKruQFTe+3GaACiHja1ytd9+lh4ODn0oXPgm/deJgmAXJVORv+fMSXlk4OVTQ==}
+  react-data-grid@7.0.0-beta.59:
+    resolution: {integrity: sha512-iAp/UYWjfmXYFsyKDtGDMP1IvhwtQSjCP6G/wFEbMNuumWGOEZF8Ut1S2Bp4XxVpOrBkEVKXn+QC3rs14AcB7A==}
     peerDependencies:
       react: ^19.2
       react-dom: ^19.2
@@ -13776,7 +13776,7 @@ snapshots:
       prop-types: 15.8.1
       react: 19.2.0
 
-  react-data-grid@7.0.0-beta.58(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+  react-data-grid@7.0.0-beta.59(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
