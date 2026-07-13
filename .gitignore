@@ -51,3 +51,18 @@ src/assets/(home-v3-page)/*.pdf
 src/assets/(home-v3-page)/*.png
 src/assets/(home-v3-page)/*.jpg
 *.tsbuildinfo
+
+# InsForge & AI agent skills
+.insforge
+.agent
+.agents
+.augment
+.claude
+.cline
+.github/copilot*
+.kilocode
+.qoder
+.qwen
+.roo
+.trae
+.windsurf

@@ -23,8 +23,8 @@
     "@floating-ui/dom": "^1.7.4",
     "@fortune-sheet/react": "^1.0.4",
     "@google/generative-ai": "^0.24.1",
-    "@letta-ai/letta-client": "^1.12.1",
     "@hookform/resolvers": "^5.2.2",
+    "@letta-ai/letta-client": "^1.12.1",
     "@llamaindex/liteparse": "^1.4.6",
     "@modelcontextprotocol/sdk": "^1.18.0",
     "@monaco-editor/react": "^4.7.0",
@@ -168,6 +168,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@insforge/cli": "^0.1.99",
     "@next/eslint-plugin-next": "16.2.3",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.2.1",
