@@ -57,6 +57,30 @@ async function touchConversation(ctx: any, conversationId: any, content: string,
   });
 }
 
+async function syncConversationAfterMessageDelete(ctx: any, conversationId: any) {
+  const conversation = await ctx.db.get(conversationId);
+  if (!conversation) return;
+
+  const remainingMessages = await ctx.db
+    .query("messages")
+    .withIndex("by_conversation_created", (q: any) => q.eq("conversationId", conversationId))
+    .order("asc")
+    .collect();
+
+  const lastMessage = remainingMessages[remainingMessages.length - 1];
+  const now = Date.now();
+
+  await ctx.db.patch(conversationId, {
+    messageCount: remainingMessages.length,
+    lastMessagePreview: lastMessage ? compactPreview(lastMessage.content ?? "") : undefined,
+    lastMessageAt: lastMessage
+      ? ((lastMessage.updatedAt ?? lastMessage.createdAt) as number)
+      : conversation.createdAt,
+    modelHandle: lastMessage?.modelHandle ?? conversation.modelHandle,
+    updatedAt: now,
+  });
+}
+
 export const listMessages = query({
   args: {
     conversationId: v.id("conversations"),
@@ -266,15 +290,9 @@ export const deleteMessage = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const message = await requireMessage(ctx, args.messageId, userId);
+    await requireConversation(ctx, message.conversationId, userId);
     await ctx.db.delete(args.messageId);
-
-    const conversation = await ctx.db.get(message.conversationId);
-    if (conversation) {
-      await ctx.db.patch(message.conversationId, {
-        messageCount: Math.max(0, (conversation.messageCount ?? 0) - 1),
-        updatedAt: Date.now(),
-      });
-    }
+    await syncConversationAfterMessageDelete(ctx, message.conversationId);
     return { success: true };
   },
 });
