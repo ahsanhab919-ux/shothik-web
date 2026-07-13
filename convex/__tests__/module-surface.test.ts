@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import * as users from "../users";
 import * as notifications from "../notifications";
 import * as billing from "../billing";
+import * as conversations from "../conversations";
+import * as messages from "../messages";
 
 function exportedNames(mod: Record<string, unknown>) {
   return Object.keys(mod).filter((k) => !k.startsWith("__"));
@@ -60,5 +62,41 @@ describe("convex module surface", () => {
       expect(typeof (billing as any)[expected]).toBe("function");
     }
   });
-});
 
+  it("exports expected conversations functions", () => {
+    const names = exportedNames(conversations);
+    for (const expected of [
+      "createConversation",
+      "listConversations",
+      "getConversation",
+      "renameConversation",
+      "pinConversation",
+      "archiveConversation",
+      "softDeleteConversation",
+      "searchConversations",
+      "touchConversation",
+    ]) {
+      expect(names).toContain(expected);
+      expect(typeof (conversations as any)[expected]).toBe("function");
+    }
+  });
+
+  it("exports expected messages functions", () => {
+    const names = exportedNames(messages);
+    for (const expected of [
+      "listMessages",
+      "appendUserMessage",
+      "appendAssistantPlaceholder",
+      "appendUserMessageInternal",
+      "appendAssistantPlaceholderInternal",
+      "appendAssistantChunkInternal",
+      "completeAssistantMessageInternal",
+      "stopAssistantMessageInternal",
+      "failAssistantMessageInternal",
+      "deleteMessage",
+    ]) {
+      expect(names).toContain(expected);
+      expect(typeof (messages as any)[expected]).toBe("function");
+    }
+  });
+});

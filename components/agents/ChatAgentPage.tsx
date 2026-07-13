@@ -7,6 +7,7 @@ import { Transcript } from "@/components/chat/Transcript";
 import { useChatService, useConversationMessages } from "@/lib/chat/service";
 import type { ChatMessage } from "@/lib/chat/types";
 import { useTranslation } from "@/i18n";
+import { useChatHistory } from "@/hooks/useChatHistory";
 
 export default function ChatAgentPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -14,10 +15,12 @@ export default function ChatAgentPage() {
   const [loading, setLoading] = useState(false);
   const [modelHandle, setModelHandle] = useState("gemini-2.5-flash");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { t } = useTranslation();
   const messages = useConversationMessages(conversationId);
   const { deleteMessage } = useChatService();
+  const { conversations } = useChatHistory({ surface: "flagship", limit: 20 });
 
   const SUGGESTIONS = [
     t("chat.suggestion1"),
@@ -29,6 +32,11 @@ export default function ChatAgentPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (conversationId || !conversations.length) return;
+    setConversationId(String(conversations[0]._id));
+  }, [conversationId, conversations]);
 
   const send = async (text?: string) => {
     const userText = (text ?? input).trim();
@@ -92,6 +100,7 @@ export default function ChatAgentPage() {
     } finally {
       setLoading(false);
       abortRef.current = null;
+      inputRef.current?.focus();
     }
   };
   const visibleMessages = (messages ?? []).filter((message) => message.role !== "system");
@@ -143,6 +152,7 @@ export default function ChatAgentPage() {
         </div>
       </div>
       <Composer
+        ref={inputRef}
         value={input}
         onChange={setInput}
         onSubmit={() => send()}
@@ -152,6 +162,7 @@ export default function ChatAgentPage() {
         placeholder={t("chat.placeholder")}
         modelHandle={modelHandle}
         onModelChange={setModelHandle}
+        footer={`${t("chat.footer")} · ${modelHandle}`}
       />
     </div>
   );

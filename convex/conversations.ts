@@ -129,7 +129,10 @@ export const listConversations = query({
 
     return rows
       .filter((row: any) => !args.surface || row.surface === args.surface)
-      .filter((row: any) => !args.status || row.status === args.status)
+      .filter((row: any) => {
+        if (args.status) return row.status === args.status;
+        return row.status !== "deleted";
+      })
       .filter((row: any) => args.includeTemporary ? true : !row.temporary)
       .slice(0, Math.max(1, Math.min(args.limit ?? 50, 200)));
   },
