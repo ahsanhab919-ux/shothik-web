@@ -70,6 +70,8 @@ Every auth migration slice must include:
 - 2026-07-14: Updated proxy and chat routes so chat runtime requires native InsForge sessions instead of the legacy external ID bridge.
 - 2026-07-14: Added staged chat ownership migration using `auth_user_id` as the canonical owner and retained `legacy_user_id` only for compatibility/backfill.
 - 2026-07-14: Added route, auth, and chat persistence tests covering the new ownership model and auth behavior.
+- 2026-07-14: Completed live preflight for rollout sequencing: created an InsForge backup and confirmed the remote database is still on the legacy `user_id` bridge schema.
+- 2026-07-14: Added PR draft and rollout documentation for coordinated review, deploy, and migration execution.
 
 ## Review Checklist
 
