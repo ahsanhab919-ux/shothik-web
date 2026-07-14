@@ -72,6 +72,7 @@ Every auth migration slice must include:
 - 2026-07-14: Added route, auth, and chat persistence tests covering the new ownership model and auth behavior.
 - 2026-07-14: Completed live preflight for rollout sequencing: created an InsForge backup and confirmed the remote database is still on the legacy `user_id` bridge schema.
 - 2026-07-14: Added PR draft and rollout documentation for coordinated review, deploy, and migration execution.
+- 2026-07-14: Merged the rollout into personal `main`, fixed a Next.js 16 production-build issue caused by invalid `"use server"` utility modules, and verified a clean production build.
 
 ## Review Checklist
 

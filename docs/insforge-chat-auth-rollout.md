@@ -18,11 +18,13 @@ canonical chat owner.
 ## Preflight Status
 
 - Repo branch pushed: `feat/insforge-chat-history-slice-clean`
+- Merged into personal `origin/main` via commit: `ee1fc7b`
 - Latest migration committed: `20260714014616_adopt-native-chat-auth-ownership.sql`
 - Validation already passed locally:
   - `eslint`
   - `tsc --noEmit`
   - `vitest` (31 passing tests)
+  - `next build` with production placeholder envs
 
 ## Live Database Preflight
 
@@ -55,6 +57,13 @@ before the updated app code is serving traffic.
   - fetch message history
   - delete a message
 
+## Local Production Smoke
+
+- `GET /api/health`: `ok`
+- `GET /api/health?deep=true`: `unhealthy` in local-only validation, caused by
+  intentionally missing backend/microservice/JWT production dependencies rather
+  than the chat auth slice itself
+
 ## Post-Migration Verification Queries
 
 ```sql
@@ -76,5 +85,8 @@ where m.auth_user_id is distinct from c.auth_user_id;
 
 - GitHub PR creation cannot be completed from this machine until GitHub auth is
   available in `gh` or the browser session.
-- Deployment cannot be executed safely until the target environment is
-  explicitly confirmed.
+- Remote deployment through the available MCP path is blocked because the
+  Vercel integration is missing an authentication token.
+- Because remote app deployment is still blocked, the live InsForge database
+  migration has not been applied yet to avoid breaking the currently deployed
+  app against the pre-cutover schema.

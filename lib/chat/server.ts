@@ -1,5 +1,3 @@
-"use server";
-
 import type { PoolClient } from "pg";
 import { insforgeQuery, withInsforgeTransaction } from "@/lib/insforge-db";
 import type {

@@ -1,5 +1,3 @@
-"use server";
-
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 declare global {
