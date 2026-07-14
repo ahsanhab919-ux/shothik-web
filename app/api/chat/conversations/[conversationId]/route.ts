@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthenticatedUser } from "@/lib/server-auth";
+import { getChatAuthenticatedUser } from "@/lib/server-auth";
 import {
   getConversationForUser,
   softDeleteConversationForUser,
@@ -7,14 +7,21 @@ import {
 } from "@/lib/chat/server";
 
 function unauthorized() {
-  return Response.json({ error: "Authentication required" }, { status: 401 });
+  return Response.json(
+    {
+      error: "Authentication required",
+      code: "INSFORGE_SESSION_REQUIRED",
+      message: "Please sign in again to continue using chat.",
+    },
+    { status: 401 },
+  );
 }
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ conversationId: string }> }
 ) {
-  const user = await getAuthenticatedUser();
+  const user = await getChatAuthenticatedUser();
   if (!user?._id) return unauthorized();
 
   const { conversationId } = await params;
@@ -30,7 +37,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ conversationId: string }> }
 ) {
-  const user = await getAuthenticatedUser();
+  const user = await getChatAuthenticatedUser();
   if (!user?._id) return unauthorized();
 
   const { conversationId } = await params;
@@ -54,7 +61,7 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ conversationId: string }> }
 ) {
-  const user = await getAuthenticatedUser();
+  const user = await getChatAuthenticatedUser();
   if (!user?._id) return unauthorized();
 
   const { conversationId } = await params;

@@ -1,13 +1,20 @@
 import { deleteMessageForUser } from "@/lib/chat/server";
-import { getAuthenticatedUser } from "@/lib/server-auth";
+import { getChatAuthenticatedUser } from "@/lib/server-auth";
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ messageId: string }> }
 ) {
-  const user = await getAuthenticatedUser();
+  const user = await getChatAuthenticatedUser();
   if (!user?._id) {
-    return Response.json({ error: "Authentication required" }, { status: 401 });
+    return Response.json(
+      {
+        error: "Authentication required",
+        code: "INSFORGE_SESSION_REQUIRED",
+        message: "Please sign in again to continue using chat.",
+      },
+      { status: 401 },
+    );
   }
 
   const { messageId } = await params;

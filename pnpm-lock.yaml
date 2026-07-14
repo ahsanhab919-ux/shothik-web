@@ -32,6 +32,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.72.1(react@19.2.0))
+      '@insforge/sdk':
+        specifier: ^1.4.4
+        version: 1.4.4
       '@letta-ai/letta-client':
         specifier: ^1.12.1
         version: 1.12.1
@@ -1366,6 +1369,10 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
+  '@insforge/sdk@1.4.4':
+    resolution: {integrity: sha512-qsLJ/O9LxNq36tLBQaNbaVebv14US1aNdGiOZkerGfsqrMHwWx9mj/TmlvQGMK9NNNaSY+aNmefAOORwn9jOvg==}
+    engines: {node: '>=18'}
+
   '@insforge/shared-schemas@1.1.59':
     resolution: {integrity: sha512-mtfOFeEJKTxNnm2+R8qTa1zT1muTEDnOaqOuwC5A93Jv/WreqVlT7Tya6pG5iPDSyNp8dcRQK1kH9FGG0JjE6g==}
 
@@ -2699,6 +2706,13 @@ packages:
   '@stripe/stripe-js@8.11.0':
     resolution: {integrity: sha512-3fVF4z3efsgwgyj64nFK+6F4/vMw0mUXD2TBbOfftJtKVNx4JNv3CSfe1fY4DCtCk0JFp8/YPNcRkzgV0HJ8cg==}
     engines: {node: '>=12.16'}
+
+  '@supabase/node-fetch@2.6.15':
+    resolution: {integrity: sha512-1ibVeYUacxWYi9i0cf5efil6adJ9WRyZBLivgjs+AUpewx1F3xPi7gLgaASI2SmIQxPoCEjAsLAzKPgMJVgOUQ==}
+    engines: {node: 4.x || >=6.0.0}
+
+  '@supabase/postgrest-js@1.21.4':
+    resolution: {integrity: sha512-TxZCIjxk6/dP9abAi89VQbWWMBbybpGWyvmIzTd79OeravM13OjR/YEYeyUOPcM1C3QyvXkvPZhUfItvmhY1IQ==}
 
   '@swagger-api/apidom-ast@1.10.2':
     resolution: {integrity: sha512-vTl8gWyeZaj887/NSWYs3as4K8wXHar5wY/606XRBjR2UgmJBokBgKjq7S23LW9tsYjsT4MjQKC8idjgw17xvg==}
@@ -8591,6 +8605,16 @@ snapshots:
       - react-native-b4a
       - rxjs
 
+  '@insforge/sdk@1.4.4':
+    dependencies:
+      '@insforge/shared-schemas': 1.1.59
+      '@supabase/postgrest-js': 1.21.4
+      socket.io-client: 4.8.3
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
   '@insforge/shared-schemas@1.1.59':
     dependencies:
       zod: 3.25.76
@@ -9894,6 +9918,14 @@ snapshots:
   '@standard-schema/utils@0.3.0': {}
 
   '@stripe/stripe-js@8.11.0': {}
+
+  '@supabase/node-fetch@2.6.15':
+    dependencies:
+      whatwg-url: 5.0.0
+
+  '@supabase/postgrest-js@1.21.4':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
 
   '@swagger-api/apidom-ast@1.10.2':
     dependencies:

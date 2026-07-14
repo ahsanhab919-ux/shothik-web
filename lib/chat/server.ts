@@ -12,7 +12,8 @@ import type {
 
 type ConversationRow = {
   id: string;
-  user_id: string;
+  auth_user_id: string | null;
+  legacy_user_id: string | null;
   surface: ChatSurface;
   title: string;
   status: ConversationStatus;
@@ -30,7 +31,8 @@ type ConversationRow = {
 type MessageRow = {
   id: string;
   conversation_id: string;
-  user_id: string;
+  auth_user_id: string | null;
+  legacy_user_id: string | null;
   role: ChatMessage["role"];
   content: string;
   content_format: ChatMessage["contentFormat"];
@@ -50,7 +52,7 @@ function toMillis(value: Date | string | null | undefined) {
 function toConversation(row: ConversationRow): ConversationSummary {
   return {
     _id: row.id,
-    userId: row.user_id,
+    userId: row.auth_user_id ?? row.legacy_user_id ?? "",
     surface: row.surface,
     title: row.title,
     status: row.status,
@@ -70,7 +72,7 @@ function toMessage(row: MessageRow): ChatMessage {
   return {
     _id: row.id,
     conversationId: row.conversation_id,
-    userId: row.user_id,
+    userId: row.auth_user_id ?? row.legacy_user_id ?? "",
     role: row.role,
     content: row.content,
     contentFormat: row.content_format,
@@ -114,7 +116,7 @@ async function getConversationRowForUser(
       select *
       from public.chat_conversations
       where id = $1
-        and user_id = $2
+        and auth_user_id = $2::uuid
       limit 1
     `,
     [conversationId, userId]
@@ -134,7 +136,7 @@ async function getMessageRowForUser(client: PoolClient | null, messageId: string
       select *
       from public.chat_messages
       where id = $1
-        and user_id = $2
+        and auth_user_id = $2::uuid
       limit 1
     `,
     [messageId, userId]
@@ -156,7 +158,7 @@ export async function listConversationsForUser(input: {
   query?: string;
 }) {
   const params: unknown[] = [input.userId];
-  const where: string[] = ["user_id = $1"];
+  const where: string[] = ["auth_user_id = $1::uuid"];
 
   if (input.surface) {
     params.push(input.surface);
@@ -212,7 +214,7 @@ export async function createPersistedConversation(input: {
   const result = await insforgeQuery<ConversationRow>(
     `
       insert into public.chat_conversations (
-        user_id,
+        auth_user_id,
         surface,
         title,
         model_handle,
@@ -271,7 +273,7 @@ export async function updateConversationForUser(input: {
       update public.chat_conversations
       set ${sets.join(", ")}
       where id = $1
-        and user_id = $2
+        and auth_user_id = $2::uuid
       returning *
     `,
     params
@@ -287,7 +289,7 @@ export async function softDeleteConversationForUser(conversationId: string, user
       update public.chat_conversations
       set status = 'deleted'
       where id = $1
-        and user_id = $2
+        and auth_user_id = $2::uuid
     `,
     [conversationId, userId]
   );
@@ -325,7 +327,7 @@ export async function appendPersistedUserMessage(input: {
       `
         insert into public.chat_messages (
           conversation_id,
-          user_id,
+          auth_user_id,
           role,
           content,
           content_format,
@@ -353,7 +355,7 @@ export async function createPersistedAssistantMessage(input: {
       `
         insert into public.chat_messages (
           conversation_id,
-          user_id,
+          auth_user_id,
           role,
           content,
           content_format,
@@ -382,7 +384,7 @@ export async function appendPersistedAssistantChunk(input: {
       update public.chat_messages
       set content = coalesce(content, '') || $3
       where id = $1
-        and user_id = $2
+        and auth_user_id = $2::uuid
       returning *
     `,
     [input.messageId, input.userId, input.delta]
@@ -403,7 +405,7 @@ export async function completePersistedAssistantMessage(input: {
       update public.chat_messages
       set status = 'completed'
       where id = $1
-        and user_id = $2
+        and auth_user_id = $2::uuid
       returning *
     `,
     [input.messageId, input.userId]
@@ -420,7 +422,7 @@ export async function stopPersistedAssistantMessage(input: {
       update public.chat_messages
       set status = 'stopped'
       where id = $1
-        and user_id = $2
+        and auth_user_id = $2::uuid
       returning *
     `,
     [input.messageId, input.userId]
@@ -448,7 +450,7 @@ export async function failPersistedAssistantMessage(input: {
         status = 'error',
         metadata = $4
       where id = $1
-        and user_id = $2
+        and auth_user_id = $2::uuid
       returning *
     `,
     [
@@ -468,7 +470,7 @@ export async function deleteMessageForUser(messageId: string, userId: string) {
     `
       delete from public.chat_messages
       where id = $1
-        and user_id = $2
+        and auth_user_id = $2::uuid
     `,
     [messageId, userId]
   );

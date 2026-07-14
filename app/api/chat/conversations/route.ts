@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthenticatedUser } from "@/lib/server-auth";
+import { getChatAuthenticatedUser } from "@/lib/server-auth";
 import {
   createPersistedConversation,
   listConversationsForUser,
@@ -7,11 +7,18 @@ import {
 import type { ChatSurface, ConversationStatus } from "@/lib/chat/types";
 
 function unauthorized() {
-  return Response.json({ error: "Authentication required" }, { status: 401 });
+  return Response.json(
+    {
+      error: "Authentication required",
+      code: "INSFORGE_SESSION_REQUIRED",
+      message: "Please sign in again to continue using chat.",
+    },
+    { status: 401 },
+  );
 }
 
 export async function GET(request: NextRequest) {
-  const user = await getAuthenticatedUser();
+  const user = await getChatAuthenticatedUser();
   if (!user?._id) return unauthorized();
 
   const { searchParams } = new URL(request.url);
@@ -35,7 +42,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getAuthenticatedUser();
+  const user = await getChatAuthenticatedUser();
   if (!user?._id) return unauthorized();
 
   const body = await request.json();
