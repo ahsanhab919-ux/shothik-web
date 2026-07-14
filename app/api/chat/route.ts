@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthenticatedUser } from "@/lib/server-auth";
+import { getChatAuthenticatedUser } from "@/lib/server-auth";
 import {
   appendPersistedAssistantChunk,
   appendPersistedUserMessage,
@@ -37,9 +37,13 @@ function checkLimit(ip: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthenticatedUser();
+    const user = await getChatAuthenticatedUser();
     if (!user?._id) {
-      return new Response(JSON.stringify({ error: "Authentication required" }), {
+      return new Response(JSON.stringify({
+        error: "Authentication required",
+        code: "INSFORGE_SESSION_REQUIRED",
+        message: "Please sign in again to continue using chat.",
+      }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       });

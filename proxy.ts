@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify, createRemoteJWKSet } from "jose";
+import { updateSession } from "@insforge/sdk/ssr/middleware";
 import {
   getRateLimitForPath,
   getMaxWindowMs,
@@ -7,9 +8,15 @@ import {
 } from "./lib/rate-limit-config";
 import { incrementCounter, setGauge, maybeLogMetrics } from "./lib/runtime-metrics";
 import { authenticateApiKey } from "./lib/security/api-keys";
-import { owaspMiddleware, addSecurityHeaders as addOwaspHeaders } from "./lib/security/owasp-compliance";
+import { owaspMiddleware } from "./lib/security/owasp-compliance";
 import { detectSuspiciousActivity, isIPBlocked, logSecurityEvent } from "./lib/security/monitoring";
 import { checkDDoSProtection } from "./lib/security/ddos-protection";
+import {
+  getInsforgePublicConfig,
+  hasInsforgePublicConfig,
+} from "./lib/insforge/config";
+
+type ProxyUpdateSessionOptions = Parameters<typeof updateSession>[0];
 
 const RATE_LIMIT_STORE = new Map<string, { timestamps: number[] }>();
 
@@ -202,6 +209,41 @@ export async function proxy(req: NextRequest) {
   const token = cookieToken ?? bearerToken ?? null;
   const clientIP = getClientId(req);
   const isDev = process.env.NODE_ENV === "development";
+  const shouldSyncInsforgeSession =
+    hasInsforgePublicConfig() &&
+    (
+      pathname.startsWith("/auth") ||
+      pathname.startsWith("/dashboard") ||
+      pathname === "/api/chat" ||
+      pathname.startsWith("/api/chat/")
+    );
+  const stagedInsforgeResponse = NextResponse.next({ request: req });
+
+  if (shouldSyncInsforgeSession) {
+    try {
+      await updateSession({
+        requestCookies: req.cookies as unknown as ProxyUpdateSessionOptions["requestCookies"],
+        responseCookies: stagedInsforgeResponse.cookies,
+        ...getInsforgePublicConfig(),
+      });
+    } catch (error) {
+      console.warn("[proxy] Failed to sync InsForge session", error);
+    }
+  }
+
+  const insforgeAccessToken = req.cookies.get("insforge_access_token")?.value ?? null;
+  const insforgeRefreshToken = req.cookies.get("insforge_refresh_token")?.value ?? null;
+  const hasInsforgeSession = Boolean(insforgeAccessToken || insforgeRefreshToken);
+  const hasAnyAuthenticatedSession = Boolean(token || hasInsforgeSession);
+  const isInsforgeChatApiPath = pathname === "/api/chat" || pathname.startsWith("/api/chat/");
+
+  const finalizeResponse = (response: NextResponse) => {
+    for (const cookie of stagedInsforgeResponse.cookies.getAll()) {
+      response.cookies.set(cookie.name, cookie.value, cookie);
+    }
+
+    return addSecurityHeaders(response);
+  };
 
   const ipAllowlist = process.env.IP_ALLOWLIST?.trim();
   if (ipAllowlist) {
@@ -228,7 +270,7 @@ export async function proxy(req: NextRequest) {
         method: req.method,
         path: pathname,
       });
-      return addSecurityHeaders(
+      return finalizeResponse(
         new NextResponse(JSON.stringify({ error: "Access denied" }), { status: 403 })
       );
     }
@@ -250,7 +292,7 @@ export async function proxy(req: NextRequest) {
       await tryAppendAuditEvent({
         requestId,
         timestamp: Date.now(),
-        actorType: token ? "user" : "anonymous",
+        actorType: hasAnyAuthenticatedSession ? "user" : "anonymous",
         ip: clientIP,
         userAgent: req.headers.get("user-agent") ?? undefined,
         action: "ddos.block",
@@ -278,7 +320,7 @@ export async function proxy(req: NextRequest) {
           }
         }
       );
-      return addSecurityHeaders(response);
+      return finalizeResponse(response);
     }
   }
 
@@ -327,7 +369,7 @@ export async function proxy(req: NextRequest) {
       await tryAppendAuditEvent({
         requestId,
         timestamp: Date.now(),
-        actorType: token ? "user" : "anonymous",
+        actorType: hasAnyAuthenticatedSession ? "user" : "anonymous",
         ip: clientIP,
         userAgent: req.headers.get("user-agent") ?? undefined,
         action: "suspicious.block",
@@ -336,7 +378,7 @@ export async function proxy(req: NextRequest) {
         path: pathname,
         details: { reasons: suspiciousCheck.reasons },
       });
-      return addSecurityHeaders(
+      return finalizeResponse(
         new NextResponse(JSON.stringify({ error: "Suspicious activity detected" }), { status: 403 })
       );
     }
@@ -376,12 +418,12 @@ export async function proxy(req: NextRequest) {
           const { isBlockedState } = await import("./convex/twin_lifecycle_transitions");
           const twin = await convex.query(api.twin.getByKeyHash, { keyHash }) as Record<string, unknown> | null;
           if (!twin) {
-            return addSecurityHeaders(
+            return finalizeResponse(
               new NextResponse(JSON.stringify({ error: "Invalid Twin API key" }), { status: 401 })
             );
           }
           if (isBlockedState(twin.lifecycleState as string)) {
-            return addSecurityHeaders(
+            return finalizeResponse(
               new NextResponse(JSON.stringify({ error: `Twin is ${twin.lifecycleState} and cannot make requests` }), { status: 403 })
             );
           }
@@ -392,7 +434,7 @@ export async function proxy(req: NextRequest) {
           const twinRateResult = checkRateLimit(twinRateLimitKey, twinRateConfig);
           if (twinRateResult.limited) {
             const retryAfter = Math.ceil((twinRateResult.resetAt - Date.now()) / 1000);
-            return addSecurityHeaders(
+            return finalizeResponse(
               new NextResponse(JSON.stringify({ error: "Too many requests", retryAfter }), {
                 status: 429,
                 headers: {
@@ -417,7 +459,7 @@ export async function proxy(req: NextRequest) {
           const isLifecycleAllowed = PRE_VERIFIED_WRITE_PATHS.some((p) => pathname === p);
 
           if (accessTier === "read_only" && isWriteMethod && !isLifecycleAllowed) {
-            return addSecurityHeaders(
+            return finalizeResponse(
               new NextResponse(
                 JSON.stringify({
                   error: `Twin is ${lcState} — only read access and lifecycle actions allowed. Verify to unlock full access.`,
@@ -444,15 +486,15 @@ export async function proxy(req: NextRequest) {
           const twinResponse = NextResponse.next({ request: { headers: twinHeaders } });
           twinResponse.headers.set("X-Response-Time", `${Date.now() - startTime}ms`);
           twinResponse.headers.set("X-RateLimit-Remaining", String(twinRateResult.remaining));
-          return addSecurityHeaders(twinResponse);
+          return finalizeResponse(twinResponse);
         } else {
-          return addSecurityHeaders(
+          return finalizeResponse(
             new NextResponse(JSON.stringify({ error: "Twin key validation unavailable" }), { status: 503 })
           );
         }
       } catch (err) {
         console.error("[middleware] Twin key validation error:", err);
-        return addSecurityHeaders(
+        return finalizeResponse(
           new NextResponse(JSON.stringify({ error: "Twin key validation failed" }), { status: 401 })
         );
       }
@@ -480,7 +522,7 @@ export async function proxy(req: NextRequest) {
             response.headers.set(key, value);
           });
         }
-        return addSecurityHeaders(response);
+        return finalizeResponse(response);
       }
 
       apiKeyUser = {
@@ -508,7 +550,7 @@ export async function proxy(req: NextRequest) {
             description: "Auth rate limit exceeded",
           },
         });
-        return addSecurityHeaders(
+        return finalizeResponse(
           new NextResponse(
             JSON.stringify({
               error: "Too many authentication attempts",
@@ -533,68 +575,74 @@ export async function proxy(req: NextRequest) {
 
     if (requiresAuth && !hasValidApiKey) {
       if (!token) {
-        await logSecurityEvent({
-          type: "auth_failure",
-          severity: "medium",
-          source: { ip: clientIP },
-          details: {
-            path: pathname,
+        if (isInsforgeChatApiPath && hasInsforgeSession) {
+          // Chat routes are migrating to native InsForge auth; let route-level auth resolve the user.
+        } else {
+          await logSecurityEvent({
+            type: "auth_failure",
+            severity: "medium",
+            source: { ip: clientIP },
+            details: {
+              path: pathname,
+              method: req.method,
+              description: "Unauthenticated request to protected API route",
+            },
+          });
+          await tryAppendAuditEvent({
+            requestId,
+            timestamp: Date.now(),
+            actorType: "anonymous",
+            ip: clientIP,
+            userAgent: req.headers.get("user-agent") ?? undefined,
+            action: "auth.required",
+            outcome: "deny",
             method: req.method,
-            description: "Unauthenticated request to protected API route",
-          },
-        });
-        await tryAppendAuditEvent({
-          requestId,
-          timestamp: Date.now(),
-          actorType: "anonymous",
-          ip: clientIP,
-          userAgent: req.headers.get("user-agent") ?? undefined,
-          action: "auth.required",
-          outcome: "deny",
-          method: req.method,
-          path: pathname,
-          details: { reason: "missing_token" },
-        });
-        return addSecurityHeaders(
-          new NextResponse(JSON.stringify({ error: "Authentication required" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          }),
-        );
+            path: pathname,
+            details: { reason: "missing_token" },
+          });
+          return finalizeResponse(
+            new NextResponse(JSON.stringify({ error: "Authentication required" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
       }
 
-      const { valid, payload, error } = await verifyJWT(token);
-      jwtPayload = payload;
+      if (token) {
+        const { valid, payload, error } = await verifyJWT(token);
+        jwtPayload = payload;
 
-      if (!valid) {
-        await logSecurityEvent({
-          type: "auth_failure",
-          severity: "medium",
-          source: { ip: clientIP },
-          details: {
-            path: pathname,
+        if (!valid) {
+          await logSecurityEvent({
+            type: "auth_failure",
+            severity: "medium",
+            source: { ip: clientIP },
+            details: {
+              path: pathname,
+              method: req.method,
+              description: `JWT verification failed: ${error}`,
+            },
+          });
+          await tryAppendAuditEvent({
+            requestId,
+            timestamp: Date.now(),
+            actorType: "anonymous",
+            ip: clientIP,
+            userAgent: req.headers.get("user-agent") ?? undefined,
+            action: "auth.jwt_invalid",
+            outcome: "deny",
             method: req.method,
-            description: `JWT verification failed: ${error}`,
-          },
-        });
-        await tryAppendAuditEvent({
-          requestId,
-          timestamp: Date.now(),
-          actorType: "anonymous",
-          ip: clientIP,
-          userAgent: req.headers.get("user-agent") ?? undefined,
-          action: "auth.jwt_invalid",
-          outcome: "deny",
-          method: req.method,
-          path: pathname,
-          details: { error: error ?? "unknown" },
-        });
-        return addSecurityHeaders(
-          new NextResponse(JSON.stringify({ error: "Invalid token" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          }),
-        );
+            path: pathname,
+            details: { error: error ?? "unknown" },
+          });
+          return finalizeResponse(
+            new NextResponse(JSON.stringify({ error: "Invalid token" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
       }
     }
 
@@ -622,7 +670,7 @@ export async function proxy(req: NextRequest) {
       await tryAppendAuditEvent({
         requestId,
         timestamp: Date.now(),
-        actorType: hasValidApiKey ? "api_key" : token ? "user" : "anonymous",
+        actorType: hasValidApiKey ? "api_key" : hasAnyAuthenticatedSession ? "user" : "anonymous",
         actorId: hasValidApiKey ? apiKeyUser!.userId : extractUserIdFromJwtPayload(jwtPayload),
         ip: clientIP,
         userAgent: req.headers.get("user-agent") ?? undefined,
@@ -632,7 +680,7 @@ export async function proxy(req: NextRequest) {
         path: pathname,
         details: { retryAfter },
       });
-      return addSecurityHeaders(
+      return finalizeResponse(
         new NextResponse(
           JSON.stringify({
             error: "Too many requests",
@@ -668,7 +716,7 @@ export async function proxy(req: NextRequest) {
       await tryAppendAuditEvent({
         requestId,
         timestamp: Date.now(),
-        actorType: hasValidApiKey ? "api_key" : token ? "user" : "anonymous",
+        actorType: hasValidApiKey ? "api_key" : hasAnyAuthenticatedSession ? "user" : "anonymous",
         actorId: hasValidApiKey ? apiKeyUser!.userId : extractUserIdFromJwtPayload(jwtPayload),
         ip: clientIP,
         userAgent: req.headers.get("user-agent") ?? undefined,
@@ -678,7 +726,7 @@ export async function proxy(req: NextRequest) {
         path: pathname,
       });
     }
-    return addSecurityHeaders(response);
+    return finalizeResponse(response);
   }
 
   if (pathname.startsWith("/second-me")) {
@@ -686,17 +734,17 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL(newPath, req.url), 301);
   }
 
-  if (pathname.startsWith("/dashboard") && !token) {
-    return NextResponse.redirect(new URL("/auth/login", req.url));
+  if (pathname.startsWith("/dashboard") && !hasAnyAuthenticatedSession) {
+    return finalizeResponse(NextResponse.redirect(new URL("/auth/login", req.url)));
   }
 
-  if (pathname.startsWith("/auth") && token) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+  if (pathname.startsWith("/auth") && hasAnyAuthenticatedSession) {
+    return finalizeResponse(NextResponse.redirect(new URL("/dashboard", req.url)));
   }
 
   const response = NextResponse.next();
   response.headers.set("X-Response-Time", `${Date.now() - startTime}ms`);
-  return addSecurityHeaders(response);
+  return finalizeResponse(response);
 }
 
 export const config = {
@@ -707,4 +755,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };
-
