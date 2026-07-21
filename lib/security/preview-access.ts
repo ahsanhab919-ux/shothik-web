@@ -102,6 +102,7 @@ export function isPreviewAuthEnabled(env: NodeJS.ProcessEnv = process.env) {
 
 export function isPreviewBypassPath(pathname: string) {
   if (
+    pathname === "/" ||
     pathname === "/favicon.ico" ||
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml"

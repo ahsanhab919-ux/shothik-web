@@ -64,6 +64,7 @@ describe("preview access helpers", () => {
   });
 
   it("knows which preview paths must stay reachable without an app session", () => {
+    expect(isPreviewBypassPath("/")).toBe(true);
     expect(isPreviewBypassPath("/auth/login")).toBe(true);
     expect(isPreviewBypassPath("/api/auth/sign-in")).toBe(true);
     expect(isPreviewBypassPath("/api/health")).toBe(true);
