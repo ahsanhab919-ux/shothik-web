@@ -30,10 +30,12 @@ jobs:
     env:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
-      NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
-      STRIPE_SECRET_KEY: sk_test_placeholder
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
-      CLERK_SECRET_KEY: sk_test_placeholder
+      # All secrets sourced from GitHub Actions Secrets — never hardcode values here.
+      # For CI build validation, set these as repository secrets with placeholder test values.
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL || 'https://placeholder.convex.cloud' }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
 
     steps:
       - name: Checkout repository
@@ -52,6 +54,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Security audit (high severity)
+        run: pnpm audit --audit-level high || true
 
       - name: Type-check
         run: pnpm type-check
@@ -84,10 +89,10 @@ jobs:
     env:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
-      NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
-      STRIPE_SECRET_KEY: sk_test_placeholder
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
-      CLERK_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL || 'https://placeholder.convex.cloud' }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
 
     steps:
       - name: Checkout repository

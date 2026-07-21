@@ -19,11 +19,11 @@
     "jsx": "react-jsx",
     "incremental": true,
     "useDefineForClassFields": true,
-    /* Linting */
-    "strict": false,
-    "noImplicitAny": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    /* Linting — strict mode enabled for runtime safety */
+    "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     /* Plugins */

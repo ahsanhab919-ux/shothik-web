@@ -44,6 +44,14 @@ export default function RootLayout({
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
         suppressHydrationWarning
       >
+        {/* Skip-to-content link for keyboard/screen reader accessibility (WCAG 2.1 Level A) */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:rounded focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
+
         <noscript>
           <iframe
             src={`https://www.googletagmanager.com/ns.html?id=GTM-PPRFW7NP`}
@@ -69,7 +77,8 @@ export default function RootLayout({
               <Register />
             </RegisterModal>
 
-            <div>{children}</div>
+            {/* Semantic <main> landmark for screen readers and WCAG compliance */}
+            <main id="main-content">{children}</main>
           </Providers>
           <Analytics />
         </LandingPageRedirectProvider>
