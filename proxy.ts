@@ -273,9 +273,11 @@ export async function proxy(req: NextRequest) {
       }
 
       if (input.status === 401) {
-        const loginUrl = new URL("/auth/login", req.url);
-        loginUrl.searchParams.set("redirect", pathname);
-        return finalizeResponse(NextResponse.redirect(loginUrl));
+        return finalizeResponse(
+          NextResponse.redirect(
+            new URL(buildLoginRedirectTarget(pathname, search), req.url),
+          ),
+        );
       }
 
       return finalizeResponse(

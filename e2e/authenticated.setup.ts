@@ -19,6 +19,9 @@ test.describe("authenticated browser automation setup", () => {
     }
 
     await loginAsSmokeUser(page, "/agents/chat");
+    await page.evaluate(() => {
+      window.localStorage.removeItem("shothik_auth_flow_state");
+    });
     await fs.mkdir(path.dirname(accessConfig.storageStatePath), { recursive: true });
     await context.storageState({ path: accessConfig.storageStatePath });
   });

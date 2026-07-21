@@ -58,7 +58,7 @@ test.describe('writing-studio lifecycle cross-browser consistency', () => {
 
     const createLatencyMs = await measure(async () => {
       await loginAsSmokeUser(page, "/writing-studio?projects=1");
-      await page.goto('/writing-studio?projects=1');
+      await openWritingStudio(page, "/writing-studio?projects=1");
       await page.evaluate(
         ({ projectStorageKey, versionStorageKey }) => {
           window.localStorage.removeItem(projectStorageKey);
@@ -70,7 +70,7 @@ test.describe('writing-studio lifecycle cross-browser consistency', () => {
           versionStorageKey: VERSION_STORAGE_KEY,
         },
       );
-      await page.goto('/writing-studio?projects=1');
+      await openWritingStudio(page, "/writing-studio?projects=1");
       const createProjectButton = page.getByLabel('Create new project').first();
       await expect(createProjectButton).toBeVisible();
 
@@ -148,7 +148,7 @@ test.describe('writing-studio lifecycle cross-browser consistency', () => {
     });
 
     const reopenLatencyMs = await measure(async () => {
-      await page.goto(`/writing-studio?projectId=${projectId}`);
+      await openWritingStudio(page, `/writing-studio?projectId=${projectId}`);
       await expect(getEditor(page)).toBeVisible();
       await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible();
       await expect
@@ -199,7 +199,7 @@ test.describe('writing-studio lifecycle cross-browser consistency', () => {
     });
 
     const deleteLatencyMs = await measure(async () => {
-      await page.goto('/writing-studio?projects=1');
+      await openWritingStudio(page, "/writing-studio?projects=1");
       const projectCard = page.locator(`[data-testid="project-card-${projectId}"]`);
       await expect(projectCard).toBeVisible();
       await projectCard.getByRole('button', { name: /project options/i }).click();
@@ -245,6 +245,19 @@ async function appendEditorText(page: Page, text: string, token: string) {
     .poll(async () => ((await editor.textContent()) ?? '').trim())
     .toContain(token);
   await page.waitForTimeout(300);
+}
+
+async function openWritingStudio(page: Page, href: string) {
+  await page.goto(href, { waitUntil: "domcontentloaded" });
+
+  if (page.url().includes("/auth/post-login")) {
+    const continueButton = page.getByRole("button", { name: /continue now/i });
+    await continueButton.waitFor({ state: "visible", timeout: 5_000 });
+    await continueButton.click();
+  }
+
+  await expect(page).toHaveURL(/\/writing-studio/, { timeout: 15_000 });
+  await expect(page).not.toHaveURL(/\/auth\/(login|post-login)/);
 }
 
 function getEditor(page: Page) {
