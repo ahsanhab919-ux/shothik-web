@@ -1,8 +1,11 @@
 import Stripe from "stripe";
 
-const sandboxMode =
-  process.env.NEXT_PUBLIC_STRIPE_MODE !== "live" &&
-  process.env.NODE_ENV !== "production";
+const getStripeMode = () =>
+  process.env.NEXT_PUBLIC_STRIPE_MODE ||
+  (process.env.NODE_ENV === "production" ? "live" : "sandbox");
+
+const isSandboxMode = () =>
+  getStripeMode() !== "live" && process.env.NODE_ENV !== "production";
 
 export class StripeConfigurationError extends Error {
   constructor(message: string) {
@@ -11,43 +14,35 @@ export class StripeConfigurationError extends Error {
   }
 }
 
-if (process.env.NODE_ENV === "production") {
-  if (sandboxMode) {
-    throw new Error(
-      "Stripe sandbox mode must not be enabled in production. " +
-      "Set NEXT_PUBLIC_STRIPE_MODE=live in your production environment."
-    );
-  }
-  const secretKey = process.env.STRIPE_SECRET_KEY || "";
-  if (secretKey && !secretKey.startsWith("sk_live_")) {
-    throw new Error(
-      "Production environment requires a live Stripe secret key (sk_live_...). " +
-      "Test keys (sk_test_...) are not permitted in production."
-    );
-  }
-}
-
 export const stripeConfig = {
-  mode: process.env.NEXT_PUBLIC_STRIPE_MODE || (process.env.NODE_ENV === "production" ? "live" : "sandbox"),
+  get mode() {
+    return getStripeMode();
+  },
 
   apiVersion: "2026-02-25.clover" as const,
 
-  sandbox: {
-    enabled: sandboxMode,
-    testCards: sandboxMode
-      ? [
-          { number: "4242424242424242", brand: "Visa", description: "Success" },
-          { number: "4000000000000002", brand: "Visa", description: "Declined" },
-          { number: "4000002500003155", brand: "Visa", description: "3D Secure" },
-          { number: "4000003560000008", brand: "Visa", description: "India" },
-          { number: "4000000000003220", brand: "Visa", description: "Subscription" },
-        ]
-      : [],
+  get sandbox() {
+    const sandboxMode = isSandboxMode();
+
+    return {
+      enabled: sandboxMode,
+      testCards: sandboxMode
+        ? [
+            { number: "4242424242424242", brand: "Visa", description: "Success" },
+            { number: "4000000000000002", brand: "Visa", description: "Declined" },
+            { number: "4000002500003155", brand: "Visa", description: "3D Secure" },
+            { number: "4000003560000008", brand: "Visa", description: "India" },
+            { number: "4000000000003220", brand: "Visa", description: "Subscription" },
+          ]
+        : [],
+    };
   },
 
-  connect: {
-    autoApprove: sandboxMode,
-    skipOnboarding: false,
+  get connect() {
+    return {
+      autoApprove: isSandboxMode(),
+      skipOnboarding: false,
+    };
   },
 
   webhooks: {
@@ -66,8 +61,30 @@ export function isStripeConfigurationError(
   return error instanceof StripeConfigurationError;
 }
 
+function validateStripeEnvironment(secretKey: string | undefined) {
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
+
+  if (isSandboxMode()) {
+    throw new StripeConfigurationError(
+      "Stripe sandbox mode must not be enabled in production. " +
+      "Set NEXT_PUBLIC_STRIPE_MODE=live in your production environment.",
+    );
+  }
+
+  if (secretKey && !secretKey.startsWith("sk_live_")) {
+    throw new StripeConfigurationError(
+      "Production environment requires a live Stripe secret key (sk_live_...). " +
+      "Test keys (sk_test_...) are not permitted in production.",
+    );
+  }
+}
+
 export const getStripe = () => {
   const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+
+  validateStripeEnvironment(secretKey);
 
   if (!secretKey) {
     throw new StripeConfigurationError(

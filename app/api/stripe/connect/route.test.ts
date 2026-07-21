@@ -42,7 +42,9 @@ import { GET, POST } from "./route";
 describe("stripe connect route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
+    vi.unstubAllEnvs();
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.com");
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_default");
   });
 
   it("creates a Stripe account and persists it through the earnings service", async () => {
@@ -100,5 +102,27 @@ describe("stripe connect route", () => {
       isDefault: true,
     });
     expect(data.payoutsEnabled).toBe(true);
+  });
+
+  it("returns 503 when preview builds use a non-live Stripe secret in production mode", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_STRIPE_MODE", "live");
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_preview_only");
+
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/stripe/connect", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: "user-1",
+          email: "author@example.com",
+          returnUrl: "https://app.example.com",
+        }),
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(data.error).toContain("live Stripe secret key");
+    expect(mockStripeAccountsCreate).not.toHaveBeenCalled();
   });
 });
