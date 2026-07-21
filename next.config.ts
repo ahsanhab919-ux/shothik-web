@@ -7,7 +7,10 @@ const externalApiOrigin =
   (process.env.NEXT_PUBLIC_API_URL || "https://shothik.work").replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
-  reactCompiler: false,
+  // Enable standalone output for optimized Docker image (only .next/standalone is needed in runner)
+  output: "standalone",
+  // Enable React Compiler for automatic memoization (React 19)
+  reactCompiler: true,
   serverExternalPackages: ["pdf-parse", "@llamaindex/liteparse"],
   turbopack: {
     root: turbopackRoot,
@@ -15,32 +18,34 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
+        protocol: "https",
+        hostname: "res.cloudinary.com",
       },
       {
-        protocol: 'https',
-        hostname: '*.convex.site',
+        // Restrict Convex image serving to /files/** path to prevent open-redirect abuse
+        protocol: "https",
+        hostname: "*.convex.site",
+        pathname: "/files/**",
       },
       {
-        protocol: 'https',
-        hostname: 'www.google.com',
-        pathname: '/s2/favicons/**',
+        protocol: "https",
+        hostname: "www.google.com",
+        pathname: "/s2/favicons/**",
       },
     ],
   },
   allowedDevOrigins: [
-    'localhost',
-    'localhost:5000',
-    '127.0.0.1',
-    '127.0.0.1:5000',
-    '0.0.0.0',
-    '0.0.0.0:5000',
-    '*.replit.dev',
-    '*.replit.app',
-    '*.pike.replit.dev',
-    '*.spock.replit.dev',
-    '*.kirk.replit.dev',
+    "localhost",
+    "localhost:5000",
+    "127.0.0.1",
+    "127.0.0.1:5000",
+    "0.0.0.0",
+    "0.0.0.0:5000",
+    "*.replit.dev",
+    "*.replit.app",
+    "*.pike.replit.dev",
+    "*.spock.replit.dev",
+    "*.kirk.replit.dev",
   ],
   async rewrites() {
     return {
@@ -48,11 +53,11 @@ const nextConfig: NextConfig = {
       afterFiles: [],
       fallback: [
         {
-          source: '/api/:path*',
+          source: "/api/:path*",
           destination: `${externalApiOrigin}/api/:path*`,
         },
         {
-          source: '/paraphrase/:path*',
+          source: "/paraphrase/:path*",
           destination: `${externalApiOrigin}/paraphrase/:path*`,
         },
       ],
