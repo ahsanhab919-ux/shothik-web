@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
-import { getAuthToken } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+import { getAuthenticatedUser } from "@/lib/server-auth";
+import { getBookDraftForUser } from "@/lib/books/insforge-book-service";
 
 const CATEGORY_TO_THEMA: Record<string, string> = {
   "fiction_literary": "FBA",
@@ -190,8 +187,8 @@ export function buildOnix3(book: Record<string, unknown>): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = getAuthToken(req);
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
@@ -200,7 +197,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "bookId is required" }, { status: 400 });
     }
 
-    const book = await convex.query(api.books.get, { id: bookId });
+    const book = await getBookDraftForUser(bookId, user.id);
     if (!book) {
       return NextResponse.json({ error: "Book not found" }, { status: 404 });
     }
@@ -222,8 +219,8 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const token = getAuthToken(req);
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
@@ -234,8 +231,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "bookId is required" }, { status: 400 });
     }
 
-    convex.setAuth(token);
-    const book = await convex.query(api.books.get, { id: bookId as any });
+    const book = await getBookDraftForUser(bookId, user.id);
     if (!book) {
       return NextResponse.json({ error: "Book not found" }, { status: 404 });
     }

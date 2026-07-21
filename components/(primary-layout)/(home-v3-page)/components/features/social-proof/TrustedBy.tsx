@@ -108,9 +108,10 @@ export default function TrustedBy() {
                   <Image
                     src={company.logo}
                     alt={company.name}
-                    width={160}
-                    height={40}
-                    className="h-10 w-auto object-contain opacity-50 grayscale transition-all duration-200 hover:opacity-80 hover:grayscale-0 dark:brightness-100 dark:invert"
+                    width={company.logo.width}
+                    height={company.logo.height}
+                    style={{ width: "auto", height: "40px" }}
+                    className="object-contain opacity-50 grayscale transition-all duration-200 hover:opacity-80 hover:grayscale-0 dark:brightness-100 dark:invert"
                   />
                 </div>
               </motion.div>

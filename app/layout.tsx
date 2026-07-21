@@ -12,6 +12,7 @@ import UploadProgressIndicator from "@/components/tools/common/UploadProgressInd
 import Providers from "@/providers";
 import LandingPageRedirectProvider from "@/providers/RedirectProvider";
 import type { Metadata } from "next";
+import Script from "next/script";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { ThemeScript } from "@/components/common/ThemeScript";
@@ -33,25 +34,29 @@ export default function RootLayout({
         <ThemeScript />
 
         {process.env.NODE_ENV === "production" && (
-          <script
+          <Script
+            id="rybbit-analytics"
             src="https://rybbit.shothik.live/api/script.js"
             data-site-id="7e1390f29be4"
             defer
-          ></script>
+            strategy="afterInteractive"
+          />
         )}
       </head>
       <body
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <noscript>
-          <iframe
-            src={`https://www.googletagmanager.com/ns.html?id=GTM-PPRFW7NP`}
-            height="0"
-            width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          ></iframe>
-        </noscript>
+        {process.env.NODE_ENV === "production" && (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=GTM-PPRFW7NP`}
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            ></iframe>
+          </noscript>
+        )}
         <LandingPageRedirectProvider>
           <Providers>
             <SettingApplier />

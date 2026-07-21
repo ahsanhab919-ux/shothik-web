@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import HomeV3Page from '@/components/(primary-layout)/(home-v3-page)/page';
 
 export async function generateMetadata() {
   const siteUrl = "https://www.shothik.ai";
@@ -59,7 +59,7 @@ export async function generateMetadata() {
 }
 
 const Home = () => {
-  redirect('/agents/chat');
+  return <HomeV3Page />;
 };
 
 export default Home;

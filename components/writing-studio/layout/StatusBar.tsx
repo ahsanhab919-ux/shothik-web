@@ -20,6 +20,9 @@ interface StatusBarProps {
   neuralScore?: number;
   nobelImpact?: number;
   readingLevel?: string;
+  totalVersions?: number;
+  writingVelocity?: number;
+  estimatedDaysToTarget?: number | null;
   grammarSuggestions?: WritingGrammarSuggestion[];
   isGrammarChecking?: boolean;
   onDismissGrammar?: (index: number) => void;
@@ -31,6 +34,9 @@ export function StatusBar({
   neuralScore,
   nobelImpact,
   readingLevel,
+  totalVersions,
+  writingVelocity,
+  estimatedDaysToTarget,
   grammarSuggestions = [],
   isGrammarChecking = false,
   onDismissGrammar,
@@ -73,6 +79,27 @@ export function StatusBar({
           >
             <Layers className="w-3.5 h-3.5" />
             {uxIssueCount === 0 ? 'UX: Clean' : `UX: ${uxIssueCount} issue${uxIssueCount !== 1 ? 's' : ''}`}
+          </span>
+        )}
+
+        {typeof totalVersions === 'number' && (
+          <span className="flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5" />
+            Versions: {totalVersions}
+          </span>
+        )}
+
+        {typeof writingVelocity === 'number' && writingVelocity > 0 && (
+          <span className="flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5" />
+            Velocity: {writingVelocity.toLocaleString()}/day
+          </span>
+        )}
+
+        {typeof estimatedDaysToTarget === 'number' && (
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            ETA: {estimatedDaysToTarget}d
           </span>
         )}
 

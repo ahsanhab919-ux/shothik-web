@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { useSelector } from "react-redux";
 import {
   Dialog,
@@ -48,7 +46,7 @@ interface CreditPurchaseModalProps {
 export default function CreditPurchaseModal({ open, onOpenChange }: CreditPurchaseModalProps) {
   const { accessToken, user } = useSelector((state: any) => state.auth);
   const isAuthenticated = !!accessToken;
-  const balanceData = useQuery(api.credits.getBalance);
+  const [balanceData, setBalanceData] = useState<{ balance: number } | null>(null);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<PaymentProvider>("stripe");
@@ -66,6 +64,35 @@ export default function CreditPurchaseModal({ open, onOpenChange }: CreditPurcha
       })
       .catch(() => setGeoLoaded(true));
   }, [open, geoLoaded]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+
+    fetch("/api/credits/balance")
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to load balance");
+        }
+        return payload;
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setBalanceData(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBalanceData({ balance: 0 });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const loadRazorpayScript = useCallback((): Promise<boolean> => {
     return new Promise((resolve) => {

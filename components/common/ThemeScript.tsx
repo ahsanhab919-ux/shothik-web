@@ -1,6 +1,5 @@
-"use client";
-
 import React from "react";
+import Script from "next/script";
 
 export const ThemeScript = () => {
     const scriptContent = `
@@ -59,8 +58,9 @@ export const ThemeScript = () => {
   `;
 
     return (
-        <script
+        <Script
             id="theme-script"
+            strategy="beforeInteractive"
             dangerouslySetInnerHTML={{
                 __html: scriptContent,
             }}

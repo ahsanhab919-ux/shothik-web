@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateTwinRequest, requireTwinKey, needsApproval } from "@/lib/twin-api-auth";
 import { twinApi, createTwinClient } from "@/lib/twin-convex";
-import { logRouteActivity } from "@/lib/twin-route-guard";
-import type { Id } from "@/convex/_generated/dataModel";
+import {
+  invokeTwinCommunityPreview,
+  TWIN_COMMUNITY_PREVIEW_TOOL_NAME,
+} from "@/lib/twin/mcp-community-preview";
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateTwinRequest(req);
@@ -33,7 +35,14 @@ export async function POST(req: NextRequest) {
         twinId: auth.twinId,
         masterId: twin.masterId,
         action: "community:preview",
-        payload: { bookId: body.bookId, forumId: body.forumId },
+        payload: {
+          bookId: body.bookId,
+          forumId: body.forumId,
+          governedInvocation: {
+            toolName: TWIN_COMMUNITY_PREVIEW_TOOL_NAME,
+            confirmationRequired: true,
+          },
+        },
         keyHash: auth.keyHash,
       });
       return NextResponse.json({
@@ -43,27 +52,25 @@ export async function POST(req: NextRequest) {
         message: "Community preview queued for master approval.",
       });
     }
-    const bookId = body.bookId as Id<"books">;
-    const forumId = body.forumId as Id<"forums">;
+    if (!auth.userId) {
+      return NextResponse.json({ error: "Twin owner could not be resolved" }, { status: 401 });
+    }
 
-    const result = await convex.mutation(twinApi.twin.twinPostCommunityPreview, {
-      twinId: auth.twinId,
-      bookId,
-      forumId,
-      keyHash: auth.keyHash,
-    });
-
-    await logRouteActivity(auth, {
-      action: "community_preview_posted",
-      targetResource: `book:${body.bookId as string}`,
-      metadata: { forumId: body.forumId as string, postId: String(result.postId) },
+    const execution = await invokeTwinCommunityPreview({
+      tenantId: auth.userId,
+      userId: auth.userId,
+      bookId: body.bookId,
+      forumId: body.forumId,
+      confirmationToken: "user_confirmed",
+      traceId: `twin-community-preview:${String(auth.twinId)}:${String(body.bookId)}:${String(body.forumId)}`,
     });
 
     return NextResponse.json({
       success: true,
-      postId: result.postId,
-      contentState: result.newState,
-      previousState: result.previousState,
+      postId: execution.postId,
+      contentState: execution.newState,
+      previousState: execution.previousState,
+      invocationId: execution.invocationId,
       message: "Community preview posted to forum successfully.",
     });
   } catch (err) {

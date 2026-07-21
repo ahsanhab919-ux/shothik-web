@@ -1,6 +1,7 @@
 "use client";
 
 import { setFeatureEndpoints, setFeatureEndpointsLoading } from "@/redux/slices/feature-endpoints-slice";
+import { hasPaymentSystemBaseUrl } from "@/lib/api-payment";
 import { fetchPublicFeatureEndpoints } from "@/services/feature-endpoint.service";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -20,6 +21,7 @@ const FeatureEndpointsApplier = () => {
         page: 1,
       });
     },
+    enabled: hasPaymentSystemBaseUrl,
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchOnMount: true, // Refetch when component mounts
     staleTime: 10 * 60 * 1000, // Consider data fresh for 10 minutes
@@ -41,4 +43,3 @@ const FeatureEndpointsApplier = () => {
 };
 
 export default FeatureEndpointsApplier;
-

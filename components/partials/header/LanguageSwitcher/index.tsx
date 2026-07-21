@@ -18,14 +18,19 @@ const localeOptions: { code: Locale; label: string; shortLabel: string }[] = [
   { code: "bn", label: "বাংলা", shortLabel: "বাং" },
 ];
 
-export default function LanguageSwitcher({ className }: { className?: string }) {
+function LanguageSwitcherBase({
+  className,
+  syncLocale,
+}: {
+  className?: string;
+  syncLocale?: ((userId: string, locale: Locale) => void) | null;
+}) {
   const { locale, setLocale } = useTranslation();
   const user = useSelector((state: any) => state.auth?.user);
-  const syncLocale = useSyncLocaleToConvex();
 
   const handleLocaleChange = (code: Locale) => {
     setLocale(code);
-    if (user?._id) {
+    if (user?._id && syncLocale) {
       syncLocale(user._id, code);
     }
   };
@@ -61,4 +66,13 @@ export default function LanguageSwitcher({ className }: { className?: string }) 
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+function LanguageSwitcherWithConvex({ className }: { className?: string }) {
+  const syncLocale = useSyncLocaleToConvex();
+  return <LanguageSwitcherBase className={className} syncLocale={syncLocale} />;
+}
+
+export default function LanguageSwitcher({ className }: { className?: string }) {
+  return <LanguageSwitcherWithConvex className={className} />;
 }

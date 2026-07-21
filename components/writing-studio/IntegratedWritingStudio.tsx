@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import type { Id } from '@/convex/_generated/dataModel';
 
 import { ModeSwitcherHeader } from '@/components/writing-studio/navigation/ModeSwitcherHeader';
 import { PolishedWriteView } from '@/components/writing-studio/PolishedWriteView';
@@ -11,11 +8,12 @@ import { PublishingPage } from '@/components/writing-studio/PublishingPage';
 import { AccessibilityReportPanel, validateContentAccessibility } from '@/components/writing-studio/validation';
 import type { AccessibilityReport } from '@/components/writing-studio/validation';
 import { FeatureGate } from '@/components/subscription/FeatureGate';
+import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 
 type Mode = 'write' | 'format' | 'publish';
 
 interface IntegratedWritingStudioProps {
-  projectId: Id<'projects'>;
+  projectId: string;
   userId?: string;
 }
 
@@ -23,35 +21,58 @@ export function IntegratedWritingStudio({ projectId }: IntegratedWritingStudioPr
   const [currentMode, setCurrentMode] = useState<Mode>('write');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [project, setProject] = useState<Record<string, any> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { loadProjectById, saveProjectVersion } = useProjectPersistence(projectId);
 
-  // Fetch project data
-  const project = useQuery(api.projects.get, { id: projectId });
-  
-  // Mutations
-  const saveVersion = useMutation(api.projects.saveVersion);
+  useEffect(() => {
+    let cancelled = false;
 
-  // Save handler
+    async function loadProject() {
+      setIsLoading(true);
+      try {
+        const loadedProject = await loadProjectById();
+        if (!cancelled) {
+          setProject(loadedProject as Record<string, any> | null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadProject();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadProjectById]);
+
   const handleSave = useCallback(async () => {
     if (isSaving) return;
     if (!project) return;
 
     setIsSaving(true);
     try {
-      await saveVersion({
-        projectId,
-        content: project.content ?? "",
-        sections: (project as any).sections,
-        label: "manual-save",
+      await saveProjectVersion({
+        content: typeof project.content === 'string' ? project.content : '',
+        sections: Array.isArray(project.sections) ? project.sections : [],
+        label: 'manual-save',
       });
       setLastSaved(new Date());
-    } catch (error) {
+    } catch {
     } finally {
       setIsSaving(false);
     }
-  }, [project, projectId, isSaving, saveVersion]);
+  }, [project, isSaving, saveProjectVersion]);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
 
   if (!project) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return <div className="flex items-center justify-center h-screen">Project not found.</div>;
   }
 
   return (

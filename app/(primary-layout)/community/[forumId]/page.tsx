@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -83,7 +84,7 @@ function ChatMessage({
   );
 }
 
-export default function ForumPage() {
+function ForumPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const forumId = params.forumId as string;
@@ -402,3 +403,5 @@ export default function ForumPage() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(ForumPage), { ssr: false });

@@ -40,6 +40,21 @@ describe("POST /api/auth/sign-in", () => {
     });
   });
 
+  it("returns 400 when email format is invalid", async () => {
+    const request = new NextRequest("http://localhost:3000/api/auth/sign-in", {
+      method: "POST",
+      body: JSON.stringify({ email: "not-an-email", password: "secret123" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "AUTH_INVALID_REQUEST",
+      message: "Enter a valid email address.",
+    });
+  });
+
   it("signs in and returns the normalized user", async () => {
     mockSignInWithPassword.mockResolvedValue({
       data: {
@@ -74,7 +89,7 @@ describe("POST /api/auth/sign-in", () => {
     });
   });
 
-  it("returns an auth error when InsForge rejects the credentials", async () => {
+  it("returns a generic auth error when InsForge rejects the credentials", async () => {
     mockSignInWithPassword.mockResolvedValue({
       data: null,
       error: {
@@ -94,7 +109,7 @@ describe("POST /api/auth/sign-in", () => {
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({
       error: "AUTH_UNAUTHORIZED",
-      message: "Bad credentials",
+      message: "Invalid email or password.",
     });
   });
 });

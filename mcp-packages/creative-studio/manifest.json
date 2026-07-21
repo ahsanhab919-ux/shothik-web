@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "1.0",
+  "packageId": "shothik-creative-studio",
+  "version": "0.1.0",
+  "displayName": "Shothik Creative Studio",
+  "description": "MCP app packaging scaffold for planning and executing creative image and video workflows through Shothik using Higgsfield plus selected native support tools.",
+  "reviewStatus": "scaffold",
+  "packageReady": false,
+  "workflowSurface": {
+    "uiPath": "/creative-studio",
+    "apiPath": "/api/mcp/creative-studio",
+    "authRequired": true,
+    "confirmationFlow": "explicit_mutation_confirmation",
+    "planner": "openrouter"
+  },
+  "connectorCatalog": {
+    "remoteConnectorSlug": "higgsfield",
+    "remoteTools": [
+      "generate_image",
+      "generate_video"
+    ],
+    "nativeConnectorSlug": "shothik-native",
+    "availableNativeTools": [
+      "shothik.grammar.check_text",
+      "shothik.summarize.summarize_text",
+      "shothik.translator.translate_text",
+      "shothik.paraphrase.rewrite_text",
+      "shothik.analysis.detect_ai_text",
+      "shothik.humanize.rewrite_humanized_text"
+    ],
+    "defaultSupportTools": [
+      "shothik.paraphrase.rewrite_text",
+      "shothik.summarize.summarize_text",
+      "shothik.translator.translate_text",
+      "shothik.humanize.rewrite_humanized_text"
+    ]
+  },
+  "distribution": {
+    "hostTargets": [
+      "chatgpt",
+      "claude"
+    ],
+    "packagingTool": "sunpeak",
+    "inspectorFixturePaths": [
+      "mcp-packages/creative-studio/fixtures/creative-studio-smoke.json",
+      "mcp-packages/creative-studio/fixtures/creative-studio-confirmed-run.json",
+      "mcp-packages/creative-studio/fixtures/creative-studio-chatgpt-readiness.json",
+      "mcp-packages/creative-studio/fixtures/creative-studio-claude-readiness.json"
+    ]
+  },
+  "security": {
+    "requiredEnvironment": [
+      "HIGGSFIELD_MCP_URL",
+      "HIGGSFIELD_MCP_API_KEY"
+    ],
+    "confirmationRequiredForRemoteWrites": true,
+    "nativeToolsReadOnly": true,
+    "noClientSecrets": true
+  }
+}

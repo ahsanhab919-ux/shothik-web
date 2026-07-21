@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
+import { creditWalletPurchase } from "@/lib/books/insforge-book-service";
 import logger from "@/lib/logger";
 import { createHmac } from "crypto";
 import { CREDIT_PACKS, type PackId, VALID_PACK_IDS } from "@/lib/payment-config";
@@ -10,8 +9,6 @@ const BKASH_APP_KEY = process.env.BKASH_APP_KEY!;
 const BKASH_APP_SECRET = process.env.BKASH_APP_SECRET!;
 const BKASH_USERNAME = process.env.BKASH_USERNAME!;
 const BKASH_PASSWORD = process.env.BKASH_PASSWORD!;
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 function verifyCallbackSignature(userId: string, packId: string, credits: number, sig: string): boolean {
   const secret = process.env.CREDIT_PURCHASE_SECRET || process.env.BKASH_APP_SECRET || "";
@@ -137,11 +134,17 @@ export async function GET(req: NextRequest) {
 
     const trxID = executeData.trxID || paymentID;
 
-    await convex.mutation(api.credits.creditPurchase, {
+    await creditWalletPurchase({
       userId,
       amount: credits,
-      stripePaymentId: `bkash_${trxID}`,
-      webhookSecret: process.env.CREDIT_PURCHASE_SECRET || "",
+      providerPaymentId: `bkash_${trxID}`,
+      description: `Purchased ${credits} Credits`,
+      metadata: {
+        provider: "bkash",
+        transactionId: trxID,
+        paymentId: paymentID,
+        packId,
+      },
     });
 
     logger.info("bKash credits credited successfully", {

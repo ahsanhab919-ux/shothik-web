@@ -1,102 +1,105 @@
 "use client";
 
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
-import { useCallback, useMemo, useRef, useState, useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "./AuthProvider";
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL?.trim();
+const convexClient = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
-const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
-
-function useAuthFromRedux() {
-  const accessToken = useSelector((state) => state.auth?.accessToken);
-  const user = useSelector((state) => state.auth?.user);
+function useConvexSessionAuth() {
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [convexToken, setConvexToken] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const lastTokenRef = useRef(null);
-  const lastUserIdRef = useRef(null);
+  const [isTokenLoading, setIsTokenLoading] = useState(false);
+  const tokenCacheKeyRef = useRef(null);
+  const inFlightTokenRef = useRef(null);
 
-  const isAuthenticated = !!accessToken && !!user?._id;
+  const refreshConvexToken = useCallback(async () => {
+    if (!isAuthenticated || !user?.id) {
+      setConvexToken(null);
+      tokenCacheKeyRef.current = null;
+      return null;
+    }
+
+    if (inFlightTokenRef.current) {
+      return inFlightTokenRef.current;
+    }
+
+    const request = (async () => {
+      setIsTokenLoading(true);
+      try {
+        const response = await fetch("/api/auth/convex-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          setConvexToken(null);
+          tokenCacheKeyRef.current = null;
+          return null;
+        }
+
+        const payload = await response.json();
+        const token = typeof payload?.token === "string" ? payload.token : null;
+        setConvexToken(token);
+        tokenCacheKeyRef.current = token ? user.id : null;
+        return token;
+      } finally {
+        setIsTokenLoading(false);
+        inFlightTokenRef.current = null;
+      }
+    })();
+
+    inFlightTokenRef.current = request;
+    return request;
+  }, [isAuthenticated, user?.id]);
 
   useEffect(() => {
-    if (!accessToken || !user?._id) {
+    if (!isAuthenticated || !user?.id) {
       setConvexToken(null);
-      lastTokenRef.current = null;
-      lastUserIdRef.current = null;
+      tokenCacheKeyRef.current = null;
       return;
     }
 
-    const tokenKey = `${accessToken}:${user._id}`;
-    if (tokenKey === lastTokenRef.current) return;
-
-    let cancelled = false;
-    setIsLoading(true);
-
-    async function exchangeToken() {
-      try {
-        const res = await fetch("/api/auth/convex-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken, user }),
-        });
-
-        if (!res.ok) {
-          console.error("Convex token exchange failed:", res.status);
-          if (!cancelled) {
-            setConvexToken(null);
-            setIsLoading(false);
-          }
-          return;
-        }
-
-        const data = await res.json();
-        if (!cancelled) {
-          setConvexToken(data.token);
-          lastTokenRef.current = tokenKey;
-          lastUserIdRef.current = user._id;
-          setIsLoading(false);
-        }
-      } catch (err) {
-        console.error("Convex token exchange error:", err);
-        if (!cancelled) {
-          setConvexToken(null);
-          setIsLoading(false);
-        }
-      }
+    if (tokenCacheKeyRef.current !== user.id) {
+      void refreshConvexToken();
     }
-
-    exchangeToken();
-    return () => { cancelled = true; };
-  }, [accessToken, user?._id]);
+  }, [isAuthenticated, refreshConvexToken, user?.id]);
 
   const fetchAccessToken = useCallback(
-    async ({ forceRefreshToken }) => {
-      if (forceRefreshToken) {
-        lastTokenRef.current = null;
+    async ({ forceRefreshToken } = {}) => {
+      if (!isAuthenticated || !user?.id) {
+        return null;
       }
-      if (!convexToken) return null;
+
+      if (forceRefreshToken || !convexToken || tokenCacheKeyRef.current !== user.id) {
+        return await refreshConvexToken();
+      }
+
       return convexToken;
     },
-    [convexToken]
+    [convexToken, isAuthenticated, refreshConvexToken, user?.id],
   );
 
   return useMemo(
     () => ({
-      isLoading,
-      isAuthenticated: isAuthenticated && !!convexToken,
+      isLoading: isLoading || (isAuthenticated && isTokenLoading && !convexToken),
+      isAuthenticated,
       fetchAccessToken,
     }),
-    [isLoading, isAuthenticated, convexToken, fetchAccessToken]
+    [convexToken, fetchAccessToken, isAuthenticated, isLoading, isTokenLoading],
   );
 }
 
 export default function ConvexClientProvider({ children }) {
-  if (!convex) {
+  if (!convexClient) {
     return <>{children}</>;
   }
 
   return (
-    <ConvexProviderWithAuth client={convex} useAuth={useAuthFromRedux}>
+    <ConvexProviderWithAuth client={convexClient} useAuth={useConvexSessionAuth}>
       {children}
     </ConvexProviderWithAuth>
   );

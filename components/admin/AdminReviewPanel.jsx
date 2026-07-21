@@ -28,8 +28,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import {
   useAdminReview,
   useAdminBooks,
@@ -152,7 +150,6 @@ function BookListItem({ book, onSelect, isLoading }) {
 function BookDetailPanel({ bookId, onBack }) {
   const { book, isLoading } = useAdminBookDetail(bookId);
   const { startReview, approveBook, rejectBook, markPublished, actionLoading } = useAdminReview();
-  const assignIsbn = useMutation(api.isbn.assignIsbn);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [showApproveForm, setShowApproveForm] = useState(false);
   const [showPublishForm, setShowPublishForm] = useState(false);
@@ -160,31 +157,15 @@ function BookDetailPanel({ bookId, onBack }) {
   const [rejectionCategory, setRejectionCategory] = useState("");
   const [reviewNotes, setReviewNotes] = useState("");
   const [isbn, setIsbn] = useState("");
-  const [isbnLoading, setIsbnLoading] = useState(false);
-  const [isbnError, setIsbnError] = useState("");
   const [googlePlayUrl, setGooglePlayUrl] = useState("");
   const [error, setError] = useState("");
-
-  const handleAutoAssignIsbn = useCallback(async (format = "epub") => {
-    if (!bookId) return;
-    setIsbnLoading(true);
-    setIsbnError("");
-    try {
-      const assigned = await assignIsbn({ bookId, format });
-      setIsbn(assigned);
-    } catch (err) {
-      setIsbnError(err.message ?? "Failed to assign ISBN. Pool may be empty.");
-    } finally {
-      setIsbnLoading(false);
-    }
-  }, [bookId, assignIsbn]);
 
   const handleStartReview = useCallback(async () => {
     setError("");
     try {
       await startReview(bookId, "Admin");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to open review.");
     }
   }, [startReview, bookId]);
 
@@ -196,7 +177,7 @@ function BookDetailPanel({ bookId, onBack }) {
       setReviewNotes("");
       setIsbn("");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to approve book.");
     }
   }, [approveBook, bookId, reviewNotes, isbn]);
 
@@ -217,7 +198,7 @@ function BookDetailPanel({ bookId, onBack }) {
       setRejectionCategory("");
       setReviewNotes("");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to reject book.");
     }
   }, [rejectBook, bookId, rejectionReason, rejectionCategory, reviewNotes]);
 
@@ -233,7 +214,7 @@ function BookDetailPanel({ bookId, onBack }) {
       setGooglePlayUrl("");
       setIsbn("");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to publish book.");
     }
   }, [markPublished, bookId, googlePlayUrl, isbn]);
 
@@ -499,39 +480,13 @@ function BookDetailPanel({ bookId, onBack }) {
                   </div>
                   <div>
                     <label className="text-xs text-slate-500 block mb-1">ISBN</label>
-                    {isbn ? (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30 rounded-lg">
-                        <span className="text-sm font-mono font-bold text-emerald-700 dark:text-emerald-400 flex-1">{isbn}</span>
-                        <button
-                          onClick={() => { setIsbn(""); setIsbnError(""); }}
-                          className="text-slate-400 hover:text-slate-600 text-xs"
-                        >
-                          Change
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAutoAssignIsbn("epub")}
-                            disabled={isbnLoading}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 transition-colors disabled:opacity-50"
-                          >
-                            {isbnLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-                            Auto-Assign EPUB ISBN
-                          </button>
-                          <button
-                            onClick={() => handleAutoAssignIsbn("pdf")}
-                            disabled={isbnLoading}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 transition-colors disabled:opacity-50"
-                          >
-                            {isbnLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Hash className="h-3.5 w-3.5" />}
-                            Auto-Assign PDF ISBN
-                          </button>
-                        </div>
-                        {isbnError && <p className="text-[10px] text-red-500">{isbnError}</p>}
-                      </div>
-                    )}
+                    <input
+                      type="text"
+                      value={isbn}
+                      onChange={(e) => setIsbn(e.target.value)}
+                      placeholder="Optional ISBN"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-slate-500 block mb-1">Review Notes (optional)</label>
@@ -647,39 +602,13 @@ function BookDetailPanel({ bookId, onBack }) {
                   </div>
                   <div>
                     <label className="text-xs text-slate-500 block mb-1">ISBN</label>
-                    {isbn ? (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800/30 rounded-lg">
-                        <span className="text-sm font-mono font-bold text-purple-700 dark:text-purple-400 flex-1">{isbn}</span>
-                        <button
-                          onClick={() => { setIsbn(""); setIsbnError(""); }}
-                          className="text-slate-400 hover:text-slate-600 text-xs"
-                        >
-                          Change
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAutoAssignIsbn("epub")}
-                            disabled={isbnLoading}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800/30 rounded-lg text-xs font-bold text-purple-700 dark:text-purple-400 hover:bg-purple-100 transition-colors disabled:opacity-50"
-                          >
-                            {isbnLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-                            Auto-Assign EPUB ISBN
-                          </button>
-                          <button
-                            onClick={() => handleAutoAssignIsbn("pdf")}
-                            disabled={isbnLoading}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 transition-colors disabled:opacity-50"
-                          >
-                            {isbnLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Hash className="h-3.5 w-3.5" />}
-                            Auto-Assign PDF ISBN
-                          </button>
-                        </div>
-                        {isbnError && <p className="text-[10px] text-red-500">{isbnError}</p>}
-                      </div>
-                    )}
+                    <input
+                      type="text"
+                      value={isbn}
+                      onChange={(e) => setIsbn(e.target.value)}
+                      placeholder="Optional ISBN"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
                   </div>
                   <button
                     onClick={handlePublish}

@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FileText,
   Send,
-  Search,
   CheckCircle2,
   Upload,
   Globe,
@@ -31,28 +30,21 @@ const STATUSES = [
     label: "Submitted",
     icon: Send,
     color: "blue",
-    description: "Submitted for review",
-  },
-  {
-    id: "in_review",
-    label: "In Review",
-    icon: Search,
-    color: "amber",
-    description: "Being reviewed by our team",
+    description: "Submitted and waiting for moderation review",
   },
   {
     id: "approved",
     label: "Approved",
     icon: CheckCircle2,
     color: "emerald",
-    description: "Approved for publication",
+    description: "Approved and ready for distribution",
   },
   {
-    id: "uploading",
-    label: "Publishing",
+    id: "distribution",
+    label: "Distribution",
     icon: Upload,
     color: "purple",
-    description: "Being uploaded to stores",
+    description: "Submitting and syncing live channel availability",
   },
   {
     id: "published",
@@ -102,12 +94,81 @@ export function StatusTracker({
 }) {
   const currentStatus = book?.status || "submitted";
   const isRejected = currentStatus === "rejected";
+  const [distributionRecord, setDistributionRecord] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadDistributionRecord = useCallback(async () => {
+    if (!book?._id || !["approved", "published", "submitted"].includes(currentStatus)) {
+      setDistributionRecord(null);
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      const response = await fetch(
+        `/api/publish/status?bookId=${encodeURIComponent(book._id)}`,
+        {
+          credentials: "include",
+        },
+      );
+
+      if (response.status === 404) {
+        setDistributionRecord(null);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to load distribution status");
+      }
+
+      const data = await response.json();
+      setDistributionRecord({
+        status: data.status,
+        channels: data.channels || [],
+        updatedAt: data.updatedAt || Date.now(),
+      });
+    } catch {
+      setDistributionRecord(null);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [book?._id, currentStatus]);
+
+  useEffect(() => {
+    void loadDistributionRecord();
+  }, [loadDistributionRecord]);
+
+  const hasLiveDistribution =
+    currentStatus === "published" ||
+    Boolean(book?.googlePlayUrl) ||
+    distributionRecord?.status === "completed" ||
+    (distributionRecord?.channels || []).some((channel) => channel.status === "live");
+
+  const hasDistributionInFlight =
+    distributionRecord?.status === "pending" ||
+    distributionRecord?.status === "processing";
+
+  const hasDistributionFailure = distributionRecord?.status === "failed";
+
+  const activeStatus = useMemo(() => {
+    if (hasLiveDistribution) return "published";
+    if (hasDistributionInFlight || hasDistributionFailure) return "distribution";
+    if (currentStatus === "approved") return "approved";
+    if (currentStatus === "submitted" || isRejected) return "submitted";
+    return "draft";
+  }, [
+    currentStatus,
+    hasDistributionFailure,
+    hasDistributionInFlight,
+    hasLiveDistribution,
+    isRejected,
+  ]);
 
   const statusTimeline = useMemo(() => {
     const statusOrder = STATUSES.map((s) => s.id);
     const currentIndex = isRejected
-      ? statusOrder.indexOf("in_review")
-      : statusOrder.indexOf(currentStatus);
+      ? statusOrder.indexOf("submitted")
+      : statusOrder.indexOf(activeStatus);
 
     return STATUSES.map((status, index) => ({
       ...status,
@@ -116,10 +177,14 @@ export function StatusTracker({
         index === currentIndex && !isRejected ? "active" :
         "pending",
     }));
-  }, [currentStatus, isRejected]);
+  }, [activeStatus, isRejected]);
 
-  const timestamps = book?.timestamps || {
-    submitted: new Date().toISOString(),
+  const timestamps = {
+    draft: book?.timestamps?.draft || book?.timestamps?.createdAt,
+    submitted: book?.timestamps?.submitted,
+    approved: book?.timestamps?.approved,
+    distribution: distributionRecord?.updatedAt || null,
+    published: book?.timestamps?.published || distributionRecord?.updatedAt || null,
   };
 
   return (
@@ -129,9 +194,12 @@ export function StatusTracker({
           <h3 className="text-lg font-black text-zinc-900 dark:text-white">
             Publishing Progress
           </h3>
-          <button className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-brand transition-colors">
+          <button
+            onClick={() => void loadDistributionRecord()}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-brand transition-colors"
+          >
             <RefreshCw className="h-3 w-3" />
-            Refresh
+            {isRefreshing ? "Refreshing..." : "Refresh"}
           </button>
         </div>
 
@@ -306,27 +374,73 @@ export function StatusTracker({
 
       {book?.reviewedBy && (
         <div className="bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-700 rounded-xl p-4 flex items-start gap-3">
-          <Search className="h-5 w-5 text-zinc-400 shrink-0 mt-0.5" />
+          <CheckCircle2 className="h-5 w-5 text-zinc-400 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400">
               Reviewed by {book.reviewedBy}
             </p>
-            {book.reviewedAt && (
+            {(book?.timestamps?.approved || book?.timestamps?.rejected) && (
               <p className="text-xs text-zinc-400 mt-0.5">
-                {new Date(book.reviewedAt).toLocaleString()}
+                {new Date(
+                  book?.timestamps?.approved || book?.timestamps?.rejected,
+                ).toLocaleString()}
               </p>
             )}
           </div>
         </div>
       )}
 
-      {currentStatus === "in_review" && (
+      {currentStatus === "submitted" && (
         <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl p-4 flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Review in Progress</p>
             <p className="text-xs text-amber-600 dark:text-amber-300">
               Our team is reviewing your submission. This typically takes 48-72 hours. We'll notify you by email when there's an update.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {(hasDistributionInFlight || hasDistributionFailure) && (
+        <div
+          className={cn(
+            "border rounded-xl p-4 flex items-start gap-3",
+            hasDistributionFailure
+              ? "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30"
+              : "bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800/30",
+          )}
+        >
+          <Upload
+            className={cn(
+              "h-5 w-5 shrink-0 mt-0.5",
+              hasDistributionFailure ? "text-red-500" : "text-purple-500",
+            )}
+          />
+          <div>
+            <p
+              className={cn(
+                "text-sm font-bold",
+                hasDistributionFailure
+                  ? "text-red-700 dark:text-red-400"
+                  : "text-purple-700 dark:text-purple-400",
+              )}
+            >
+              {hasDistributionFailure
+                ? "Distribution Needs Attention"
+                : "Distribution in Progress"}
+            </p>
+            <p
+              className={cn(
+                "text-xs",
+                hasDistributionFailure
+                  ? "text-red-600 dark:text-red-300"
+                  : "text-purple-600 dark:text-purple-300",
+              )}
+            >
+              {hasDistributionFailure
+                ? "One or more channel submissions failed. Retry the failed distribution channels from the distribution panel."
+                : "Your approved book is currently being synced to the selected distribution channels."}
             </p>
           </div>
         </div>

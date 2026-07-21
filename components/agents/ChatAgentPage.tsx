@@ -14,13 +14,13 @@ export default function ChatAgentPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [modelHandle, setModelHandle] = useState("gemini-2.5-flash");
+  const [modelHandle, setModelHandle] = useState("gemini-flash-latest");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const queryClient = useQueryClient();
   const { t } = useTranslation();
-  const messages = useConversationMessages(conversationId, 200, loading ? 750 : false);
+  const messages = useConversationMessages(conversationId, 100, loading ? 750 : false);
   const { deleteMessage } = useChatService();
   const { conversations } = useChatHistory({ surface: "flagship", limit: 20 });
 

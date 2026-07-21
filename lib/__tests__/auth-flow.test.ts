@@ -1,16 +1,69 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   clearAuthFlowState,
   getAuthFlowState,
+  getLoginFlowVariant,
   inferAuthRoutingDecision,
   normalizeAuthIntent,
   saveAuthFlowState,
 } from "../auth-flow";
 
+const originalLocalStorage = window.localStorage;
+
+function createControlledStorage({
+  failOnSetKeys = [],
+  failOnRemoveKeys = [],
+  failOnGetKeys = [],
+}: {
+  failOnSetKeys?: string[];
+  failOnRemoveKeys?: string[];
+  failOnGetKeys?: string[];
+} = {}): Storage {
+  const store = new Map<string, string>();
+
+  return {
+    get length() {
+      return store.size;
+    },
+    clear() {
+      store.clear();
+    },
+    getItem(key: string) {
+      if (failOnGetKeys.includes(key)) {
+        throw new DOMException("Blocked", "SecurityError");
+      }
+      return store.has(key) ? store.get(key)! : null;
+    },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      if (failOnRemoveKeys.includes(key)) {
+        throw new DOMException("Blocked", "SecurityError");
+      }
+      store.delete(key);
+    },
+    setItem(key: string, value: string) {
+      if (failOnSetKeys.includes(key)) {
+        throw new DOMException("Blocked", "SecurityError");
+      }
+      store.set(key, value);
+    },
+  };
+}
+
 describe("auth-flow", () => {
   beforeEach(() => {
     window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    Object.defineProperty(window, "localStorage", {
+      value: originalLocalStorage,
+      configurable: true,
+    });
   });
 
   it("normalizes supported intents and falls back to continue", () => {
@@ -37,6 +90,45 @@ describe("auth-flow", () => {
 
     clearAuthFlowState();
     expect(getAuthFlowState()).toBeNull();
+  });
+
+  it("falls back to contextual login flow variant when storage is unavailable", () => {
+    Object.defineProperty(window, "localStorage", {
+      value: createControlledStorage({
+        failOnGetKeys: ["shothik_login_flow_variant"],
+      }),
+      configurable: true,
+    });
+
+    expect(getLoginFlowVariant()).toBe("contextual");
+  });
+
+  it("ignores auth flow storage write failures", () => {
+    Object.defineProperty(window, "localStorage", {
+      value: createControlledStorage({
+        failOnSetKeys: ["shothik_auth_flow_state"],
+      }),
+      configurable: true,
+    });
+
+    expect(() =>
+      saveAuthFlowState({
+        intent: "continue",
+        source: "login",
+        variant: "contextual",
+      }),
+    ).not.toThrow();
+  });
+
+  it("ignores auth flow storage removal failures", () => {
+    Object.defineProperty(window, "localStorage", {
+      value: createControlledStorage({
+        failOnRemoveKeys: ["shothik_auth_flow_state"],
+      }),
+      configurable: true,
+    });
+
+    expect(() => clearAuthFlowState()).not.toThrow();
   });
 
   it("prefers explicit redirects over inferred routes", () => {

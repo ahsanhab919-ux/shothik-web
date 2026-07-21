@@ -11,8 +11,10 @@ import {
   type SubscriptionTier,
   type CurrencyCode,
 } from "@/lib/subscription-tiers";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import {
+  getStripe,
+  isStripeConfigurationError,
+} from "@/lib/stripe/config";
 
 async function handleCheckout(
   req: NextRequest,
@@ -24,6 +26,8 @@ async function handleCheckout(
       { status: 401 },
     );
   }
+
+  const stripe = getStripe();
 
   const body = await req.json();
   const {
@@ -130,4 +134,16 @@ async function handleCheckout(
   return NextResponse.json({ checkoutUrl: session.url });
 }
 
-export const POST = withApiProtection(handleCheckout, { requireAuth: true });
+export const POST = withApiProtection(async (req, user) => {
+  try {
+    return await handleCheckout(req, user);
+  } catch (error) {
+    if (isStripeConfigurationError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
+}, { requireAuth: true });

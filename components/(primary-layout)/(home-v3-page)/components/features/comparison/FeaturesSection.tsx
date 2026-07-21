@@ -280,8 +280,9 @@ function AgentDemoModal({ open, agent, onClose }: AgentDemoModalProps) {
                 <Image
                   src={agent.icon}
                   alt={agent.title}
-                  width={28}
-                  height={28}
+                  width={agent.icon.width}
+                  height={agent.icon.height}
+                  style={{ width: "auto", height: "28px" }}
                   className="brightness-0 invert"
                 />
               </div>

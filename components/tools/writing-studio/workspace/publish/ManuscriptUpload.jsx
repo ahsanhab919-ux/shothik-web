@@ -327,15 +327,14 @@ function EpubExportSection({ bookId }) {
     { id: "kepub", label: "KEPUB", icon: "📚", mime: "application/epub+zip" },
   ];
 
-  const getToken = () => typeof window !== "undefined" ? localStorage.getItem("auth_token") || "" : "";
-
   const handleDownload = async (format) => {
     if (!bookId) return;
     setDownloadingFormat(format);
     try {
       const res = await fetch("/api/books/export/convert", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ bookId, format }),
       });
       if (!res.ok) {
@@ -364,7 +363,8 @@ function EpubExportSection({ bookId }) {
     try {
       const res = await fetch("/api/books/export/validate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ bookId }),
       });
       const data = await res.json();
@@ -383,7 +383,8 @@ function EpubExportSection({ bookId }) {
     try {
       const res = await fetch("/api/books/export/validate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ bookId, fix: true }),
       });
       const data = await res.json();

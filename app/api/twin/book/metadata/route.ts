@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateTwinRequest, requireTwinKey, needsApproval } from "@/lib/twin-api-auth";
 import { twinApi, createTwinClient } from "@/lib/twin-convex";
-import type { Id } from "@/convex/_generated/dataModel";
+import {
+  invokeTwinBookWrite,
+  TWIN_BOOK_WRITE_TOOL_NAME,
+} from "@/lib/twin/mcp-book-write";
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateTwinRequest(req);
@@ -29,7 +32,20 @@ export async function POST(req: NextRequest) {
         twinId: auth.twinId,
         masterId: twin.masterId,
         action: "book:write",
-        payload: { bookId: body.bookId, title: body.title },
+        payload: {
+          operation: "metadata",
+          bookId: body.bookId,
+          title: body.title,
+          subtitle: body.subtitle,
+          description: body.description,
+          category: body.category,
+          language: body.language,
+          keywords: body.keywords,
+          governedInvocation: {
+            toolName: TWIN_BOOK_WRITE_TOOL_NAME,
+            confirmationRequired: true,
+          },
+        },
         keyHash: auth.keyHash,
       });
       return NextResponse.json({
@@ -39,39 +55,32 @@ export async function POST(req: NextRequest) {
         message: "Metadata submission queued for master approval.",
       });
     }
-    const bookId = body.bookId as Id<"books">;
+    if (!auth.userId) {
+      return NextResponse.json({ error: "Twin owner could not be resolved" }, { status: 401 });
+    }
 
-    await convex.mutation(twinApi.twin.twinUpdateBookMetadata, {
-      twinId: auth.twinId,
-      bookId,
-      title: body.title as string | undefined,
-      subtitle: body.subtitle as string | undefined,
-      description: body.description as string | undefined,
-      category: body.category as string | undefined,
-      language: body.language as string | undefined,
-      keywords: body.keywords as string[] | undefined,
-      keyHash: auth.keyHash,
-    });
-
-    const result = await convex.mutation(twinApi.twin.twinAdvanceBookContentState, {
-      twinId: auth.twinId,
-      bookId,
-      targetState: "pending_master_review",
-      keyHash: auth.keyHash,
-    });
-
-    await convex.mutation(twinApi.twin.logActivity, {
-      twinId: auth.twinId,
-      action: "book_metadata_submitted",
-      targetResource: `book:${bookId}`,
-      metadata: { title: body.title as string },
-      keyHash: auth.keyHash,
+    const execution = await invokeTwinBookWrite({
+      tenantId: auth.userId,
+      userId: auth.userId,
+      bookWrite: {
+        operation: "metadata",
+        bookId: body.bookId as string,
+        title: body.title as string | undefined,
+        subtitle: body.subtitle as string | undefined,
+        description: body.description as string | undefined,
+        category: body.category as string | undefined,
+        language: body.language as string | undefined,
+        keywords: body.keywords as string[] | undefined,
+      },
+      confirmationToken: "user_confirmed",
+      traceId: `twin-book-write:${String(auth.twinId)}:${String(body.bookId)}:metadata`,
     });
 
     return NextResponse.json({
       success: true,
-      contentState: result.newState,
-      previousState: result.previousState,
+      contentState: execution.newState,
+      previousState: execution.previousState,
+      invocationId: execution.invocationId,
       message: "Book submitted for master review.",
     });
   } catch (err) {

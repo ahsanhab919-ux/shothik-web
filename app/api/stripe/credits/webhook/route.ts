@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
 import { defineRoute, z } from "@/lib/api-validation";
+import { creditWalletPurchase } from "@/lib/books/insforge-book-service";
 import logger from "@/lib/logger";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+import {
+  getStripe,
+  isStripeConfigurationError,
+} from "@/lib/stripe/config";
 
 // We must read the raw body for Stripe signature verification
 // so we bypass Zod body validation and read it directly in the handler.
@@ -40,8 +40,15 @@ export const POST = defineRoute({
 
     let event: Stripe.Event;
     try {
+      const stripe = getStripe();
       event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
     } catch (err: any) {
+      if (isStripeConfigurationError(err)) {
+        return NextResponse.json(
+          { error: { code: "STRIPE_NOT_CONFIGURED", message: err.message } },
+          { status: 503 }
+        );
+      }
       logger.error("Stripe webhook signature verification failed:", err.message);
       return NextResponse.json(
         { error: { code: "INVALID_SIGNATURE", message: "Invalid signature" } },
@@ -73,11 +80,16 @@ export const POST = defineRoute({
         }
 
         try {
-          const result = await convex.mutation(api.credits.creditPurchase, {
+          const result = await creditWalletPurchase({
             userId: metadata.userId,
             amount,
-            stripePaymentId: paymentId,
-            webhookSecret: process.env.CREDIT_PURCHASE_SECRET || "",
+            providerPaymentId: paymentId,
+            description: `Purchased ${amount} Credits`,
+            metadata: {
+              provider: "stripe",
+              sessionId: session.id,
+              packId: metadata.packId ?? null,
+            },
           });
 
           logger.info("Credits credited via webhook", {

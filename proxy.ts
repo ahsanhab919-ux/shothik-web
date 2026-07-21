@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify, createRemoteJWKSet } from "jose";
 import { updateSession } from "@insforge/sdk/ssr/middleware";
 import {
   getRateLimitForPath,
@@ -10,7 +9,19 @@ import { incrementCounter, setGauge, maybeLogMetrics } from "./lib/runtime-metri
 import { authenticateApiKey } from "./lib/security/api-keys";
 import { owaspMiddleware } from "./lib/security/owasp-compliance";
 import { detectSuspiciousActivity, isIPBlocked, logSecurityEvent } from "./lib/security/monitoring";
+import { isPublicApiPath } from "./lib/security/public-api-paths";
 import { checkDDoSProtection } from "./lib/security/ddos-protection";
+import {
+  buildLoginRedirectTarget,
+  getAuthenticatedAuthRouteRedirect,
+  isProtectedWorkspaceRoute,
+} from "./lib/security/auth-route-redirect";
+import {
+  evaluatePreviewAccess,
+  isPreviewAuthEnabled,
+  isPreviewBypassPath,
+  verifyPreviewAccessToken,
+} from "./lib/security/preview-access";
 import {
   getInsforgePublicConfig,
   hasInsforgePublicConfig,
@@ -19,15 +30,14 @@ import {
 type ProxyUpdateSessionOptions = Parameters<typeof updateSession>[0];
 
 const RATE_LIMIT_STORE = new Map<string, { timestamps: number[] }>();
-
-const JWKS_URL = process.env.NEXT_PUBLIC_CONVEX_URL
-  ? `${process.env.NEXT_PUBLIC_CONVEX_URL}/.well-known/jwks.json`
-  : null;
-
-let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
-if (JWKS_URL) {
-  jwks = createRemoteJWKSet(new URL(JWKS_URL));
-}
+const AUTH_ATTEMPT_RATE_LIMITED_PATHS = new Set([
+  "/api/auth/sign-in",
+  "/api/auth/sign-up",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
+  "/api/auth/send-verify-email",
+  "/api/auth/verify-email",
+]);
 
 function getClientId(request: NextRequest): string {
   return (
@@ -146,31 +156,6 @@ function addSecurityHeaders(response: NextResponse) {
   return response;
 }
 
-async function verifyJWT(token: string): Promise<{ valid: boolean; payload?: Record<string, unknown>; error?: string }> {
-  if (!jwks) {
-    return { valid: false, error: "JWKS not configured" };
-  }
-
-  try {
-    const { payload } = await jwtVerify(token, jwks, {
-      algorithms: ["RS256"],
-      issuer: process.env.NEXT_PUBLIC_CONVEX_URL,
-    });
-    return { valid: true, payload };
-  } catch (error) {
-    return { valid: false, error: (error as Error).message };
-  }
-}
-
-function extractUserIdFromJwtPayload(payload: Record<string, unknown> | undefined): string | undefined {
-  if (!payload) return undefined;
-  const sub = payload.sub;
-  if (typeof sub === "string" && sub.length > 0) return sub;
-  const userId = (payload as Record<string, unknown>).userId;
-  if (typeof userId === "string" && userId.length > 0) return userId;
-  return undefined;
-}
-
 async function tryAppendAuditEvent(event: {
   requestId?: string;
   timestamp: number;
@@ -200,22 +185,18 @@ async function tryAppendAuditEvent(event: {
 export async function proxy(req: NextRequest) {
   const startTime = Date.now();
   const { pathname } = req.nextUrl;
+  const search = req.nextUrl.search;
   const requestId = req.headers.get("x-request-id") ?? (globalThis.crypto?.randomUUID?.() ?? undefined);
-  const cookieToken = req.cookies.get("jwt_token")?.value;
-  const authHeader = req.headers.get("authorization");
-  const bearerToken = authHeader?.startsWith("Bearer ") && !authHeader.startsWith("Bearer shothik_")
-    ? authHeader.slice(7).trim()
-    : null;
-  const token = cookieToken ?? bearerToken ?? null;
   const clientIP = getClientId(req);
   const isDev = process.env.NODE_ENV === "development";
+  const isProtectedWorkspacePath = isProtectedWorkspaceRoute(pathname);
   const shouldSyncInsforgeSession =
     hasInsforgePublicConfig() &&
     (
+      pathname === "/" ||
       pathname.startsWith("/auth") ||
-      pathname.startsWith("/dashboard") ||
-      pathname === "/api/chat" ||
-      pathname.startsWith("/api/chat/")
+      isProtectedWorkspacePath ||
+      pathname.startsWith("/api/")
     );
   const stagedInsforgeResponse = NextResponse.next({ request: req });
 
@@ -231,11 +212,19 @@ export async function proxy(req: NextRequest) {
     }
   }
 
-  const insforgeAccessToken = req.cookies.get("insforge_access_token")?.value ?? null;
-  const insforgeRefreshToken = req.cookies.get("insforge_refresh_token")?.value ?? null;
+  const insforgeAccessToken =
+    stagedInsforgeResponse.cookies.get("insforge_access_token")?.value ??
+    req.cookies.get("insforge_access_token")?.value ??
+    null;
+  const insforgeRefreshToken =
+    stagedInsforgeResponse.cookies.get("insforge_refresh_token")?.value ??
+    req.cookies.get("insforge_refresh_token")?.value ??
+    null;
   const hasInsforgeSession = Boolean(insforgeAccessToken || insforgeRefreshToken);
-  const hasAnyAuthenticatedSession = Boolean(token || hasInsforgeSession);
+  const hasAnyAuthenticatedSession = hasInsforgeSession;
   const isInsforgeChatApiPath = pathname === "/api/chat" || pathname.startsWith("/api/chat/");
+  const previewAuthEnabled = isPreviewAuthEnabled();
+  const previewProtectionApplies = previewAuthEnabled && !isPreviewBypassPath(pathname);
 
   const finalizeResponse = (response: NextResponse) => {
     for (const cookie of stagedInsforgeResponse.cookies.getAll()) {
@@ -244,6 +233,94 @@ export async function proxy(req: NextRequest) {
 
     return addSecurityHeaders(response);
   };
+
+  if (previewProtectionApplies) {
+    const denyPreviewAccess = async (input: {
+      status: number;
+      reason: string;
+      message: string;
+    }) => {
+      await logSecurityEvent({
+        type: "auth_failure",
+        severity: input.status === 403 ? "high" : "medium",
+        source: { ip: clientIP },
+        details: {
+          path: pathname,
+          method: req.method,
+          description: `Preview access denied: ${input.reason}`,
+        },
+      });
+      await tryAppendAuditEvent({
+        requestId,
+        timestamp: Date.now(),
+        actorType: hasAnyAuthenticatedSession ? "user" : "anonymous",
+        ip: clientIP,
+        userAgent: req.headers.get("user-agent") ?? undefined,
+        action: "preview.access",
+        outcome: "deny",
+        method: req.method,
+        path: pathname,
+        details: { reason: input.reason },
+      });
+
+      if (pathname.startsWith("/api/")) {
+        return finalizeResponse(
+          new NextResponse(JSON.stringify({ error: input.message, code: input.reason }), {
+            status: input.status,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      if (input.status === 401) {
+        const loginUrl = new URL("/auth/login", req.url);
+        loginUrl.searchParams.set("redirect", pathname);
+        return finalizeResponse(NextResponse.redirect(loginUrl));
+      }
+
+      return finalizeResponse(
+        new NextResponse(input.message, {
+          status: input.status,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        }),
+      );
+    };
+
+    if (!insforgeRefreshToken && !insforgeAccessToken) {
+      return await denyPreviewAccess({
+        status: 401,
+        reason: "preview_session_required",
+        message: "Preview access requires a valid InsForge session.",
+      });
+    }
+
+    if (!insforgeAccessToken) {
+      return await denyPreviewAccess({
+        status: 401,
+        reason: "preview_access_token_missing",
+        message: "Preview access requires a valid InsForge access token.",
+      });
+    }
+
+    const tokenResult = await verifyPreviewAccessToken(insforgeAccessToken);
+    if (!tokenResult.valid) {
+      return await denyPreviewAccess({
+        status: 401,
+        reason: "preview_token_invalid",
+        message: "Preview access token is invalid or expired.",
+      });
+    }
+
+    const previewDecision = evaluatePreviewAccess(tokenResult.claims);
+    if (!previewDecision.allowed) {
+      const denialReason = previewDecision.reason;
+      return await denyPreviewAccess({
+        status: 403,
+        reason: denialReason,
+        message: "This authenticated user is not authorized for preview access.",
+      });
+    }
+  }
 
   const ipAllowlist = process.env.IP_ALLOWLIST?.trim();
   if (ipAllowlist) {
@@ -262,7 +339,7 @@ export async function proxy(req: NextRequest) {
       await tryAppendAuditEvent({
         requestId,
         timestamp: Date.now(),
-        actorType: token ? "user" : "anonymous",
+        actorType: hasInsforgeSession ? "user" : "anonymous",
         ip: clientIP,
         userAgent: req.headers.get("user-agent") ?? undefined,
         action: "ip_allowlist.deny",
@@ -339,7 +416,7 @@ export async function proxy(req: NextRequest) {
     await tryAppendAuditEvent({
       requestId,
       timestamp: Date.now(),
-      actorType: token ? "user" : "anonymous",
+        actorType: hasInsforgeSession ? "user" : "anonymous",
       ip: clientIP,
       userAgent: req.headers.get("user-agent") ?? undefined,
       action: "ip_block.deny",
@@ -390,15 +467,7 @@ export async function proxy(req: NextRequest) {
     const owaspResult = await owaspMiddleware(req);
     if (owaspResult) return owaspResult;
 
-    const isStripeWebhook = pathname.startsWith("/api/stripe/") && pathname.endsWith("/webhook");
-    const isPublicApi =
-      pathname === "/api/health" ||
-      pathname.startsWith("/api/.well-known") ||
-      pathname.startsWith("/api/forum/og/") ||
-      pathname === "/api/zoho-webhook" ||
-      pathname === "/api/writing-studio/quality-check" ||
-      pathname.startsWith("/api/auth/") ||
-      isStripeWebhook;
+    const isPublicApi = isPublicApiPath(pathname);
 
     const authHeader = req.headers.get("authorization");
     let apiKeyUser: { userId: string; permissions: string[] } | null = null;
@@ -531,7 +600,7 @@ export async function proxy(req: NextRequest) {
       };
     }
 
-    if (pathname.startsWith("/api/auth/")) {
+    if (AUTH_ATTEMPT_RATE_LIMITED_PATHS.has(pathname)) {
       const rateLimitKey = `auth:${clientIP}`;
       const { limited, resetAt } = checkRateLimit(rateLimitKey, {
         windowMs: 15 * 60 * 1000,
@@ -571,13 +640,10 @@ export async function proxy(req: NextRequest) {
 
     const requiresAuth = !isPublicApi;
     const hasValidApiKey = !!apiKeyUser;
-    let jwtPayload: Record<string, unknown> | undefined;
 
     if (requiresAuth && !hasValidApiKey) {
-      if (!token) {
-        if (isInsforgeChatApiPath && hasInsforgeSession) {
-          // Chat routes are migrating to native InsForge auth; let route-level auth resolve the user.
-        } else {
+      if (!hasInsforgeSession) {
+        if (!isInsforgeChatApiPath) {
           await logSecurityEvent({
             type: "auth_failure",
             severity: "medium",
@@ -598,7 +664,7 @@ export async function proxy(req: NextRequest) {
             outcome: "deny",
             method: req.method,
             path: pathname,
-            details: { reason: "missing_token" },
+            details: { reason: "missing_session" },
           });
           return finalizeResponse(
             new NextResponse(JSON.stringify({ error: "Authentication required" }), {
@@ -608,46 +674,11 @@ export async function proxy(req: NextRequest) {
           );
         }
       }
-
-      if (token) {
-        const { valid, payload, error } = await verifyJWT(token);
-        jwtPayload = payload;
-
-        if (!valid) {
-          await logSecurityEvent({
-            type: "auth_failure",
-            severity: "medium",
-            source: { ip: clientIP },
-            details: {
-              path: pathname,
-              method: req.method,
-              description: `JWT verification failed: ${error}`,
-            },
-          });
-          await tryAppendAuditEvent({
-            requestId,
-            timestamp: Date.now(),
-            actorType: "anonymous",
-            ip: clientIP,
-            userAgent: req.headers.get("user-agent") ?? undefined,
-            action: "auth.jwt_invalid",
-            outcome: "deny",
-            method: req.method,
-            path: pathname,
-            details: { error: error ?? "unknown" },
-          });
-          return finalizeResponse(
-            new NextResponse(JSON.stringify({ error: "Invalid token" }), {
-              status: 401,
-              headers: { "Content-Type": "application/json" },
-            }),
-          );
-        }
-      }
     }
 
     const routePrefix = "/" + pathname.split("/").slice(1, 3).join("/");
-    const rateLimitKey = `${clientIP}:${routePrefix}`;
+    const rateLimitBucket = pathname === "/api/auth/convex-token" ? pathname : routePrefix;
+    const rateLimitKey = `${clientIP}:${rateLimitBucket}`;
     const rateConfig = getRateLimitForPath(pathname);
 
     const { limited, remaining, resetAt } = checkRateLimit(
@@ -671,7 +702,7 @@ export async function proxy(req: NextRequest) {
         requestId,
         timestamp: Date.now(),
         actorType: hasValidApiKey ? "api_key" : hasAnyAuthenticatedSession ? "user" : "anonymous",
-        actorId: hasValidApiKey ? apiKeyUser!.userId : extractUserIdFromJwtPayload(jwtPayload),
+        actorId: hasValidApiKey ? apiKeyUser!.userId : undefined,
         ip: clientIP,
         userAgent: req.headers.get("user-agent") ?? undefined,
         action: "ratelimit.hit",
@@ -717,7 +748,7 @@ export async function proxy(req: NextRequest) {
         requestId,
         timestamp: Date.now(),
         actorType: hasValidApiKey ? "api_key" : hasAnyAuthenticatedSession ? "user" : "anonymous",
-        actorId: hasValidApiKey ? apiKeyUser!.userId : extractUserIdFromJwtPayload(jwtPayload),
+        actorId: hasValidApiKey ? apiKeyUser!.userId : undefined,
         ip: clientIP,
         userAgent: req.headers.get("user-agent") ?? undefined,
         action: "api.write",
@@ -734,12 +765,27 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL(newPath, req.url), 301);
   }
 
-  if (pathname.startsWith("/dashboard") && !hasAnyAuthenticatedSession) {
-    return finalizeResponse(NextResponse.redirect(new URL("/auth/login", req.url)));
+  if (isProtectedWorkspacePath && !hasAnyAuthenticatedSession) {
+    return finalizeResponse(
+      NextResponse.redirect(new URL(buildLoginRedirectTarget(pathname, search), req.url)),
+    );
   }
 
   if (pathname.startsWith("/auth") && hasAnyAuthenticatedSession) {
-    return finalizeResponse(NextResponse.redirect(new URL("/dashboard", req.url)));
+    const authRouteDecision = getAuthenticatedAuthRouteRedirect(
+      pathname,
+      req.nextUrl.searchParams.get("redirect"),
+    );
+
+    if (authRouteDecision.allowThrough) {
+      const response = NextResponse.next();
+      response.headers.set("X-Response-Time", `${Date.now() - startTime}ms`);
+      return finalizeResponse(response);
+    }
+
+    return finalizeResponse(
+      NextResponse.redirect(new URL(authRouteDecision.target!, req.url)),
+    );
   }
 
   const response = NextResponse.next();

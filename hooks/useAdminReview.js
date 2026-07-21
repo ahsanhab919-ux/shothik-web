@@ -1,74 +1,110 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useCallback, useEffect, useState } from "react";
+
+async function requestJson(url, options, fallbackMessage) {
+  const response = await fetch(url, options);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || fallbackMessage);
+  }
+  return payload;
+}
+
+function useJsonResource(url) {
+  const [data, setData] = useState(undefined);
+  const [isLoading, setIsLoading] = useState(Boolean(url));
+
+  useEffect(() => {
+    if (!url) {
+      setData(undefined);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    requestJson(url, undefined, "Request failed")
+      .then((payload) => {
+        if (!cancelled) {
+          setData(payload);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setData(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  return { data, isLoading };
+}
 
 export function useAdminReview() {
   const [actionLoading, setActionLoading] = useState(null);
   const [actionError, setActionError] = useState(null);
 
-  const startReviewMut = useMutation(api.admin.startReview);
-  const approveBookMut = useMutation(api.admin.approveBook);
-  const rejectBookMut = useMutation(api.admin.rejectBook);
-  const markPublishedMut = useMutation(api.admin.markAsPublished);
-
-  const startReview = useCallback(async (bookId, reviewerName) => {
+  const sendAction = useCallback(async (bookId, body) => {
     setActionLoading(bookId);
     setActionError(null);
     try {
-      await startReviewMut({ bookId, reviewerName });
+      return await requestJson(
+        `/api/admin/books/${bookId}/status`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        },
+        "Failed to update book review state.",
+      );
     } catch (err) {
       setActionError(err.message);
       throw err;
     } finally {
       setActionLoading(null);
     }
-  }, [startReviewMut]);
+  }, []);
+
+  const startReview = useCallback(async () => {
+    return null;
+  }, []);
 
   const approveBook = useCallback(async (bookId, { reviewNotes, isbn } = {}) => {
-    setActionLoading(bookId);
-    setActionError(null);
-    try {
-      await approveBookMut({ bookId, reviewNotes, isbn });
-    } catch (err) {
-      setActionError(err.message);
-      throw err;
-    } finally {
-      setActionLoading(null);
-    }
-  }, [approveBookMut]);
+    return sendAction(bookId, {
+      action: "approve",
+      notes: reviewNotes,
+      isbn,
+    });
+  }, [sendAction]);
 
   const rejectBook = useCallback(async (bookId, { rejectionReason, rejectionCategory, reviewNotes } = {}) => {
-    setActionLoading(bookId);
-    setActionError(null);
-    try {
-      await rejectBookMut({
-        bookId,
-        rejectionReason,
-        rejectionCategory,
-        reviewNotes,
-      });
-    } catch (err) {
-      setActionError(err.message);
-      throw err;
-    } finally {
-      setActionLoading(null);
-    }
-  }, [rejectBookMut]);
+    return sendAction(bookId, {
+      action: "reject",
+      reason: rejectionReason,
+      category: rejectionCategory,
+      notes: reviewNotes,
+    });
+  }, [sendAction]);
 
   const markPublished = useCallback(async (bookId, { googlePlayUrl, isbn } = {}) => {
-    setActionLoading(bookId);
-    setActionError(null);
-    try {
-      await markPublishedMut({ bookId, googlePlayUrl, isbn });
-    } catch (err) {
-      setActionError(err.message);
-      throw err;
-    } finally {
-      setActionLoading(null);
-    }
-  }, [markPublishedMut]);
+    return sendAction(bookId, {
+      action: "publish",
+      googlePlayUrl,
+      isbn,
+    });
+  }, [sendAction]);
 
   return {
     startReview,
@@ -81,28 +117,35 @@ export function useAdminReview() {
 }
 
 export function useAdminBooks(status) {
-  const books = useQuery(api.admin.listByStatus, { status: status || undefined });
+  const searchParams = new URLSearchParams();
+  if (status) {
+    searchParams.set("status", status);
+  }
+  const queryString = searchParams.toString();
+  const { data, isLoading } = useJsonResource(
+    `/api/admin/books${queryString ? `?${queryString}` : ""}`,
+  );
+
   return {
-    books: books || [],
-    isLoading: books === undefined,
+    books: data?.books || [],
+    isLoading,
   };
 }
 
 export function useAdminStats() {
-  const stats = useQuery(api.admin.getStats, {});
+  const { data, isLoading } = useJsonResource("/api/admin/books/stats");
   return {
-    stats: stats || { submitted: 0, inReview: 0, approved: 0, published: 0, rejected: 0, total: 0 },
-    isLoading: stats === undefined,
+    stats: data?.stats || { submitted: 0, inReview: 0, approved: 0, published: 0, rejected: 0, total: 0 },
+    isLoading,
   };
 }
 
 export function useAdminBookDetail(bookId) {
-  const book = useQuery(
-    api.admin.getBookForReview,
-    bookId ? { bookId } : "skip"
+  const { data, isLoading } = useJsonResource(
+    bookId ? `/api/books/drafts/${bookId}` : null,
   );
   return {
-    book: book || null,
-    isLoading: book === undefined,
+    book: data?.book || null,
+    isLoading,
   };
 }

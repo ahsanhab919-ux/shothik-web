@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import RegisterPage from "../page";
@@ -65,5 +65,32 @@ describe("RegisterPage", () => {
       "href",
       "/auth/login?intent=assignment"
     );
+  });
+
+  it("renders the account creation privacy disclosure and legal consent links", () => {
+    render(<RegisterPage />);
+
+    const notice = screen.getByLabelText(/account creation privacy notice/i);
+    const noticeQueries = within(notice);
+
+    expect(notice).toBeInTheDocument();
+    expect(noticeQueries.getByText(/Service provider:/i)).toBeInTheDocument();
+    expect(noticeQueries.getByRole("link", { name: /Privacy Policy/i })).toHaveAttribute("href", "/privacy");
+    expect(noticeQueries.getByRole("link", { name: /Terms & Conditions/i })).toHaveAttribute("href", "/terms");
+    expect(noticeQueries.getByRole("link", { name: /Data Deletion Policy/i })).toHaveAttribute("href", "/deletion");
+    expect(noticeQueries.getByRole("link", { name: /support@shothik\.ai/i })).toHaveAttribute(
+      "href",
+      "mailto:support@shothik.ai",
+    );
+  });
+
+  it("links the consent text to the legal pages", () => {
+    render(<RegisterPage />);
+
+    const termsLinks = screen.getAllByRole("link", { name: /Terms & Conditions/i });
+    const privacyLinks = screen.getAllByRole("link", { name: /Privacy Policy/i });
+
+    expect(termsLinks.some((link) => link.getAttribute("href") === "/terms")).toBe(true);
+    expect(privacyLinks.some((link) => link.getAttribute("href") === "/privacy")).toBe(true);
   });
 });

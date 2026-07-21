@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import BillingPage from "@/components/subscription/BillingPage";
 import {
   Breadcrumb,
@@ -14,9 +15,7 @@ import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/redux/store";
 
-export const dynamic = "force-dynamic";
-
-export default function BillingRoute() {
+function BillingRoute() {
   const { push } = useRouter();
   const { user, accessToken } = useSelector((state: RootState) => state.auth);
 
@@ -49,3 +48,5 @@ export default function BillingRoute() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(BillingRoute), { ssr: false });

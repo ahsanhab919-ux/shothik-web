@@ -7,9 +7,10 @@ import { useDispatch, useSelector } from "react-redux";
 
 import DiscordIcon from "@/components/icons/DiscordIcon";
 import { PATH_ACCOUNT } from "@/config/route";
+import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "react-toastify";
 import {
-  logout,
+  logout as logoutAction,
   setShowLoginModal,
   setShowRegisterModal,
 } from "@/redux/slices/auth";
@@ -25,16 +26,21 @@ import { cn } from "@/lib/utils";
 import { HelpCircle, LogIn, Mail, User } from "lucide-react";
 
 export default function AccountPopover() {
-  const { accessToken, user } = useSelector((state) => state.auth);
+  const { accessToken, user: legacyUser } = useSelector((state) => state.auth);
+  const { user: authUser, isAuthenticated, logout: logoutAuth } = useAuth();
 
   const [open, setOpen] = useState(false);
 
   const dispatch = useDispatch();
   const { push } = useRouter();
+  const user = authUser ?? legacyUser;
+  const hasAuthenticatedUser = Boolean(authUser?.email || legacyUser?.email);
+  const hasSession = Boolean(hasAuthenticatedUser || isAuthenticated || accessToken);
 
   const handleLogout = async () => {
     try {
-      dispatch(logout());
+      logoutAuth();
+      dispatch(logoutAction());
       localStorage.setItem("logout-event", Date.now().toString());
       setOpen(false);
       toast.success("Logout successful!");
@@ -53,14 +59,15 @@ export default function AccountPopover() {
   useEffect(() => {
     const syncLogout = (event) => {
       if (event.key === "logout-event") {
-        dispatch(logout());
+        logoutAuth();
+        dispatch(logoutAction());
         push("/");
       }
     };
 
     window.addEventListener("storage", syncLogout);
     return () => window.removeEventListener("storage", syncLogout);
-  }, [dispatch, push]);
+  }, [dispatch, logoutAuth, push]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -78,7 +85,7 @@ export default function AccountPopover() {
               <AvatarImage src={user.image} alt={user.name || "User"} />
               <AvatarFallback>{user?.name?.[0] ?? "U"}</AvatarFallback>
             </Avatar>
-          ) : user && accessToken ? (
+          ) : user && hasSession ? (
             <div
               className={cn(
                 "flex size-8 items-center justify-center rounded-full text-sm font-semibold md:size-9",
@@ -99,7 +106,7 @@ export default function AccountPopover() {
 
       <PopoverContent side="bottom" align="end" className="my-2 w-56 p-0">
         <div className="flex flex-col divide-y">
-          {user?.email && (
+          {hasAuthenticatedUser && (
             <button
               onClick={() => handleClickItem(PATH_ACCOUNT.settings.root)}
               className={cn(
@@ -121,7 +128,7 @@ export default function AccountPopover() {
             </button>
           )}
 
-          {!user?.email && (
+          {!hasAuthenticatedUser && (
             <button
               // data-umami-event="Nav: Login / Sign up"
               data-rybbit-event="Nav: Login / Sign up"
@@ -170,7 +177,7 @@ export default function AccountPopover() {
             </Link>
           </div>
 
-          {user?.email && (
+          {hasAuthenticatedUser && (
             <button
               onClick={handleLogout}
               className="hover:bg-primary/10 flex w-full items-center gap-3 px-3 py-3 text-sm"

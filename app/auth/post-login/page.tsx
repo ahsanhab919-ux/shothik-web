@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Clock3, Loader2, Sparkles } from "lucide-react";
@@ -10,6 +10,8 @@ import {
   clearAuthFlowState,
   getAuthFlowState,
   inferAuthRoutingDecision,
+  isSafeInternalPath,
+  type RecentProjectLike,
 } from "@/lib/auth-flow";
 import { getProjects } from "@/lib/projects-store";
 import {
@@ -17,21 +19,87 @@ import {
   trackPostLoginRecommendation,
 } from "@/lib/posthog";
 
+type ProjectsResponse = {
+  projects?: RecentProjectLike[];
+  message?: string;
+  error?: string;
+};
+
 export default function PostLoginPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasAutoNavigatedRef = useRef(false);
+  const [recentProjects, setRecentProjects] = useState<RecentProjectLike[]>([]);
+  const [projectsResolved, setProjectsResolved] = useState(false);
+
+  const flowState = useMemo(() => getAuthFlowState(), []);
+  const explicitRedirect = searchParams.get("redirect");
+  const hasImmediateRedirect = useMemo(
+    () => isSafeInternalPath(explicitRedirect) || isSafeInternalPath(flowState?.redirectTo),
+    [explicitRedirect, flowState?.redirectTo]
+  );
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (!isAuthenticated || hasImmediateRedirect) {
+      setRecentProjects([]);
+      setProjectsResolved(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadRecentProjects() {
+      const localProjects = getProjects() as RecentProjectLike[];
+
+      try {
+        const response = await fetch("/api/projects", {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const data = (await response.json().catch(() => null)) as ProjectsResponse | null;
+
+        if (!response.ok) {
+          throw new Error(
+            data?.message ||
+              data?.error ||
+              `Failed to load projects (${response.status})`,
+          );
+        }
+
+        if (cancelled) return;
+
+        setRecentProjects(data?.projects ?? []);
+      } catch (error) {
+        console.error("[post-login] Falling back to local recent projects:", error);
+        if (cancelled) return;
+
+        setRecentProjects(localProjects);
+      } finally {
+        if (!cancelled) {
+          setProjectsResolved(true);
+        }
+      }
+    }
+
+    void loadRecentProjects();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasImmediateRedirect, isAuthenticated, isLoading]);
 
   const decision = useMemo(() => {
-    const flowState = getAuthFlowState();
     return inferAuthRoutingDecision({
       user: user as any,
-      explicitRedirect: searchParams.get("redirect"),
+      explicitRedirect,
       flowState,
-      recentProjects: getProjects(),
+      recentProjects,
     });
-  }, [searchParams, user]);
+  }, [explicitRedirect, flowState, recentProjects, user]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -39,11 +107,12 @@ export default function PostLoginPage() {
       router.replace("/auth/login");
       return;
     }
+    if (!projectsResolved) return;
 
     trackPostLoginRecommendation(
       decision.route,
       decision.reason,
-      getAuthFlowState()?.intent ?? null
+      flowState?.intent ?? null
     );
 
     const timer = window.setTimeout(() => {
@@ -54,7 +123,7 @@ export default function PostLoginPage() {
     }, 1600);
 
     return () => window.clearTimeout(timer);
-  }, [decision.reason, decision.route, isAuthenticated, isLoading, router]);
+  }, [decision.reason, decision.route, flowState?.intent, isAuthenticated, isLoading, projectsResolved, router]);
 
   const handleOverride = (href: string) => {
     hasAutoNavigatedRef.current = true;
@@ -63,7 +132,7 @@ export default function PostLoginPage() {
     router.replace(href);
   };
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && !projectsResolved)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-brand" />

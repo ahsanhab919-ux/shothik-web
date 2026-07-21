@@ -1,14 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useSelector } from 'react-redux';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import type { Id } from '@/convex/_generated/dataModel';
 import { ModeSwitcherHeader } from '../navigation/ModeSwitcherHeader';
 import { PolishedWriteView } from '../PolishedWriteView';
 import { PublishingPage } from '../PublishingPage';
 import { FormattingView } from '@/components/tools/writing-studio/workspace/FormattingView';
+import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 
 type Mode = 'write' | 'format' | 'publish';
 
@@ -19,7 +16,6 @@ interface ProjectContainerProps {
 
 const RESEARCH_SECTIONS = ['abstract', 'intro', 'lit-review', 'methodology', 'results', 'discussion', 'conclusion', 'references'];
 const ASSIGNMENT_SECTIONS = ['intro', 'body-1', 'body-2', 'conclusion', 'references'];
-const AUTOSAVE_DEBOUNCE_MS = 1500;
 const AUTOSAVE_INTERVAL_MS = 30_000;
 
 function collectLocalStorageSections(projectId: string): Record<string, string> {
@@ -50,9 +46,6 @@ export function ProjectContainer({
   projectId,
   initialMode = 'write',
 }: ProjectContainerProps) {
-  const { user } = useSelector((state: any) => state.auth);
-  const clerkUserId = user?._id || user?.id || '';
-
   const [currentMode, setCurrentMode] = useState<Mode>(initialMode);
   const [projectName, setProjectName] = useState('');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -60,119 +53,162 @@ export function ProjectContainer({
   const [history, setHistory] = useState<string[]>(['']);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [migrationDone, setMigrationDone] = useState(false);
+  const [project, setProject] = useState<Record<string, any> | null>(null);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMounted = useRef(true);
-
-  const isValidConvexId = projectId && /^[a-zA-Z0-9_]+$/.test(projectId) && projectId.length > 10;
-
-  const convexProject = useQuery(
-    api.projects.get,
-    isValidConvexId ? { id: projectId as Id<'projects'> } : 'skip'
-  );
-
-  const savedSections = useQuery(
-    api.writing.getSections,
-    projectId ? { localProjectId: projectId } : 'skip'
-  );
-
-  const updateProject = useMutation(api.projects.update);
-  const saveSectionsMutation = useMutation(api.writing.saveSections);
+  const projectSettingsRef = useRef<Record<string, unknown>>({});
+  const { authUserId, loadProjectById, saveProjectDraft } = useProjectPersistence(projectId);
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (convexProject && convexProject.title) {
-      setProjectName(convexProject.title);
-    } else if (!convexProject && projectId) {
-      const savedName = localStorage.getItem(`project-name-${projectId}`);
-      if (savedName) setProjectName(savedName);
-    }
-  }, [convexProject, projectId]);
+    let cancelled = false;
 
-  const handleSaveToConvex = useCallback(async () => {
+    async function loadProject() {
+      if (!projectId) {
+        setProject(null);
+        setProjectName('');
+        projectSettingsRef.current = {};
+        return;
+      }
+
+      const loadedProject = (await loadProjectById()) as Record<string, any> | null;
+      if (cancelled) return;
+
+      setProject(loadedProject);
+
+      if (loadedProject?.title) {
+        setProjectName(loadedProject.title);
+      } else {
+        const savedName = localStorage.getItem(`project-name-${projectId}`);
+        if (savedName) setProjectName(savedName);
+      }
+
+      projectSettingsRef.current =
+        loadedProject?.settings && typeof loadedProject.settings === 'object'
+          ? loadedProject.settings
+          : {};
+    }
+
+    void loadProject();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadProjectById, projectId]);
+
+  const handleSaveProjectState = useCallback(async () => {
     if (!projectId || isSaving || !isMounted.current) return;
 
     setIsSaving(true);
     try {
       const sections = collectLocalStorageSections(projectId);
-      const wordCount = countWordsInSections(sections);
-
-      const promises: Promise<any>[] = [
-        saveSectionsMutation({
-          localProjectId: projectId,
-          sections,
-        }),
-      ];
-
-      if (isValidConvexId) {
-        const flatContent = Object.values(sections).join('\n');
-        promises.push(
-          updateProject({
-            id: projectId as Id<'projects'>,
-            content: flatContent,
-            wordCount,
-          })
-        );
+      if (Object.keys(sections).length === 0) {
+        return;
       }
+      const wordCount = countWordsInSections(sections);
+      const flatContent = Object.values(sections).join('\n');
+      const nextSettings = {
+        ...projectSettingsRef.current,
+        legacySectionDrafts: sections,
+      };
 
-      await Promise.all(promises);
+      const savedProject = await saveProjectDraft({
+        title: projectName || undefined,
+        content: flatContent,
+        wordCount,
+        settings: nextSettings,
+      });
+
+      projectSettingsRef.current =
+        savedProject?.settings && typeof savedProject.settings === 'object'
+          ? savedProject.settings
+          : nextSettings;
+      if (isMounted.current) {
+        setProject(savedProject as Record<string, any>);
+      }
       if (isMounted.current) setLastSaved(new Date());
     } catch (err) {
       console.error('[ProjectContainer] Save failed:', err);
     } finally {
       if (isMounted.current) setIsSaving(false);
     }
-  }, [projectId, isSaving, isValidConvexId, saveSectionsMutation, updateProject]);
-
-  const handleSave = useCallback(async () => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      handleSaveToConvex();
-    }, AUTOSAVE_DEBOUNCE_MS);
-  }, [handleSaveToConvex]);
+  }, [isSaving, projectId, projectName, saveProjectDraft]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!isSaving) handleSaveToConvex();
+      if (!isSaving) {
+        void handleSaveProjectState();
+      }
     }, AUTOSAVE_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [handleSaveToConvex, isSaving]);
+  }, [handleSaveProjectState, isSaving]);
 
   useEffect(() => {
-    if (!projectId || !clerkUserId || migrationDone) return;
-    const migrationKey = `convex-migrated-${projectId}`;
+    if (!projectId || !authUserId || migrationDone) return;
+    const migrationKey = `insforge-section-drafts-migrated-${projectId}`;
     if (localStorage.getItem(migrationKey)) {
       setMigrationDone(true);
       return;
     }
-    if (savedSections === null) {
-      (async () => {
-        try {
-          const sections = collectLocalStorageSections(projectId);
-          if (Object.keys(sections).length === 0) {
-            localStorage.setItem(migrationKey, '1');
-            setMigrationDone(true);
-            return;
-          }
-          await saveSectionsMutation({
-            localProjectId: projectId,
-            sections,
-          });
-          localStorage.setItem(migrationKey, '1');
-          if (isMounted.current) setMigrationDone(true);
-        } catch (err) {
-          console.error('[ProjectContainer] Migration failed:', err);
-          if (isMounted.current) setMigrationDone(true);
-        }
-      })();
-    } else {
+    if (!project) return;
+
+    const existingDrafts =
+      project.settings &&
+      typeof project.settings === 'object' &&
+      project.settings.legacySectionDrafts &&
+      typeof project.settings.legacySectionDrafts === 'object'
+        ? project.settings.legacySectionDrafts
+        : null;
+
+    if (existingDrafts) {
+      localStorage.setItem(migrationKey, '1');
       setMigrationDone(true);
+      return;
     }
-  }, [projectId, clerkUserId, savedSections, migrationDone, saveSectionsMutation]);
+
+    (async () => {
+      try {
+        const sections = collectLocalStorageSections(projectId);
+        if (Object.keys(sections).length === 0) {
+          localStorage.setItem(migrationKey, '1');
+          setMigrationDone(true);
+          return;
+        }
+
+        const wordCount = countWordsInSections(sections);
+        const flatContent = Object.values(sections).join('\n');
+        const nextSettings = {
+          ...projectSettingsRef.current,
+          legacySectionDrafts: sections,
+        };
+
+        const savedProject = await saveProjectDraft({
+          content: flatContent,
+          wordCount,
+          settings: nextSettings,
+        });
+
+        projectSettingsRef.current =
+          savedProject?.settings && typeof savedProject.settings === 'object'
+            ? savedProject.settings
+            : nextSettings;
+        if (isMounted.current) {
+          setProject(savedProject as Record<string, any>);
+        }
+        localStorage.setItem(migrationKey, '1');
+        if (isMounted.current) setMigrationDone(true);
+      } catch (err) {
+        console.error('[ProjectContainer] Migration failed:', err);
+        if (isMounted.current) setMigrationDone(true);
+      }
+    })();
+  }, [authUserId, migrationDone, project, projectId, saveProjectDraft]);
 
   const handleUndo = useCallback(() => {
     if (historyIndex > 0) setHistoryIndex((prev) => prev - 1);
@@ -184,18 +220,10 @@ export function ProjectContainer({
 
   const handleModeChange = useCallback(
     (mode: Mode) => {
-      handleSaveToConvex();
+      void handleSaveProjectState();
       setCurrentMode(mode);
     },
-    [handleSaveToConvex]
-  );
-
-  const handleTitleChange = useCallback(
-    (newTitle: string) => {
-      setProjectName(newTitle);
-      if (projectId) localStorage.setItem(`project-name-${projectId}`, newTitle);
-    },
-    [projectId]
+    [handleSaveProjectState]
   );
 
   return (
@@ -204,7 +232,7 @@ export function ProjectContainer({
         currentMode={currentMode}
         onModeChange={handleModeChange}
         projectName={projectName}
-        onSave={handleSaveToConvex}
+        onSave={handleSaveProjectState}
         canUndo={historyIndex > 0}
         canRedo={historyIndex < history.length - 1}
         onUndo={handleUndo}
@@ -217,13 +245,13 @@ export function ProjectContainer({
         {currentMode === 'write' && (
           <PolishedWriteView
             bookTitle={projectName}
-            project={convexProject ?? ({ _id: projectId, title: projectName, content: '', type: 'book' } as any)}
+            project={project ?? ({ _id: projectId, id: projectId, title: projectName, content: '', type: 'book' } as any)}
           />
         )}
 
         {currentMode === 'format' && (
           <FormattingView
-            project={convexProject || { _id: projectId, id: projectId, title: projectName }}
+            project={project || { _id: projectId, id: projectId, title: projectName }}
           />
         )}
 

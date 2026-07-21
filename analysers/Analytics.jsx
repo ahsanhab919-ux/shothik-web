@@ -7,6 +7,10 @@ import GoogleTagManager from "./GoogleTagManager";
 import PostHogProvider from "@/components/providers/PostHogProvider";
 
 const Analytics = () => {
+  if (process.env.NODE_ENV !== "production") {
+    return null;
+  }
+
   return (
     <>
       <GoogleAnalytics />

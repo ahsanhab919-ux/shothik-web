@@ -145,7 +145,7 @@ function BookEarningsTable({ data }) {
 
 export function EarningsDashboard({ onRequestPayout }) {
   const { user } = useSelector((state) => state.auth);
-  const userId = user?._id || "";
+  const userId = user?._id ?? user?.id ?? "";
   const { summary, isLoading } = useEarnings(userId);
 
   if (isLoading) {

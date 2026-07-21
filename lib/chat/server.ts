@@ -42,6 +42,29 @@ type MessageRow = {
   updated_at: Date;
 };
 
+type ChatOwnershipColumn = "auth_user_id" | "user_id";
+
+type ChatSchemaMode = {
+  conversationOwnerColumn: ChatOwnershipColumn;
+  messageOwnerColumn: ChatOwnershipColumn;
+  hasConversationLegacyOwner: boolean;
+  hasMessageLegacyOwner: boolean;
+};
+
+const nativeChatSchema: ChatSchemaMode = {
+  conversationOwnerColumn: "auth_user_id",
+  messageOwnerColumn: "auth_user_id",
+  hasConversationLegacyOwner: true,
+  hasMessageLegacyOwner: true,
+};
+
+const legacyChatSchema: ChatSchemaMode = {
+  conversationOwnerColumn: "user_id",
+  messageOwnerColumn: "user_id",
+  hasConversationLegacyOwner: false,
+  hasMessageLegacyOwner: false,
+};
+
 function toMillis(value: Date | string | null | undefined) {
   if (!value) return Date.now();
   return value instanceof Date ? value.getTime() : new Date(value).getTime();
@@ -92,6 +115,83 @@ function normalizeQuery(input: string) {
   return input.trim().replace(/\s+/g, " ");
 }
 
+function conversationSelectColumns(schema: ChatSchemaMode) {
+  return `
+    id,
+    ${schema.conversationOwnerColumn} as auth_user_id,
+    ${schema.hasConversationLegacyOwner ? "legacy_user_id" : "null::text as legacy_user_id"},
+    surface,
+    title,
+    status,
+    pinned,
+    temporary,
+    model_handle,
+    context_ref,
+    last_message_at,
+    last_message_preview,
+    message_count,
+    created_at,
+    updated_at
+  `;
+}
+
+function messageSelectColumns(schema: ChatSchemaMode) {
+  return `
+    id,
+    conversation_id,
+    ${schema.messageOwnerColumn} as auth_user_id,
+    ${schema.hasMessageLegacyOwner ? "legacy_user_id" : "null::text as legacy_user_id"},
+    role,
+    content,
+    content_format,
+    status,
+    model_handle,
+    parent_message_id,
+    metadata,
+    created_at,
+    updated_at
+  `;
+}
+
+function ownerParamType(column: ChatOwnershipColumn) {
+  return column === "auth_user_id" ? "uuid" : "text";
+}
+
+function ownerEquality(column: ChatOwnershipColumn, parameterIndex: number) {
+  return `${column} = $${parameterIndex}::${ownerParamType(column)}`;
+}
+
+function isMissingChatOwnershipColumnError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? String(error.code) : "";
+  const message =
+    error instanceof Error
+      ? error.message
+      : "message" in error
+        ? String(error.message)
+        : "";
+
+  return (
+    code === "42703" &&
+    (message.includes("auth_user_id") || message.includes("legacy_user_id"))
+  );
+}
+
+async function withChatSchema<T>(callback: (schema: ChatSchemaMode) => Promise<T>) {
+  try {
+    return await callback(nativeChatSchema);
+  } catch (error) {
+    if (!isMissingChatOwnershipColumnError(error)) {
+      throw error;
+    }
+
+    return callback(legacyChatSchema);
+  }
+}
+
 async function runQuery<T>(
   client: PoolClient | null,
   text: string,
@@ -106,15 +206,16 @@ async function runQuery<T>(
 async function getConversationRowForUser(
   client: PoolClient | null,
   conversationId: string,
-  userId: string
+  userId: string,
+  schema: ChatSchemaMode
 ) {
   const result = await runQuery<ConversationRow>(
     client,
     `
-      select *
+      select ${conversationSelectColumns(schema)}
       from public.chat_conversations
       where id = $1
-        and auth_user_id = $2::uuid
+        and ${ownerEquality(schema.conversationOwnerColumn, 2)}
       limit 1
     `,
     [conversationId, userId]
@@ -127,14 +228,19 @@ async function getConversationRowForUser(
   return row;
 }
 
-async function getMessageRowForUser(client: PoolClient | null, messageId: string, userId: string) {
+async function getMessageRowForUser(
+  client: PoolClient | null,
+  messageId: string,
+  userId: string,
+  schema: ChatSchemaMode
+) {
   const result = await runQuery<MessageRow>(
     client,
     `
-      select *
+      select ${messageSelectColumns(schema)}
       from public.chat_messages
       where id = $1
-        and auth_user_id = $2::uuid
+        and ${ownerEquality(schema.messageOwnerColumn, 2)}
       limit 1
     `,
     [messageId, userId]
@@ -155,50 +261,54 @@ export async function listConversationsForUser(input: {
   limit?: number;
   query?: string;
 }) {
-  const params: unknown[] = [input.userId];
-  const where: string[] = ["auth_user_id = $1::uuid"];
+  return withChatSchema(async (schema) => {
+    const params: unknown[] = [input.userId];
+    const where: string[] = [ownerEquality(schema.conversationOwnerColumn, 1)];
 
-  if (input.surface) {
-    params.push(input.surface);
-    where.push(`surface = $${params.length}`);
-  }
+    if (input.surface) {
+      params.push(input.surface);
+      where.push(`surface = $${params.length}`);
+    }
 
-  if (input.status) {
-    params.push(input.status);
-    where.push(`status = $${params.length}`);
-  } else {
-    where.push(`status <> 'deleted'`);
-  }
+    if (input.status) {
+      params.push(input.status);
+      where.push(`status = $${params.length}`);
+    } else {
+      where.push(`status <> 'deleted'`);
+    }
 
-  if (!input.includeTemporary) {
-    where.push("temporary = false");
-  }
+    if (!input.includeTemporary) {
+      where.push("temporary = false");
+    }
 
-  const needle = input.query?.trim();
-  if (needle) {
-    params.push(`%${normalizeQuery(needle)}%`);
-    const idx = params.length;
-    where.push(`(title ilike $${idx} or coalesce(last_message_preview, '') ilike $${idx})`);
-  }
+    const needle = input.query?.trim();
+    if (needle) {
+      params.push(`%${normalizeQuery(needle)}%`);
+      const idx = params.length;
+      where.push(`(title ilike $${idx} or coalesce(last_message_preview, '') ilike $${idx})`);
+    }
 
-  params.push(Math.max(1, Math.min(input.limit ?? (needle ? 20 : 50), needle ? 100 : 200)));
+    params.push(Math.max(1, Math.min(input.limit ?? (needle ? 20 : 50), needle ? 100 : 200)));
 
-  const result = await insforgeQuery<ConversationRow>(
-    `
-      select *
-      from public.chat_conversations
-      where ${where.join(" and ")}
-      order by updated_at desc
-      limit $${params.length}
-    `,
-    params
-  );
+    const result = await insforgeQuery<ConversationRow>(
+      `
+        select ${conversationSelectColumns(schema)}
+        from public.chat_conversations
+        where ${where.join(" and ")}
+        order by updated_at desc
+        limit $${params.length}
+      `,
+      params
+    );
 
-  return result.rows.map(toConversation);
+    return result.rows.map(toConversation);
+  });
 }
 
 export async function getConversationForUser(conversationId: string, userId: string) {
-  return toConversation(await getConversationRowForUser(null, conversationId, userId));
+  return withChatSchema(async (schema) =>
+    toConversation(await getConversationRowForUser(null, conversationId, userId, schema))
+  );
 }
 
 export async function createPersistedConversation(input: {
@@ -209,30 +319,32 @@ export async function createPersistedConversation(input: {
   temporary?: boolean;
   contextRef?: ConversationContextRef;
 }) {
-  const result = await insforgeQuery<ConversationRow>(
-    `
-      insert into public.chat_conversations (
-        auth_user_id,
-        surface,
-        title,
-        model_handle,
-        temporary,
-        context_ref
-      )
-      values ($1, $2, $3, $4, $5, $6)
-      returning *
-    `,
-    [
-      input.userId,
-      input.surface,
-      normalizeTitle(input.title),
-      input.modelHandle ?? null,
-      input.temporary ?? false,
-      input.contextRef ?? null,
-    ]
-  );
+  return withChatSchema(async (schema) => {
+    const result = await insforgeQuery<ConversationRow>(
+      `
+        insert into public.chat_conversations (
+          ${schema.conversationOwnerColumn},
+          surface,
+          title,
+          model_handle,
+          temporary,
+          context_ref
+        )
+        values ($1, $2, $3, $4, $5, $6)
+        returning ${conversationSelectColumns(schema)}
+      `,
+      [
+        input.userId,
+        input.surface,
+        normalizeTitle(input.title),
+        input.modelHandle ?? null,
+        input.temporary ?? false,
+        input.contextRef ?? null,
+      ]
+    );
 
-  return toConversation(result.rows[0]);
+    return toConversation(result.rows[0]);
+  });
 }
 
 export async function updateConversationForUser(input: {
@@ -242,56 +354,60 @@ export async function updateConversationForUser(input: {
   pinned?: boolean;
   archived?: boolean;
 }) {
-  await getConversationRowForUser(null, input.conversationId, input.userId);
+  return withChatSchema(async (schema) => {
+    await getConversationRowForUser(null, input.conversationId, input.userId, schema);
 
-  const sets: string[] = [];
-  const params: unknown[] = [input.conversationId, input.userId];
+    const sets: string[] = [];
+    const params: unknown[] = [input.conversationId, input.userId];
 
-  if (typeof input.title === "string") {
-    params.push(normalizeTitle(input.title));
-    sets.push(`title = $${params.length}`);
-  }
+    if (typeof input.title === "string") {
+      params.push(normalizeTitle(input.title));
+      sets.push(`title = $${params.length}`);
+    }
 
-  if (typeof input.pinned === "boolean") {
-    params.push(input.pinned);
-    sets.push(`pinned = $${params.length}`);
-  }
+    if (typeof input.pinned === "boolean") {
+      params.push(input.pinned);
+      sets.push(`pinned = $${params.length}`);
+    }
 
-  if (typeof input.archived === "boolean") {
-    params.push(input.archived ? "archived" : "active");
-    sets.push(`status = $${params.length}`);
-  }
+    if (typeof input.archived === "boolean") {
+      params.push(input.archived ? "archived" : "active");
+      sets.push(`status = $${params.length}`);
+    }
 
-  if (sets.length === 0) {
-    return await getConversationForUser(input.conversationId, input.userId);
-  }
+    if (sets.length === 0) {
+      return await getConversationForUser(input.conversationId, input.userId);
+    }
 
-  const result = await insforgeQuery<ConversationRow>(
-    `
-      update public.chat_conversations
-      set ${sets.join(", ")}
-      where id = $1
-        and auth_user_id = $2::uuid
-      returning *
-    `,
-    params
-  );
+    const result = await insforgeQuery<ConversationRow>(
+      `
+        update public.chat_conversations
+        set ${sets.join(", ")}
+        where id = $1
+          and ${ownerEquality(schema.conversationOwnerColumn, 2)}
+        returning ${conversationSelectColumns(schema)}
+      `,
+      params
+    );
 
-  return toConversation(result.rows[0]);
+    return toConversation(result.rows[0]);
+  });
 }
 
 export async function softDeleteConversationForUser(conversationId: string, userId: string) {
-  await getConversationRowForUser(null, conversationId, userId);
-  await insforgeQuery(
-    `
-      update public.chat_conversations
-      set status = 'deleted'
-      where id = $1
-        and auth_user_id = $2::uuid
-    `,
-    [conversationId, userId]
-  );
-  return { success: true };
+  return withChatSchema(async (schema) => {
+    await getConversationRowForUser(null, conversationId, userId, schema);
+    await insforgeQuery(
+      `
+        update public.chat_conversations
+        set status = 'deleted'
+        where id = $1
+          and ${ownerEquality(schema.conversationOwnerColumn, 2)}
+      `,
+      [conversationId, userId]
+    );
+    return { success: true };
+  });
 }
 
 export async function listMessagesForConversation(input: {
@@ -299,19 +415,21 @@ export async function listMessagesForConversation(input: {
   userId: string;
   limit?: number;
 }) {
-  await getConversationRowForUser(null, input.conversationId, input.userId);
-  const result = await insforgeQuery<MessageRow>(
-    `
-      select *
-      from public.chat_messages
-      where conversation_id = $1
-      order by created_at asc
-      limit $2
-    `,
-    [input.conversationId, Math.max(1, Math.min(input.limit ?? 200, 500))]
-  );
+  return withChatSchema(async (schema) => {
+    await getConversationRowForUser(null, input.conversationId, input.userId, schema);
+    const result = await insforgeQuery<MessageRow>(
+      `
+        select ${messageSelectColumns(schema)}
+        from public.chat_messages
+        where conversation_id = $1
+        order by created_at asc
+        limit $2
+      `,
+      [input.conversationId, Math.max(1, Math.min(input.limit ?? 200, 500))]
+    );
 
-  return result.rows.map(toMessage);
+    return result.rows.map(toMessage);
+  });
 }
 
 export async function appendPersistedUserMessage(input: {
@@ -319,26 +437,28 @@ export async function appendPersistedUserMessage(input: {
   userId: string;
   content: string;
 }) {
-  return withInsforgeTransaction(async (client) => {
-    await getConversationRowForUser(client, input.conversationId, input.userId);
-    const result = await client.query<MessageRow>(
-      `
-        insert into public.chat_messages (
-          conversation_id,
-          auth_user_id,
-          role,
-          content,
-          content_format,
-          status
-        )
-        values ($1, $2, 'user', $3, 'plain', 'completed')
-        returning *
-      `,
-      [input.conversationId, input.userId, input.content]
-    );
+  return withChatSchema((schema) =>
+    withInsforgeTransaction(async (client) => {
+      await getConversationRowForUser(client, input.conversationId, input.userId, schema);
+      const result = await client.query<MessageRow>(
+        `
+          insert into public.chat_messages (
+            conversation_id,
+            ${schema.messageOwnerColumn},
+            role,
+            content,
+            content_format,
+            status
+          )
+          values ($1, $2, 'user', $3, 'plain', 'completed')
+          returning ${messageSelectColumns(schema)}
+        `,
+        [input.conversationId, input.userId, input.content]
+      );
 
-    return toMessage(result.rows[0]);
-  });
+      return toMessage(result.rows[0]);
+    })
+  );
 }
 
 export async function createPersistedAssistantMessage(input: {
@@ -347,28 +467,30 @@ export async function createPersistedAssistantMessage(input: {
   modelHandle?: string;
   parentMessageId?: string;
 }) {
-  return withInsforgeTransaction(async (client) => {
-    await getConversationRowForUser(client, input.conversationId, input.userId);
-    const result = await client.query<MessageRow>(
-      `
-        insert into public.chat_messages (
-          conversation_id,
-          auth_user_id,
-          role,
-          content,
-          content_format,
-          status,
-          model_handle,
-          parent_message_id
-        )
-        values ($1, $2, 'assistant', '', 'markdown', 'streaming', $3, $4)
-        returning *
-      `,
-      [input.conversationId, input.userId, input.modelHandle ?? null, input.parentMessageId ?? null]
-    );
+  return withChatSchema((schema) =>
+    withInsforgeTransaction(async (client) => {
+      await getConversationRowForUser(client, input.conversationId, input.userId, schema);
+      const result = await client.query<MessageRow>(
+        `
+          insert into public.chat_messages (
+            conversation_id,
+            ${schema.messageOwnerColumn},
+            role,
+            content,
+            content_format,
+            status,
+            model_handle,
+            parent_message_id
+          )
+          values ($1, $2, 'assistant', '', 'markdown', 'streaming', $3, $4)
+          returning ${messageSelectColumns(schema)}
+        `,
+        [input.conversationId, input.userId, input.modelHandle ?? null, input.parentMessageId ?? null]
+      );
 
-    return toMessage(result.rows[0]);
-  });
+      return toMessage(result.rows[0]);
+    })
+  );
 }
 
 export async function appendPersistedAssistantChunk(input: {
@@ -376,56 +498,62 @@ export async function appendPersistedAssistantChunk(input: {
   userId: string;
   delta: string;
 }) {
-  const message = await getMessageRowForUser(null, input.messageId, input.userId);
-  const result = await insforgeQuery<MessageRow>(
-    `
-      update public.chat_messages
-      set content = coalesce(content, '') || $3
-      where id = $1
-        and auth_user_id = $2::uuid
-      returning *
-    `,
-    [input.messageId, input.userId, input.delta]
-  );
+  return withChatSchema(async (schema) => {
+    const message = await getMessageRowForUser(null, input.messageId, input.userId, schema);
+    const result = await insforgeQuery<MessageRow>(
+      `
+        update public.chat_messages
+        set content = coalesce(content, '') || $3
+        where id = $1
+          and ${ownerEquality(schema.messageOwnerColumn, 2)}
+        returning ${messageSelectColumns(schema)}
+      `,
+      [input.messageId, input.userId, input.delta]
+    );
 
-  if (!result.rows[0]) {
-    return toMessage(message);
-  }
-  return toMessage(result.rows[0]);
+    if (!result.rows[0]) {
+      return toMessage(message);
+    }
+    return toMessage(result.rows[0]);
+  });
 }
 
 export async function completePersistedAssistantMessage(input: {
   messageId: string;
   userId: string;
 }) {
-  const result = await insforgeQuery<MessageRow>(
-    `
-      update public.chat_messages
-      set status = 'completed'
-      where id = $1
-        and auth_user_id = $2::uuid
-      returning *
-    `,
-    [input.messageId, input.userId]
-  );
-  return toMessage(result.rows[0]);
+  return withChatSchema(async (schema) => {
+    const result = await insforgeQuery<MessageRow>(
+      `
+        update public.chat_messages
+        set status = 'completed'
+        where id = $1
+          and ${ownerEquality(schema.messageOwnerColumn, 2)}
+        returning ${messageSelectColumns(schema)}
+      `,
+      [input.messageId, input.userId]
+    );
+    return toMessage(result.rows[0]);
+  });
 }
 
 export async function stopPersistedAssistantMessage(input: {
   messageId: string;
   userId: string;
 }) {
-  const result = await insforgeQuery<MessageRow>(
-    `
-      update public.chat_messages
-      set status = 'stopped'
-      where id = $1
-        and auth_user_id = $2::uuid
-      returning *
-    `,
-    [input.messageId, input.userId]
-  );
-  return toMessage(result.rows[0]);
+  return withChatSchema(async (schema) => {
+    const result = await insforgeQuery<MessageRow>(
+      `
+        update public.chat_messages
+        set status = 'stopped'
+        where id = $1
+          and ${ownerEquality(schema.messageOwnerColumn, 2)}
+        returning ${messageSelectColumns(schema)}
+      `,
+      [input.messageId, input.userId]
+    );
+    return toMessage(result.rows[0]);
+  });
 }
 
 export async function failPersistedAssistantMessage(input: {
@@ -434,43 +562,47 @@ export async function failPersistedAssistantMessage(input: {
   errorCode?: string;
   fallbackText?: string;
 }) {
-  const message = await getMessageRowForUser(null, input.messageId, input.userId);
-  const metadata = {
-    ...(message.metadata ?? {}),
-    ...(input.errorCode ? { errorCode: input.errorCode } : {}),
-  };
+  return withChatSchema(async (schema) => {
+    const message = await getMessageRowForUser(null, input.messageId, input.userId, schema);
+    const metadata = {
+      ...(message.metadata ?? {}),
+      ...(input.errorCode ? { errorCode: input.errorCode } : {}),
+    };
 
-  const result = await insforgeQuery<MessageRow>(
-    `
-      update public.chat_messages
-      set
-        content = $3,
-        status = 'error',
-        metadata = $4
-      where id = $1
-        and auth_user_id = $2::uuid
-      returning *
-    `,
-    [
-      input.messageId,
-      input.userId,
-      input.fallbackText ?? message.content ?? "Something went wrong.",
-      metadata,
-    ]
-  );
+    const result = await insforgeQuery<MessageRow>(
+      `
+        update public.chat_messages
+        set
+          content = $3,
+          status = 'error',
+          metadata = $4
+        where id = $1
+          and ${ownerEquality(schema.messageOwnerColumn, 2)}
+        returning ${messageSelectColumns(schema)}
+      `,
+      [
+        input.messageId,
+        input.userId,
+        input.fallbackText ?? message.content ?? "Something went wrong.",
+        metadata,
+      ]
+    );
 
-  return toMessage(result.rows[0]);
+    return toMessage(result.rows[0]);
+  });
 }
 
 export async function deleteMessageForUser(messageId: string, userId: string) {
-  await getMessageRowForUser(null, messageId, userId);
-  await insforgeQuery(
-    `
-      delete from public.chat_messages
-      where id = $1
-        and auth_user_id = $2::uuid
-    `,
-    [messageId, userId]
-  );
-  return { success: true };
+  return withChatSchema(async (schema) => {
+    await getMessageRowForUser(null, messageId, userId, schema);
+    await insforgeQuery(
+      `
+        delete from public.chat_messages
+        where id = $1
+          and ${ownerEquality(schema.messageOwnerColumn, 2)}
+      `,
+      [messageId, userId]
+    );
+    return { success: true };
+  });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
@@ -8,7 +9,7 @@ import CountdownTimer from "@/components/forum/CountdownTimer";
 import ReviewerFundDashboard from "@/components/credits/ReviewerFundDashboard";
 import { useTranslation } from "@/i18n";
 
-export default function CommunityPage() {
+function CommunityPage() {
   const openForums = useQuery(api.forums.getOpenForums, { limit: 20 });
   const droppingSoon = useQuery(api.forums.getForumsDroppingSoon, {});
   const { t } = useTranslation();
@@ -105,6 +106,8 @@ export default function CommunityPage() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(CommunityPage), { ssr: false });
 
 function StatCard({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: string }) {
   const colorMap: Record<string, string> = {

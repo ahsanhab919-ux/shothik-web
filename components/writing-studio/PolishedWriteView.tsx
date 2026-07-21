@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Download, FileDown, BookOpen, Edit3, Sparkles, X, Check, SplitSquareHorizontal } from 'lucide-react';
+import { Download, FileDown, BookOpen, Edit3, Sparkles, Check } from 'lucide-react';
 import { ModeSwitcherHeader } from './navigation/ModeSwitcherHeader';
 import { LeftSidebar } from './layout/LeftSidebar';
 import { ActivityBar } from './layout/ActivityBar';
@@ -12,14 +12,12 @@ import { RightPanel } from './layout/RightPanel';
 import { StatusBar } from './layout/StatusBar';
 import { CommandPalette } from './CommandPalette';
 import { LiveDocumentPreview } from './layout/LiveDocumentPreview';
+import { PublishingPage } from './PublishingPage';
 import { sanitizeHtml } from '@/lib/sanitize';
 
-const PublishingPage = dynamic(() => import('./PublishingPage').then(m => ({ default: m.PublishingPage })), { ssr: false });
 const PolishedWriteOnboarding = dynamic(() => import('./PolishedWriteOnboarding').then(m => ({ default: m.PolishedWriteOnboarding })), { ssr: false });
 const WebMCPWidget = dynamic(() => import('./WebMCPWidget').then(m => ({ default: m.WebMCPWidget })), { ssr: false });
 import { useDocumentBuild } from '@/hooks/useDocumentBuild';
-import { updateProject } from '@/lib/projects-store';
-import { useConvexAutosave } from '@/hooks/useConvexAutosave';
 import { useWritingGrammarCheck } from '@/hooks/useWritingGrammarCheck';
 import { useUXAnalysis } from '@/hooks/useUXAnalysis';
 import { recordSession } from '@/lib/writing-goals';
@@ -31,6 +29,7 @@ import { getWordCount, stripHtml } from '@/lib/writing-utils';
 import { computeReadinessScore, GENRE_TARGETS } from '@/lib/projectMetrics';
 import { NeuralCouplingEngine } from '@/lib/nobel-engine/NeuralCouplingEngine';
 import { NobelImpactEngine } from '@/lib/nobel-engine/NobelImpactEngine';
+import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 
 type Mode = 'write' | 'format' | 'publish';
 type MobilePanel = 'left' | 'center' | 'right';
@@ -59,7 +58,6 @@ interface Toast {
 export function PolishedWriteView({
   bookTitle = 'Untitled Project',
   project,
-  onBack,
   projectType: projectTypeProp,
 }: PolishedWriteViewProps) {
   const projectType: ProjectType = projectTypeProp || project?.type || 'book';
@@ -101,9 +99,16 @@ export function PolishedWriteView({
   }, [mobilePanel]);
   const [sidebarView, setSidebarView] = useState<'chapters' | 'search' | 'research' | 'goals'>('chapters');
   const [isAiWriting, setIsAiWriting] = useState(false);
-  const hasRestoredRef = useRef(false);
+  const [projectSnapshot, setProjectSnapshot] = useState(project);
 
   const wordCount = getWordCount(content);
+  const {
+    versions,
+    projectStats,
+    saveProjectDraft,
+    saveProjectVersion,
+    restoreProjectVersion,
+  } = useProjectPersistence(project?._id || project?.id);
 
   const { suggestions: grammarSuggestions, isChecking: isGrammarChecking, check: checkGrammar, dismiss: dismissGrammar } = useWritingGrammarCheck();
 
@@ -114,12 +119,12 @@ export function PolishedWriteView({
       genreTarget: GENRE_TARGETS[projectType] ?? GENRE_TARGETS.book,
       grammarPassing: grammarSuggestions.length === 0 && wordCount > 50,
       hasCitations,
-      hasCoverArt: !!(project?.coverImage || project?.cover),
-      hasMetadata: !!(title && title.length > 3 && project?.description),
-      hasPricing: !!(project?.price && project.price > 0),
+      hasCoverArt: !!(projectSnapshot?.coverImage || projectSnapshot?.cover),
+      hasMetadata: !!(title && title.length > 3 && projectSnapshot?.description),
+      hasPricing: !!(projectSnapshot?.price && projectSnapshot.price > 0),
       projectType,
     });
-  }, [wordCount, grammarSuggestions.length, content, project, title, projectType]);
+  }, [wordCount, grammarSuggestions.length, content, projectSnapshot, title, projectType]);
   const neuralScore = useMemo(() => {
     const plainText = stripHtml(content);
     if (plainText.length < 50) return undefined;
@@ -151,11 +156,6 @@ export function PolishedWriteView({
   }, [content]);
 
   const uxResult = useUXAnalysis(content);
-  const { isSaving: isCloudSaving, lastCloudSave, cloudError, cloudContent } = useConvexAutosave(
-    project?._id || project?.id,
-    content,
-    wordCount
-  );
 
   const prevGoalReached = useRef(false);
 
@@ -203,13 +203,36 @@ export function PolishedWriteView({
   }, []);
 
   useEffect(() => {
-    if (hasRestoredRef.current) return;
-    if (!cloudContent) return;
-    if (content && content.length > 5) return;
-    hasRestoredRef.current = true;
-    setContent(cloudContent);
-    showToast('Content restored from cloud', 'success');
-  }, [cloudContent]);
+    setProjectSnapshot(project);
+  }, [project]);
+
+  useEffect(() => {
+    window.__shothikStudio = {
+      getContent: () => content,
+      setContent: (html: string) => {
+        setContent(sanitizeHtml(html));
+      },
+      appendContent: (html: string) => {
+        const nextHtml = sanitizeHtml(html);
+        setContent((prev) => `${prev}${prev && nextHtml ? "\n" : ""}${nextHtml}`);
+      },
+      getBookInfo: () => ({
+        title,
+        projectId: project?._id || project?.id || "",
+        mode,
+        wordCount,
+      }),
+      setMode: (nextMode: string) => {
+        if (nextMode === "write" || nextMode === "format" || nextMode === "publish") {
+          setMode(nextMode);
+        }
+      },
+    };
+
+    return () => {
+      delete window.__shothikStudio;
+    };
+  }, [content, mode, project?._id, project?.id, title, wordCount]);
 
   useEffect(() => {
     if (content !== lastHistoryContent.current) {
@@ -218,17 +241,6 @@ export function PolishedWriteView({
       setHistoryIndex(prev => Math.min(prev + 1, 49));
     }
   }, [content]);
-
-  useEffect(() => {
-    if (!project?._id) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      handleSave();
-    }, 3000);
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, [content, title]);
 
   useEffect(() => {
     if (wordCount < 5) return;
@@ -244,18 +256,30 @@ export function PolishedWriteView({
     checkGrammar(stripHtml(content));
   }, [content]);
 
-  const handleSave = useCallback(() => {
+  const persistDraft = useCallback(async (createVersion = false) => {
     if (!project?._id) return;
     debugLog.info('Editor', 'Autosave triggered', { projectId: project._id, wordCount });
     setIsSaving(true);
     try {
-      updateProject(project._id, {
-        content,
+      const savedProject = await saveProjectDraft({
         title,
+        content,
+        sections: projectSnapshot?.sections,
         wordCount,
+        settings: {
+          ...(projectSnapshot?.settings ?? {}),
+          citationStyle,
+        },
         citationStyle,
-        lastEditedAt: Date.now(),
       });
+      setProjectSnapshot(savedProject);
+      if (createVersion) {
+        await saveProjectVersion({
+          content,
+          sections: projectSnapshot?.sections,
+          label: 'Manual save',
+        });
+      }
       setLastSaved(new Date());
     } catch (err: any) {
       debugLog.error('Editor', 'Save failed', { error: err.message });
@@ -264,7 +288,68 @@ export function PolishedWriteView({
     } finally {
       setIsSaving(false);
     }
-  }, [content, title, wordCount, citationStyle, project?._id, showToast]);
+  }, [
+    citationStyle,
+    content,
+    project?._id,
+    projectSnapshot?.sections,
+    projectSnapshot?.settings,
+    saveProjectDraft,
+    saveProjectVersion,
+    showToast,
+    title,
+    wordCount,
+  ]);
+
+  const handleSave = useCallback(() => {
+    void persistDraft(true);
+  }, [persistDraft]);
+
+  const publishProject = useMemo(
+    () => ({
+      ...(projectSnapshot ?? project ?? {}),
+      _id: projectSnapshot?._id ?? project?._id ?? project?.id,
+      id: projectSnapshot?._id ?? project?._id ?? project?.id,
+      title,
+      content,
+      type: projectType,
+    }),
+    [content, project, projectSnapshot, projectType, title],
+  );
+
+  const handleEnterPublishMode = useCallback(() => {
+    if (!project?._id) {
+      setMode('publish');
+      return;
+    }
+
+    void persistDraft(false).finally(() => {
+      setMode('publish');
+    });
+  }, [persistDraft, project?._id]);
+
+  const handleModeChange = useCallback(
+    (nextMode: Mode) => {
+      if (nextMode === 'publish') {
+        handleEnterPublishMode();
+        return;
+      }
+
+      setMode(nextMode);
+    },
+    [handleEnterPublishMode],
+  );
+
+  useEffect(() => {
+    if (!project?._id) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void persistDraft(false);
+    }, 3000);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [content, title, persistDraft, project?._id]);
 
   const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
@@ -400,18 +485,76 @@ export function PolishedWriteView({
   const handleCitationStyleChange = useCallback((style: CitationStyle) => {
     setCitationStyle(style);
     if (project?._id) {
-      updateProject(project._id, { citationStyle: style });
+      void saveProjectDraft({
+        title,
+        content,
+        sections: projectSnapshot?.sections,
+        wordCount,
+        settings: {
+          ...(projectSnapshot?.settings ?? {}),
+          citationStyle: style,
+        },
+        citationStyle: style,
+      }).then((savedProject) => {
+        setProjectSnapshot(savedProject);
+      }).catch(() => {
+        showToast('Failed to update citation style', 'info');
+      });
     }
-  }, [project?._id]);
+  }, [
+    content,
+    project?._id,
+    projectSnapshot?.sections,
+    projectSnapshot?.settings,
+    saveProjectDraft,
+    showToast,
+    title,
+    wordCount,
+  ]);
+
+  const handleRestoreVersion = useCallback(async (versionId: string) => {
+    try {
+      const restoredProject = await restoreProjectVersion(versionId);
+      if (restoredProject) {
+        setProjectSnapshot(restoredProject);
+        if (typeof restoredProject.content === 'string') {
+          lastHistoryContent.current = restoredProject.content;
+          setContent(restoredProject.content);
+        }
+        if (typeof restoredProject.title === 'string') {
+          showToast(`Restored version for ${restoredProject.title}`, 'success');
+        } else {
+          showToast('Version restored', 'success');
+        }
+      }
+    } catch (error) {
+      showToast('Failed to restore version', 'info');
+    }
+  }, [restoreProjectVersion, showToast]);
 
   const hasAiOutline = !!(project?.agentChapters?.length);
+  const versionItems = useMemo(
+    () =>
+      versions.map((version) => ({
+        id: version.id,
+        savedAt: version.savedAt,
+        label: version.label,
+        preview:
+          version.label ||
+          version.content.substring(0, 120).replace(/<[^>]*>/g, '') +
+            (version.content.length > 120 ? '…' : ''),
+        isAISuggestion: false as const,
+        status: 'applied' as const,
+      })),
+    [versions],
+  );
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       <div data-tour="mode-switcher">
         <ModeSwitcherHeader
           currentMode={mode}
-          onModeChange={setMode}
+          onModeChange={handleModeChange}
           projectName={title}
           onSave={handleSave}
           canUndo={historyIndex > 0}
@@ -423,9 +566,6 @@ export function PolishedWriteView({
           interfaceMode={interfaceMode}
           onInterfaceModeChange={handleInterfaceModeChange}
           onOpenCommandPalette={() => setShowCommandPalette(true)}
-          isCloudSaving={isCloudSaving}
-          lastCloudSave={lastCloudSave}
-          cloudError={cloudError}
           readinessScore={readinessResult.score}
           readinessCriteria={readinessResult.criteria}
         />
@@ -495,6 +635,8 @@ export function PolishedWriteView({
                 projectTitle={title}
                 interfaceMode={interfaceMode}
                 uxResult={uxResult}
+                versions={versionItems}
+                onRestoreVersion={handleRestoreVersion}
               />
             </div>
 
@@ -569,6 +711,8 @@ export function PolishedWriteView({
                       projectTitle={title}
                       interfaceMode={interfaceMode}
                       uxResult={uxResult}
+                      versions={versionItems}
+                      onRestoreVersion={handleRestoreVersion}
                     />
                   </motion.div>
                 )}
@@ -581,6 +725,9 @@ export function PolishedWriteView({
             neuralScore={neuralScore}
             nobelImpact={nobelImpact}
             readingLevel={readingLevel}
+            totalVersions={projectStats?.totalVersions}
+            writingVelocity={projectStats?.velocity}
+            estimatedDaysToTarget={projectStats?.estimatedDays}
             grammarSuggestions={grammarSuggestions}
             isGrammarChecking={isGrammarChecking}
             onDismissGrammar={dismissGrammar}
@@ -639,13 +786,13 @@ export function PolishedWriteView({
           citationStyle={citationStyle}
           onCitationStyleChange={handleCitationStyleChange}
           onAppendContent={handleAppendContent}
-          onPublish={() => setMode('publish')}
+          onPublish={handleEnterPublishMode}
         />
       )}
 
       {mode === 'publish' && (
         <PublishingPage
-          project={project || { title }}
+          project={publishProject || { title }}
           onBackToEditor={() => setMode('write')}
           onSaveDraft={handleSave}
         />
@@ -656,7 +803,7 @@ export function PolishedWriteView({
         isOpen={showCommandPalette}
         onClose={() => setShowCommandPalette(false)}
         chapters={(project?.agentChapters || []).map((c: any) => ({ id: c.id, title: c.title }))}
-        onNavigate={(chapterId) => {
+        onNavigate={() => {
           setSidebarView('chapters');
           showToast(`Navigated to chapter`, 'info');
         }}

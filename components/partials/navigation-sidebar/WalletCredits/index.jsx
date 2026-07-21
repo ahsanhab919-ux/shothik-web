@@ -5,9 +5,7 @@ import { cn } from "@/lib/utils";
 import { Coins } from "lucide-react";
 import Link from "next/link";
 import { useSelector } from "react-redux";
-import { useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useEffect, useState } from "react";
 import CreditPurchaseModal from "@/components/credits/CreditPurchaseModal";
 
 const formatCompactNumber = (num) => {
@@ -36,7 +34,34 @@ export default function WalletCredits({ isCompact }) {
     (state) => state.user_wallet || { wallet: null, isLoading: false },
   );
   const [creditModalOpen, setCreditModalOpen] = useState(false);
-  const creditBalance = useQuery(api.credits.getBalance);
+  const [creditBalance, setCreditBalance] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/credits/balance")
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to load credit balance");
+        }
+        return payload;
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setCreditBalance(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCreditBalance({ balance: 0 });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const toolCredits = wallet?.token || 0;
   const giftCredits = creditBalance?.balance ?? 0;

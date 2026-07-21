@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBuildWithConvexFallback } from "@/lib/writing-studio/buildStore";
+import { getBuildWithPersistenceFallback } from "@/lib/writing-studio/buildStore";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimiter";
 
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
 
   const { buildId } = await params;
 
-  const build = await getBuildWithConvexFallback(buildId);
+  const build = await getBuildWithPersistenceFallback(buildId);
 
   if (!build) {
     return NextResponse.json({ error: "Build not found" }, { status: 404 });

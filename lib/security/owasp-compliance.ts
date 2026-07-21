@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isPublicApiPath } from "@/lib/security/public-api-paths";
 
 interface SecurityCheck {
   id: string;
@@ -9,6 +10,18 @@ interface SecurityCheck {
 
 const accessLog: Array<{ timestamp: number; path: string; method: string; ip: string | null }> = [];
 const MAX_ACCESS_LOG = 10000;
+
+function hasAuthenticatedApiSession(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  const insforgeAccessToken = req.cookies.get("insforge_access_token")?.value;
+  const insforgeRefreshToken = req.cookies.get("insforge_refresh_token")?.value;
+
+  return Boolean(
+    authHeader ||
+      insforgeAccessToken ||
+      insforgeRefreshToken,
+  );
+}
 
 const securityChecks: SecurityCheck[] = [
   {
@@ -33,25 +46,12 @@ const securityChecks: SecurityCheck[] = [
     name: "Authentication",
     severity: "critical",
     check: async (req) => {
-      const authHeader = req.headers.get("authorization");
-      const sessionToken = req.cookies.get("__session")?.value;
-
       const pathname = req.nextUrl.pathname;
-      const isStripeWebhook =
-        pathname.startsWith("/api/stripe/") && pathname.endsWith("/webhook");
-      const isPublic =
-        pathname === "/api/health" ||
-        pathname.startsWith("/api/.well-known") ||
-        pathname === "/api/zoho-webhook" ||
-        pathname.startsWith("/api/forum/og/") ||
-        pathname === "/api/writing-studio/quality-check" ||
-        isStripeWebhook;
-
-      if (isPublic) {
+      if (isPublicApiPath(pathname)) {
         return { passed: true };
       }
 
-      if (!authHeader && !sessionToken) {
+      if (!hasAuthenticatedApiSession(req)) {
         return { passed: false, message: "Authentication required" };
       }
 

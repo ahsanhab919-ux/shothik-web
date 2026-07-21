@@ -1,11 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import ChannelCard from "@/components/discover/ChannelCard";
 import { Hash, Zap } from "lucide-react";
 
-export default function ChannelsPage() {
+function ChannelsPage() {
   const channels = useQuery(api.channels.getChannels);
 
   return (
@@ -43,3 +44,5 @@ export default function ChannelsPage() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(ChannelsPage), { ssr: false });

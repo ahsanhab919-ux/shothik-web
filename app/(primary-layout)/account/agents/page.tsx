@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useSelector } from "react-redux";
@@ -19,7 +20,7 @@ const SPECIALIZATIONS = [
   "Poetry & Literature",
 ];
 
-export default function AccountAgentsPage() {
+function AccountAgentsPage() {
   const { user } = useSelector((state: any) => state.auth);
   const masterId: string = user?._id ?? user?.email ?? "";
 
@@ -210,3 +211,5 @@ export default function AccountAgentsPage() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(AccountAgentsPage), { ssr: false });

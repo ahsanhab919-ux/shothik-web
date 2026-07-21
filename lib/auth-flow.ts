@@ -95,12 +95,16 @@ export function isSafeInternalPath(path: string | null | undefined): path is str
 
 export function getLoginFlowVariant(): LoginFlowVariant {
   if (typeof window === "undefined") return "contextual";
-  const stored = window.localStorage.getItem(LOGIN_FLOW_VARIANT_KEY);
-  if (stored === "contextual" || stored === "streamlined") return stored;
+  try {
+    const stored = window.localStorage.getItem(LOGIN_FLOW_VARIANT_KEY);
+    if (stored === "contextual" || stored === "streamlined") return stored;
 
-  const variant: LoginFlowVariant = Math.random() < 0.5 ? "contextual" : "streamlined";
-  window.localStorage.setItem(LOGIN_FLOW_VARIANT_KEY, variant);
-  return variant;
+    const variant: LoginFlowVariant = Math.random() < 0.5 ? "contextual" : "streamlined";
+    window.localStorage.setItem(LOGIN_FLOW_VARIANT_KEY, variant);
+    return variant;
+  } catch {
+    return "contextual";
+  }
 }
 
 export function saveAuthFlowState(state: Omit<AuthFlowState, "timestamp">) {
@@ -109,7 +113,11 @@ export function saveAuthFlowState(state: Omit<AuthFlowState, "timestamp">) {
     ...state,
     timestamp: Date.now(),
   };
-  window.localStorage.setItem(AUTH_FLOW_STORAGE_KEY, JSON.stringify(nextState));
+  try {
+    window.localStorage.setItem(AUTH_FLOW_STORAGE_KEY, JSON.stringify(nextState));
+  } catch {
+    // Ignore storage restrictions so auth can continue without local routing hints.
+  }
 }
 
 export function getAuthFlowState(): AuthFlowState | null {
@@ -127,7 +135,11 @@ export function getAuthFlowState(): AuthFlowState | null {
 
 export function clearAuthFlowState() {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(AUTH_FLOW_STORAGE_KEY);
+  try {
+    window.localStorage.removeItem(AUTH_FLOW_STORAGE_KEY);
+  } catch {
+    // Ignore storage restrictions so auth can continue without local routing hints.
+  }
 }
 
 export function getMostRecentProject(projects: RecentProjectLike[]): RecentProjectLike | null {

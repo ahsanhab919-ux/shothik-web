@@ -102,10 +102,10 @@ export function ExportPanel({ editor, onClose, bookId }) {
     }
     setBookDownloadingFormat(format);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") || "" : "";
       const res = await fetch("/api/books/export/convert", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ bookId, format }),
       });
       if (!res.ok) {

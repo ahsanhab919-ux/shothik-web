@@ -115,26 +115,6 @@ export const authApi = authApiSlice.injectEndpoints({
         }
       },
     }),
-    googleLogin: builder.mutation({
-      query: (data) => ({
-        url: `/auth/google-login`,
-        method: "POST",
-        body: data,
-      }),
-      async onQueryStarted(arg, { queryFulfilled, dispatch }) {
-        try {
-          const result = await queryFulfilled;
-          if (result?.data?.token) {
-            dispatch(loggedIn(result?.data?.token));
-            dispatch(authApi.util.invalidateTags(["User"]));
-            trackLogin();
-          }
-        } catch (err) {
-          // do nothing
-        }
-      },
-    }),
-
     logout: builder.mutation({
       query: () => ({
         url: `/auth/logout`,
@@ -171,11 +151,14 @@ export const authApi = authApiSlice.injectEndpoints({
       },
     }),
     resetPassword: builder.mutation({
-      query: ({ key, email, password }) => {
+      query: ({ key, code, password, newPassword }) => {
         return {
-          url: `/auth/reset-password/${key}`,
+          url: `/auth/reset-password`,
           method: "POST",
-          body: { email, password },
+          body: {
+            code: code || key,
+            password: newPassword || password,
+          },
         };
       },
     }),
@@ -189,10 +172,14 @@ export const authApi = authApiSlice.injectEndpoints({
       },
     }),
     verifyEmail: builder.mutation({
-      query: ({ key }) => {
+      query: ({ email, key, code, otp }) => {
         return {
-          url: `/auth/verify-email/${key}`,
+          url: `/auth/verify-email`,
           method: "POST",
+          body: {
+            email,
+            code: code || otp || key,
+          },
         };
       },
     }),
@@ -242,7 +229,6 @@ export const {
   useGetUserLimitQuery,
   useRegisterMutation,
   useLoginMutation,
-  useGoogleLoginMutation,
   useUpdateProfileMutation,
   useLogoutMutation,
   useForgotPasswordMutation,

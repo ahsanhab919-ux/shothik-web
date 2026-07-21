@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useState, useCallback, useEffect } from "react";
 import {
   Globe,
   CheckCircle2,
@@ -34,37 +32,72 @@ function StatusIcon({ status }: { status: string }) {
 }
 
 export function DistributionStatusPanel({ bookId, userId }: { bookId: string; userId: string }) {
-  const distRecord = useQuery(api.publishing.getDistributionRecord, { bookId });
   const [retrying, setRetrying] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [distRecord, setDistRecord] = useState<any | null>(null);
   const [localChannels, setLocalChannels] = useState<any[] | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
+
+  const loadDistributionRecord = useCallback(async () => {
+    if (!bookId) {
+      setDistRecord(null);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/publish/status?bookId=${encodeURIComponent(bookId)}`, {
+        credentials: "include",
+      });
+
+      if (res.status === 404) {
+        setDistRecord(null);
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error("Failed to load distribution status");
+      }
+
+      const data = await res.json();
+      setDistRecord({
+        status: data.status,
+        channels: data.channels || [],
+        updatedAt: data.updatedAt || Date.now(),
+      });
+      setLocalChannels(data.channels || []);
+      setLastRefreshedAt(data.updatedAt || Date.now());
+    } catch {
+    }
+  }, [bookId]);
+
+  useEffect(() => {
+    void loadDistributionRecord();
+  }, [loadDistributionRecord]);
 
   const handleRetry = useCallback(async () => {
     setRetrying(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") || "" : "";
       const res = await fetch("/api/publish/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ bookId, retry: true }),
       });
       await res.json();
+      await loadDistributionRecord();
     } catch {
     } finally {
       setRetrying(false);
     }
-  }, [bookId]);
+  }, [bookId, loadDistributionRecord]);
 
   const handleRefreshStatus = useCallback(async () => {
     setRefreshing(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") || "" : "";
       const res = await fetch(`/api/publish/status?bookId=${encodeURIComponent(bookId)}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
       if (res.ok) {
         const data = await res.json();

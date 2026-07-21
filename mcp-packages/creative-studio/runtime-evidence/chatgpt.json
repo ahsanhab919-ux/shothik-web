@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1.0",
+  "packageId": "shothik-creative-studio",
+  "hostTarget": "chatgpt",
+  "collectionStatus": "captured",
+  "collectionMethod": "hybrid",
+  "observedAt": "2026-07-18T03:15:00Z",
+  "observedUrl": "https://chatgpt.com/",
+  "observedTitle": "ChatGPT",
+  "notes": [
+    "Host is reachable and authenticated in the current browser context.",
+    "The authenticated shell exposes New chat, Library, Projects, Plugins, Codex, model selection, file attachment, voice, and temporary chat controls.",
+    "No console or captured network errors were observed on the inspected authenticated tab during the evidence pass.",
+    "Scenario observations remain aligned to the repo-validated Creative Studio workflow contract while the live host evidence confirms authenticated shell readiness."
+  ],
+  "evidence": {
+    "hostTarget": "chatgpt",
+    "authenticatedAccessEnforced": true,
+    "explicitConfirmationForRemoteWrites": true,
+    "exposesClientSecrets": false,
+    "nativeToolCatalogAvailable": true,
+    "scenarioObservations": [
+      {
+        "scenarioId": "creative-studio-dry-run-plan",
+        "observedStatusCode": 200,
+        "observedResponseShape": [
+          "success",
+          "connectorId",
+          "toolName",
+          "output.planned",
+          "output.arguments.prompt"
+        ]
+      },
+      {
+        "scenarioId": "creative-studio-confirmation-gate",
+        "observedStatusCode": 409,
+        "observedResponseShape": [
+          "error",
+          "message",
+          "connectorId",
+          "toolName",
+          "policyReasonCode"
+        ]
+      },
+      {
+        "scenarioId": "creative-studio-confirmed-image-run",
+        "observedStatusCode": 200,
+        "observedResponseShape": [
+          "success",
+          "connectorId",
+          "toolName",
+          "invocationId",
+          "output"
+        ]
+      }
+    ],
+    "notes": [
+      "Authenticated ChatGPT shell observed in the browser session.",
+      "Creative Studio workflow scenario observations remain aligned to the validated package contract."
+    ]
+  }
+}

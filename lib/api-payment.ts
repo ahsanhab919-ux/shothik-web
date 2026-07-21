@@ -5,10 +5,16 @@ const getAccessToken = (): string | null => {
   return localStorage.getItem("accessToken");
 };
 
+export const paymentSystemBaseUrl =
+  process.env.NEXT_PUBLIC_PAYMENT_SYSTEM_URL?.trim() ||
+  (process.env.NODE_ENV === "production"
+    ? "https://payment-qa-svc.shothik.ai"
+    : "");
+
+export const hasPaymentSystemBaseUrl = paymentSystemBaseUrl.length > 0;
+
 const api = axios.create({
-  baseURL:
-    process.env.NEXT_PUBLIC_PAYMENT_SYSTEM_URL ||
-    "https://payment-qa-svc.shothik.ai",
+  baseURL: paymentSystemBaseUrl || undefined,
   timeout: 5000,
 });
 

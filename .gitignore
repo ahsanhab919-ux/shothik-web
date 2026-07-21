@@ -5,6 +5,7 @@
 
 # testing
 /coverage
+/.playwright/
 /playwright-report
 /test-results
 
@@ -38,6 +39,13 @@ pnpm-debug.log*
 # vercel
 .vercel
 
+# local browser tooling and scratch work
+.browser-apps/
+.dbg/
+.playwright-browsers/
+.release-prod/
+.tmp-seed-cover.svg
+
 # Large media files (hosted externally or too large for GitHub)
 *.mp4
 *.zip
@@ -66,3 +74,15 @@ src/assets/(home-v3-page)/*.jpg
 .roo
 .trae
 .windsurf
+.gh
+
+testsprite_tests/tmp/config.json
+.testsprite-home/
+.env.testsprite
+.env.testsprite.local
+.env.testsprite.development
+.env.testsprite.development.local
+.env.testsprite.test
+.env.testsprite.test.local
+.env.testsprite.production
+.env.testsprite.production.local

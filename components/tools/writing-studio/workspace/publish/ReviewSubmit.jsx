@@ -66,7 +66,14 @@ function DetailRow({ label, value, highlight }) {
   );
 }
 
-export function ReviewSubmit({ formData, goBack, onSubmit, isSubmitting, submitError }) {
+export function ReviewSubmit({
+  formData,
+  updateFormData,
+  goBack,
+  onSubmit,
+  isSubmitting,
+  submitError,
+}) {
   const price = parseFloat(formData.listPrice) || 0;
   const googleRevenue = price * (1 - GOOGLE_TAKE);
   const commission = googleRevenue * COMMISSION_RATE;
@@ -90,6 +97,7 @@ export function ReviewSubmit({ formData, goBack, onSubmit, isSubmitting, submitE
     formData.coverDimensions.height >= 2400 &&
     price >= 0.99 &&
     price <= 200 &&
+    formData.distributionOptIn &&
     formData.agreementAccepted &&
     formData.agreementScrolled &&
     formData.agreementName.trim().length >= 2
@@ -163,6 +171,36 @@ export function ReviewSubmit({ formData, goBack, onSubmit, isSubmitting, submitE
           </div>
         </SectionCard>
 
+        <SectionCard
+          icon={Rocket}
+          title="Distribution Consent"
+          status={formData.distributionOptIn ? "complete" : "incomplete"}
+        >
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(formData.distributionOptIn)}
+                onChange={(event) =>
+                  updateFormData?.({
+                    distributionOptIn: event.target.checked,
+                  })
+                }
+                className="mt-1 size-4 rounded border-zinc-300 text-brand focus:ring-brand accent-brand"
+                aria-label="Enable distribution opt-in"
+              />
+              <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                I authorize Shothik to submit this approved book to enabled
+                distribution channels when publishing begins.
+              </span>
+            </label>
+            <p className="text-xs text-zinc-500">
+              This consent is required before the distribution workflow can send
+              your approved book to Google Play Books and other selected stores.
+            </p>
+          </div>
+        </SectionCard>
+
         <SectionCard icon={FileCheck} title="Agreement" status={formData.agreementAccepted && formData.agreementName ? "complete" : "incomplete"}>
           <div className="space-y-1">
             <DetailRow label="Status" value={formData.agreementAccepted ? "Accepted" : "Not accepted"} />
@@ -195,7 +233,7 @@ export function ReviewSubmit({ formData, goBack, onSubmit, isSubmitting, submitE
             <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4">
               {isComplete
                 ? "Your book will be reviewed by our team within 48-72 hours. You'll receive email notifications about your submission status."
-                : "Please complete all required sections before submitting. Go back to fill in missing information."}
+                : "Please complete all required sections, including distribution consent, before submitting. Go back to fill in missing information."}
             </p>
 
             {isComplete && (

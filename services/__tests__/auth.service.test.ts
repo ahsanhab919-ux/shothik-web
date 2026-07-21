@@ -76,20 +76,45 @@ describe('AuthService', () => {
     const result = await service.forgotPassword('user@test.com');
 
     expect(mockedPost).toHaveBeenCalledWith(
-      'https://test-api.shothik.ai/api/auth/forgot-password',
+      '/api/auth/forgot-password',
       { email: 'user@test.com' },
     );
     expect(result.data.message).toBe('Reset link sent');
   });
 
-  it('verifyEmail sends key', async () => {
+  it('resetPassword sends code and password', async () => {
+    const mockResponse = { data: { success: true, message: 'Password updated' }, status: 200 };
+    mockedPost.mockResolvedValue(mockResponse);
+
+    await service.resetPassword('654321', 'new-password');
+
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/auth/reset-password',
+      { code: '654321', password: 'new-password' },
+    );
+  });
+
+  it('resendVerificationEmail sends email', async () => {
+    const mockResponse = { data: { success: true, message: 'Verification code sent' }, status: 200 };
+    mockedPost.mockResolvedValue(mockResponse);
+
+    await service.resendVerificationEmail('user@test.com');
+
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/auth/send-verify-email',
+      { email: 'user@test.com' },
+    );
+  });
+
+  it('verifyEmail sends email and code', async () => {
     const mockResponse = { data: { success: true, message: 'Verified' }, status: 200 };
     mockedPost.mockResolvedValue(mockResponse);
 
-    await service.verifyEmail('verify-key-123');
+    await service.verifyEmail('user@test.com', '123456');
 
     expect(mockedPost).toHaveBeenCalledWith(
-      'https://test-api.shothik.ai/api/auth/verify-email/verify-key-123',
+      '/api/auth/verify-email',
+      { email: 'user@test.com', code: '123456' },
     );
   });
 

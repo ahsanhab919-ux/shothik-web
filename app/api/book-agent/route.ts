@@ -1,24 +1,39 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { defineRoute, z } from "@/lib/api-validation";
-import { withRetry, CircuitBreaker } from "@/lib/resiliency";
+import { completeForTool } from "@/lib/llm/gateway";
+import { CircuitBreaker } from "@/lib/resiliency";
 
-// Global Circuit Breaker for Gemini API
-const geminiCircuitBreaker = new CircuitBreaker({
+// Global circuit breaker for planner generation.
+const plannerCircuitBreaker = new CircuitBreaker({
   failureThreshold: 3,
   resetTimeoutMs: 30000,
 });
 
-function getGeminiModel() {
-  const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
-  const client = new GoogleGenerativeAI(apiKey);
-  return client.getGenerativeModel({ model: "gemini-2.5-flash" });
+type PlannerSource = { title?: string; url?: string; text?: string };
+
+interface PlannerChapter {
+  id?: string;
+  title?: string;
+  synopsis?: string;
+}
+
+interface PlannerPlan {
+  title: string;
+  genre: string;
+  logline: string;
+  chapters: PlannerChapter[];
+  researchNotes: {
+    comparables: string[];
+    themes: string[];
+    settingNotes: string;
+    characterArchetypes: string[];
+    keyConflicts: string[];
+  };
 }
 
 function buildPrompt(
   type: "book" | "research" | "assignment",
   description: string,
-  sources: { title?: string; url?: string; text?: string }[]
+  sources: PlannerSource[]
 ): string {
   const sourceBlock =
     sources.length > 0
@@ -120,6 +135,111 @@ function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function normalizePlan(plan: PlannerPlan): PlannerPlan {
+  return {
+    ...plan,
+    chapters: plan.chapters.map((chapter, index) => ({
+      id: chapter.id || `ch-${index + 1}`,
+      title: chapter.title || `Chapter ${index + 1}`,
+      synopsis: chapter.synopsis || "",
+    })),
+    researchNotes: plan.researchNotes || {
+      comparables: [],
+      themes: [],
+      settingNotes: "",
+      characterArchetypes: [],
+      keyConflicts: [],
+    },
+  };
+}
+
+function buildFallbackPlan(
+  type: "book" | "research" | "assignment",
+  description: string,
+  sources: PlannerSource[],
+): PlannerPlan {
+  const compactDescription = description.replace(/\s+/g, " ").trim();
+  const seed = compactDescription
+    .replace(/[^\w\s-]/g, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 6)
+    .join(" ");
+  const workingTitle = seed ? `Draft Plan: ${seed}` : "Draft Plan";
+  const sourceNames = sources
+    .map((source) => source.title || source.url)
+    .filter((value): value is string => Boolean(value))
+    .slice(0, 3);
+
+  if (type === "research") {
+    return normalizePlan({
+      title: workingTitle,
+      genre: "Research Paper",
+      logline: `This paper investigates ${compactDescription} through a structured academic argument.`,
+      chapters: [
+        { id: "sec-1", title: "Introduction", synopsis: `Introduce ${compactDescription}, frame the research question, and define the paper's contribution.` },
+        { id: "sec-2", title: "Literature Review", synopsis: "Summarize the most relevant prior work, identify gaps, and position the argument against existing scholarship." },
+        { id: "sec-3", title: "Methodology", synopsis: "Describe the analytical method, datasets or sources, and evaluation criteria used to test the thesis." },
+        { id: "sec-4", title: "Findings and Analysis", synopsis: "Present the main evidence, connect findings to the research question, and discuss implications." },
+        { id: "sec-5", title: "Discussion and Conclusion", synopsis: "Synthesize the results, acknowledge limitations, and outline next-step research directions." },
+      ],
+      researchNotes: {
+        comparables: sourceNames,
+        themes: ["research question", "evidence", "limitations"],
+        settingNotes: "Local fallback plan generated because the live planner provider was unavailable at request time.",
+        characterArchetypes: ["primary method", "supporting validation"],
+        keyConflicts: ["counterargument", "data limitation", "scope boundary"],
+      },
+    });
+  }
+
+  if (type === "assignment") {
+    return normalizePlan({
+      title: workingTitle,
+      genre: "Assignment Outline",
+      logline: `This assignment argues a clear position on ${compactDescription} with structured supporting evidence.`,
+      chapters: [
+        { id: "sec-1", title: "Introduction", synopsis: "Frame the assignment prompt, define the thesis, and preview the core argument." },
+        { id: "sec-2", title: "Background and Context", synopsis: "Explain the relevant concepts, terms, or case background needed for the reader." },
+        { id: "sec-3", title: "Core Analysis", synopsis: "Present the strongest evidence, examples, and reasoning in support of the thesis." },
+        { id: "sec-4", title: "Counterargument and Evaluation", synopsis: "Address alternative viewpoints, limitations, or trade-offs before defending the preferred position." },
+        { id: "sec-5", title: "Conclusion", synopsis: "Restate the argument, reinforce the main evidence, and close with the practical takeaway." },
+      ],
+      researchNotes: {
+        comparables: sourceNames,
+        themes: ["thesis clarity", "evidence quality", "critical analysis"],
+        settingNotes: "Local fallback plan generated because the live planner provider was unavailable at request time.",
+        characterArchetypes: ["primary analytical lens", "secondary comparison lens"],
+        keyConflicts: ["counterargument", "assumption risk", "common rubric gap"],
+      },
+    });
+  }
+
+  return normalizePlan({
+    title: workingTitle,
+    genre: "Book Project",
+    logline: `A project about ${compactDescription} that escalates through discovery, conflict, and resolution.`,
+    chapters: [
+      { id: "ch-1", title: "Opening Image", synopsis: "Introduce the central character or idea, establish the world, and hint at the core tension." },
+      { id: "ch-2", title: "Inciting Pressure", synopsis: "Introduce the event or realization that forces the story to move from setup into action." },
+      { id: "ch-3", title: "First Commitment", synopsis: "Show the protagonist choosing a direction and accepting the first real cost of the journey." },
+      { id: "ch-4", title: "Expanding Stakes", synopsis: "Deepen relationships, broaden the world, and reveal why the conflict is larger than it first appeared." },
+      { id: "ch-5", title: "Midpoint Shift", synopsis: "Deliver a reversal, discovery, or commitment that changes how the protagonist understands the challenge." },
+      { id: "ch-6", title: "Pressure Mounts", synopsis: "Escalate consequences, tighten timelines, and expose the protagonist's internal weakness." },
+      { id: "ch-7", title: "Crisis", synopsis: "Push the project to its most fragile state, where failure appears likely and the cost of success becomes personal." },
+      { id: "ch-8", title: "Climax", synopsis: "Resolve the central conflict with a decisive confrontation or breakthrough." },
+      { id: "ch-9", title: "Aftermath", synopsis: "Show the transformed state of the character or world and close the narrative arc with clarity." },
+    ],
+    researchNotes: {
+      comparables: sourceNames,
+      themes: ["identity", "stakes", "transformation"],
+      settingNotes: "Local fallback plan generated because the live planner provider was unavailable at request time.",
+      characterArchetypes: ["protagonist", "antagonistic force"],
+      keyConflicts: ["external pressure", "internal doubt", "relationship strain"],
+    },
+  });
+}
+
 export const POST = defineRoute({
   method: "post",
   path: "/api/book-agent",
@@ -167,27 +287,6 @@ export const POST = defineRoute({
 
           const prompt = buildPrompt(type, description.trim(), sources);
 
-          // Use CircuitBreaker & Retry for LLM calls
-          const response = await geminiCircuitBreaker.execute(() => 
-            withRetry(
-              async () => {
-                const model = getGeminiModel();
-                return await model.generateContent({
-                  contents: [{ role: "user", parts: [{ text: prompt }] }],
-                  generationConfig: {
-                    maxOutputTokens: 8192,
-                    temperature: 0.9,
-                  },
-                });
-              },
-              {
-                retries: 2,
-                minTimeout: 2000,
-                onFailedAttempt: (error) => console.warn(`Gemini generation retry: ${error.message}`)
-              }
-            )
-          );
-
           send(controller, { type: "status", step: 4 });
           await delay(400);
 
@@ -196,51 +295,39 @@ export const POST = defineRoute({
 
           send(controller, { type: "status", step: 6 });
 
-          const raw = response.response.text() ?? "";
+          let plan: PlannerPlan;
 
-          const jsonMatch = raw.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) {
-            send(controller, {
-              type: "error",
-              message: "The AI returned an unexpected response. Please try again.",
+          try {
+            const llmResult = await plannerCircuitBreaker.execute(() =>
+              completeForTool("book-agent", {
+                prompt,
+                temperature: 0.9,
+                maxTokens: 8192,
+                jsonMode: true,
+              })
+            );
+
+            const raw = llmResult.text ?? "";
+            const jsonMatch = raw.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+              throw new Error("The AI returned an unexpected response.");
+            }
+
+            const parsed = JSON.parse(jsonMatch[0]) as PlannerPlan;
+            if (!parsed.title || !Array.isArray(parsed.chapters)) {
+              throw new Error("The plan was incomplete.");
+            }
+
+            plan = normalizePlan(parsed);
+          } catch (parseError) {
+            console.warn("[book-agent] Falling back to local planner", {
+              error:
+                parseError instanceof Error
+                  ? parseError.message
+                  : String(parseError),
             });
-            controller.close();
-            return;
+            plan = buildFallbackPlan(type, description.trim(), sources);
           }
-
-          const plan = JSON.parse(jsonMatch[0]);
-
-          if (
-            !plan.title ||
-          !plan.chapters ||
-          !Array.isArray(plan.chapters)
-        ) {
-          send(controller, {
-            type: "error",
-            message: "The plan was incomplete. Please try again.",
-          });
-          controller.close();
-          return;
-        }
-
-        plan.chapters = plan.chapters.map(
-          (
-            ch: { id?: string; title?: string; synopsis?: string },
-            i: number
-          ) => ({
-            id: ch.id || `ch-${i + 1}`,
-            title: ch.title || `Chapter ${i + 1}`,
-            synopsis: ch.synopsis || "",
-          })
-        );
-
-        plan.researchNotes = plan.researchNotes || {
-          comparables: [],
-          themes: [],
-          settingNotes: "",
-          characterArchetypes: [],
-          keyConflicts: [],
-        };
 
         send(controller, { type: "done", plan });
         controller.close();

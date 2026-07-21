@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0",
+  "fixtureId": "creative-studio-confirmed-run",
+  "packageId": "shothik-creative-studio",
+  "title": "Creative Studio Confirmed Run",
+  "purpose": "Validate the response contract for a confirmed creative execution after the explicit mutation gate is satisfied.",
+  "fixtureType": "workflow",
+  "uiPath": "/creative-studio",
+  "apiPath": "/api/mcp/creative-studio",
+  "expectedRemoteConnectorSlug": "higgsfield",
+  "requiredNativeTools": [
+    "shothik.paraphrase.rewrite_text",
+    "shothik.summarize.summarize_text",
+    "shothik.translator.translate_text",
+    "shothik.humanize.rewrite_humanized_text"
+  ],
+  "scenarios": [
+    {
+      "id": "creative-studio-confirmed-image-run",
+      "title": "Confirmed generation returns invocation metadata and output payload",
+      "request": {
+        "method": "POST",
+        "path": "/api/mcp/creative-studio",
+        "body": {
+          "prompt": "Create a refined campaign image with cinematic contrast.",
+          "assetType": "image",
+          "style": "premium editorial",
+          "dryRun": false,
+          "confirmed": true
+        }
+      },
+      "expect": {
+        "statusCode": 200,
+        "responseShape": [
+          "success",
+          "connectorId",
+          "toolName",
+          "invocationId",
+          "output"
+        ]
+      }
+    }
+  ]
+}

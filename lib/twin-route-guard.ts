@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { twinApi, createTwinClient } from "./twin-convex";
 import type { TwinAuthResult } from "./twin-api-auth";
+import { getTwinByMasterId, logTwinActivity } from "@/lib/twin/insforge-twin-service";
 
 export interface RouteGuardOptions {
   requiredAbility?: { action: string; subject: string };
@@ -70,22 +70,20 @@ export async function logRouteActivity(
 ): Promise<void> {
   try {
     if (auth.twinId && auth.keyHash) {
-      const convex = createTwinClient();
-      await convex.mutation(twinApi.twin.logActivity, {
+      await logTwinActivity({
         twinId: auth.twinId,
+        masterId: auth.userId,
         action: opts.action,
         targetResource: opts.targetResource,
         metadata: opts.metadata,
-        keyHash: auth.keyHash,
       });
       return;
     }
 
-    if (auth.userId && auth.token) {
-      const convex = createTwinClient(auth.token);
-      const profile = await convex.query(twinApi.twin.getByMaster, { masterId: auth.userId });
+    if (auth.userId) {
+      const profile = await getTwinByMasterId(auth.userId);
       if (profile) {
-        await convex.mutation(twinApi.twin.logActivity, {
+        await logTwinActivity({
           twinId: profile._id,
           masterId: auth.userId,
           action: opts.action,

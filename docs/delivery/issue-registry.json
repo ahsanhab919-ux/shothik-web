@@ -1,0 +1,156 @@
+{
+  "LWT-01": {
+    "issueId": "#41",
+    "recordType": "Issue",
+    "title": "tracker: LWT-01 legacy writing paraphrase and humanizer stabilization",
+    "status": "To Do",
+    "created": "2026-07-15T19:56:31Z",
+    "updated": "2026-07-15T19:56:31Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/41",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "LWT-02": {
+    "issueId": "#42",
+    "recordType": "Issue",
+    "title": "tracker: LWT-02 summarize and translator stabilization",
+    "status": "To Do",
+    "created": "2026-07-15T19:56:31Z",
+    "updated": "2026-07-15T19:56:31Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/42",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "LWT-03": {
+    "issueId": "#43",
+    "recordType": "Issue",
+    "title": "tracker: LWT-03 detector, plagiarism, and grammar reliability",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:15Z",
+    "updated": "2026-07-15T20:02:35Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/43",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "AGT-01": {
+    "issueId": "#44",
+    "recordType": "Issue",
+    "title": "tracker: AGT-01 agent chat auth production promotion",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:16Z",
+    "updated": "2026-07-15T19:57:16Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/44",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "AGT-02": {
+    "issueId": "#45",
+    "recordType": "Issue",
+    "title": "tracker: AGT-02 twin, second me, and hermes hardening",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:18Z",
+    "updated": "2026-07-15T19:57:18Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/45",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "AGT-03": {
+    "issueId": "#46",
+    "recordType": "Issue",
+    "title": "tracker: AGT-03 community and channels governance",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:20Z",
+    "updated": "2026-07-15T20:02:39Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/46",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "RSH-01": {
+    "issueId": "#47",
+    "recordType": "Issue",
+    "title": "tracker: RSH-01 research workspace release readiness",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:22Z",
+    "updated": "2026-07-15T20:02:41Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/47",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "RSH-02": {
+    "issueId": "#48",
+    "recordType": "Issue",
+    "title": "tracker: RSH-02 sheet workspace operational hardening",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:23Z",
+    "updated": "2026-07-15T20:02:43Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/48",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "RSH-03": {
+    "issueId": "#49",
+    "recordType": "Issue",
+    "title": "tracker: RSH-03 slide service integration readiness",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:25Z",
+    "updated": "2026-07-15T20:02:45Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/49",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "PRD-01": {
+    "issueId": "#50",
+    "recordType": "Issue",
+    "title": "tracker: PRD-01 writing studio and books authoring MVP",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:27Z",
+    "updated": "2026-07-15T19:57:27Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/50",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "PRD-02": {
+    "issueId": "#51",
+    "recordType": "Issue",
+    "title": "tracker: PRD-02 marketplace and library ownership model",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:28Z",
+    "updated": "2026-07-15T19:57:28Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/51",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "PRD-03": {
+    "issueId": "#52",
+    "recordType": "Issue",
+    "title": "tracker: PRD-03 credits wallet and payments hardening",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:30Z",
+    "updated": "2026-07-15T20:02:49Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/52",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "PRD-04": {
+    "issueId": "#53",
+    "recordType": "Issue",
+    "title": "tracker: PRD-04 publishing and external distribution expansion",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:31Z",
+    "updated": "2026-07-15T19:57:31Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/53",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  },
+  "PRD-05": {
+    "issueId": "#54",
+    "recordType": "Issue",
+    "title": "tracker: PRD-05 auth, preview protection, and release hardening",
+    "status": "To Do",
+    "created": "2026-07-15T19:57:33Z",
+    "updated": "2026-07-15T19:57:33Z",
+    "link": "https://github.com/ahsanhab919-ux/shothik-web/issues/54",
+    "note": "Dedicated delivery-tracker issue synchronized from the current delivery seed.",
+    "provenance": "dedicated"
+  }
+}

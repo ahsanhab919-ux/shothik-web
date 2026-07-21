@@ -1,16 +1,18 @@
 packages:
   - "."
+overrides:
+  axios: ^1.7.9
 allowBuilds:
-  '@prisma/engines': set this to true or false
-  '@scarf/scarf': set this to true or false
-  '@tree-sitter-grammars/tree-sitter-yaml': set this to true or false
-  core-js: set this to true or false
-  core-js-pure: set this to true or false
-  esbuild: set this to true or false
-  prisma: set this to true or false
-  protobufjs: set this to true or false
-  sharp: set this to true or false
-  tesseract.js: set this to true or false
-  tree-sitter: set this to true or false
-  tree-sitter-json: set this to true or false
-  unrs-resolver: set this to true or false
+  '@prisma/engines': true
+  '@scarf/scarf': true
+  '@tree-sitter-grammars/tree-sitter-yaml': true
+  core-js: true
+  core-js-pure: true
+  esbuild: true
+  prisma: true
+  protobufjs: true
+  sharp: true
+  tesseract.js: true
+  tree-sitter: true
+  tree-sitter-json: true
+  unrs-resolver: true

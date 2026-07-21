@@ -131,6 +131,7 @@ const twinApi = api as typeof api & {
     twinCreateForumPost: FunctionReference<"mutation", "public">;
     twinStartBook: FunctionReference<"mutation", "public">;
     twinAdvanceBookContentState: FunctionReference<"mutation", "public">;
+    twinPostCommunityPreview: FunctionReference<"mutation", "public">;
     twinAddChatMessage: FunctionReference<"mutation", "public">;
     twinReactToPost: FunctionReference<"mutation", "public">;
   };

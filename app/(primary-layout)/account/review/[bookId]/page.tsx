@@ -1,79 +1,79 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle, XCircle, ArrowLeft, AlertTriangle, BookOpen, Globe, Loader2 } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  ArrowLeft,
+  AlertTriangle,
+  BookOpen,
+  Loader2,
+  Send,
+} from "lucide-react";
+
+async function requestJson(url: string, options?: RequestInit, fallbackMessage = "Request failed") {
+  const response = await fetch(url, options);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || fallbackMessage);
+  }
+  return payload;
+}
 
 export default function MasterReviewPage() {
   const params = useParams();
   const bookId = params.bookId as string;
   const [feedback, setFeedback] = useState("");
+  const [book, setBook] = useState<any | null | undefined>(undefined);
   const [action, setAction] = useState<"approving" | "rejecting" | null>(null);
   const [done, setDone] = useState<"approved" | "rejected" | null>(null);
-  const [distributionOptIn, setDistributionOptIn] = useState<boolean | null>(null);
-  const [distributionError, setDistributionError] = useState<string | null>(null);
-
-  const book = useQuery(api.books.get, { id: bookId as any });
-  const createNotification = useMutation(api.agent_notifications.createNotification);
-  const updateStatus = useMutation(api.books.updateStatus);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (book && distributionOptIn === null) {
-      setDistributionOptIn((book as any).distributionOptIn !== false);
-    }
-  }, [book, distributionOptIn]);
+    let cancelled = false;
+    setBook(undefined);
+
+    requestJson(`/api/books/drafts/${bookId}`, undefined, "Failed to load book for review.")
+      .then((payload) => {
+        if (!cancelled) {
+          setBook(payload?.book ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBook(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bookId]);
 
   const handleApprove = async () => {
     setAction("approving");
-    setDistributionError(null);
+    setError(null);
 
     try {
-      const optIn = distributionOptIn !== false;
-      await updateStatus({
-        bookId: bookId as any,
-        status: "approved",
-        distributionOptIn: optIn,
-      });
-
-      if (optIn) {
-        try {
-          const token = typeof window !== "undefined"
-            ? localStorage.getItem("auth_token") || ""
-            : "";
-          const res = await fetch("/api/publish/submit", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ bookId }),
-          });
-
-          const data = await res.json();
-          if (!res.ok || !data.success) {
-            const errMsg = data.error || "Distribution submission failed, but your book was still approved.";
-            setDistributionError(errMsg);
-            try {
-              await createNotification({
-                masterId: book.userId,
-                type: "distribution_failed",
-                bookId: bookId as any,
-                bookTitle: book.title,
-                message: `Distribution failed for "${book.title}": ${errMsg}`,
-              });
-            } catch {}
-          }
-        } catch {
-          setDistributionError("Could not connect to distribution service, but your book was still approved.");
-        }
-      }
-
+      const payload = await requestJson(
+        `/api/admin/books/${bookId}/status`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "approve",
+          }),
+        },
+        "Failed to approve book.",
+      );
+      setBook(payload?.book ?? book);
       setDone("approved");
     } catch (err: any) {
-      setDistributionError(err.message || "Failed to approve book. Please try again.");
+      setError(err.message || "Failed to approve book. Please try again.");
     } finally {
       setAction(null);
     }
@@ -82,19 +82,58 @@ export default function MasterReviewPage() {
   const handleReject = async () => {
     if (!feedback.trim()) return;
     setAction("rejecting");
+    setError(null);
     try {
-      await updateStatus({
-        bookId: bookId as any,
-        status: "rejected",
-        rejectionReason: feedback,
-      });
+      const payload = await requestJson(
+        `/api/admin/books/${bookId}/status`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "reject",
+            reason: feedback,
+            category: "other",
+          }),
+        },
+        "Failed to request revision.",
+      );
+      setBook(payload?.book ?? book);
       setDone("rejected");
     } catch {
-      setDistributionError("Failed to submit rejection. Please try again.");
+      setError("Failed to submit rejection. Please try again.");
     } finally {
       setAction(null);
     }
   };
+
+  if (book === undefined) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (book === null) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="max-w-md text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+            <BookOpen className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h2 className="mb-2 text-xl font-bold text-foreground">Book not found</h2>
+          <p className="mb-6 text-sm text-muted-foreground">
+            This review item is unavailable or you do not have access to it.
+          </p>
+          <Link href="/account/agents" className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80 transition-opacity">
+            Back to Agents
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (done === "approved") {
     return (
@@ -105,33 +144,14 @@ export default function MasterReviewPage() {
           </div>
           <h2 className="mb-2 text-xl font-bold text-foreground">Book Approved</h2>
           <p className="mb-2 text-sm text-muted-foreground">
-            Your agent's book has been approved and submitted to the publication pipeline.
+            The book is now approved for the internal Shothik catalog workflow.
           </p>
-          {distributionOptIn && !distributionError && (
-            <p className="mb-4 text-sm text-emerald-600 dark:text-emerald-400">
-              Distribution to Amazon Kindle, Apple Books, Google Play Books, and 400+ retailers has been initiated.
-              It will appear on stores within 3–5 business days.
-            </p>
-          )}
-          {distributionOptIn && distributionError && (
-            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/20">
-              <div className="flex items-start gap-2 text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p className="text-sm">{distributionError} You can retry distribution from the book management page.</p>
-              </div>
-            </div>
-          )}
-          {!distributionOptIn && (
-            <p className="mb-4 text-sm text-muted-foreground">
-              External distribution was not selected. You can enable it later from the book management page.
-            </p>
-          )}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Link href="/account/agents" className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
               Back to Agents
             </Link>
-            <Link href="/explore" className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80 transition-opacity">
-              View in Explore
+            <Link href={`/books/${bookId}`} className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80 transition-opacity">
+              View Book
             </Link>
           </div>
         </div>
@@ -184,44 +204,12 @@ export default function MasterReviewPage() {
           <QualityMetric label="Grammar Issues" value={2} max={20} color="amber" unit=" issues" inverted />
         </div>
 
-        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
-          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-            <CheckCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">Quality check passed — no PII detected</span>
+        <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Send className="h-4 w-4" />
+            <span className="text-sm font-medium">Current status: {book.status}</span>
           </div>
         </div>
-      </div>
-
-      <div className="mb-6 rounded-xl border border-border bg-card p-6">
-        <div className="flex items-start gap-3 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-950/40 shrink-0">
-            <Globe className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-base font-semibold text-foreground">External Distribution</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Distribute your book to Amazon Kindle, Apple Books, Google Play Books, Kobo, Barnes & Noble, and 400+ global retailers via PublishDrive.
-            </p>
-          </div>
-        </div>
-
-        <label className="flex items-center gap-3 cursor-pointer rounded-lg border border-border p-4 hover:bg-muted/50 transition-colors">
-          <input
-            type="checkbox"
-            checked={distributionOptIn !== false}
-            onChange={(e) => setDistributionOptIn(e.target.checked)}
-            className="h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500"
-          />
-          <div>
-            <span className="text-sm font-medium text-foreground">
-              Opt in to external distribution
-            </span>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Your book will be submitted to 400+ stores and libraries worldwide upon approval.
-              You can manage distribution channels from the book page after approval.
-            </p>
-          </div>
-        </label>
       </div>
 
       <div className="mb-6 rounded-xl border border-border bg-card p-6">
@@ -238,11 +226,11 @@ export default function MasterReviewPage() {
           />
         </div>
 
-        {distributionError && (
+        {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/20">
             <div className="flex items-start gap-2 text-red-700 dark:text-red-400">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p className="text-sm">{distributionError}</p>
+              <p className="text-sm">{error}</p>
             </div>
           </div>
         )}
@@ -258,7 +246,7 @@ export default function MasterReviewPage() {
             ) : (
               <CheckCircle className="h-4 w-4" />
             )}
-            {action === "approving" ? "Approving..." : distributionOptIn ? "Approve & Distribute" : "Approve & Publish"}
+            {action === "approving" ? "Approving..." : "Approve"}
           </button>
           <button
             onClick={handleReject}

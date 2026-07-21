@@ -21,6 +21,14 @@ const SYSTEM_PROMPT = `You are Shothik, an intelligent AI assistant built for un
 
 Be concise, warm, and accurate. If you don't know something, say so honestly.`;
 
+const DEFAULT_CHAT_MODEL = "gemini-flash-latest";
+const LEGACY_CHAT_MODEL_ALIASES: Record<string, string> = {
+  "gemini-2.5-flash": DEFAULT_CHAT_MODEL,
+  "gemini-2.5-flash-lite": DEFAULT_CHAT_MODEL,
+  "gemini-2.0-flash": DEFAULT_CHAT_MODEL,
+  "gemini-2.5-pro": "gemini-pro-latest",
+};
+
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 function checkLimit(ip: string): boolean {
@@ -33,6 +41,15 @@ function checkLimit(ip: string): boolean {
   if (entry.count >= 30) return false;
   entry.count++;
   return true;
+}
+
+function normalizeChatModelHandle(modelHandle?: string | null) {
+  const normalized = modelHandle?.trim();
+  if (!normalized) {
+    return DEFAULT_CHAT_MODEL;
+  }
+
+  return LEGACY_CHAT_MODEL_ALIASES[normalized] ?? normalized;
 }
 
 export async function POST(request: NextRequest) {
@@ -81,10 +98,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-    const baseUrl =
+    const apiKey =
+      process.env.AI_INTEGRATIONS_GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY;
+    const rawBaseUrl =
       process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ||
       "https://generativelanguage.googleapis.com";
+    const baseUrl = rawBaseUrl.includes("/v1beta")
+      ? rawBaseUrl.replace(/\/$/, "")
+      : `${rawBaseUrl.replace(/\/$/, "")}/v1beta`;
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
@@ -93,6 +115,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const effectiveModelHandle = normalizeChatModelHandle(modelHandle);
+
     const effectiveConversation =
       conversationId
         ? await getConversationForUser(conversationId, String(user._id))
@@ -100,7 +124,7 @@ export async function POST(request: NextRequest) {
             userId: String(user._id),
             surface: surface ?? "flagship",
             title: messages.find((m) => m.role === "user")?.content?.slice(0, 80) ?? "New chat",
-            modelHandle: modelHandle ?? "gemini-2.5-flash",
+            modelHandle: effectiveModelHandle,
             temporary: false,
             contextRef,
           });
@@ -122,7 +146,7 @@ export async function POST(request: NextRequest) {
     const persistedAssistantMessage = await createPersistedAssistantMessage({
       conversationId: String(effectiveConversation._id),
       userId: String(user._id),
-      modelHandle: modelHandle ?? "gemini-2.5-flash",
+      modelHandle: effectiveModelHandle,
       parentMessageId: String(persistedUserMessage._id),
     });
 
@@ -147,7 +171,7 @@ export async function POST(request: NextRequest) {
     }
 
     const geminiRes = await fetch(
-      `${baseUrl}/models/${modelHandle ?? "gemini-2.5-flash"}:streamGenerateContent?alt=sse&key=${apiKey}`,
+      `${baseUrl}/models/${effectiveModelHandle}:streamGenerateContent?alt=sse&key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

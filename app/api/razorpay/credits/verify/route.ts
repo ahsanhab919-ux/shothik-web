@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import Razorpay from "razorpay";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
 import { getAuthToken } from "@/lib/auth";
+import { creditWalletPurchase } from "@/lib/books/insforge-book-service";
 import { logger } from "@/lib/logger";
 import { decodeJwt } from "jose";
 
@@ -12,12 +11,6 @@ function getRazorpayClient(): Razorpay | null {
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) return null;
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
-}
-
-function getConvexClient(): ConvexHttpClient | null {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
-  if (!url) return null;
-  return new ConvexHttpClient(url);
 }
 
 function getUserIdFromToken(token: string): string | null {
@@ -33,8 +26,7 @@ function getUserIdFromToken(token: string): string | null {
 export async function POST(req: NextRequest) {
   try {
     const razorpay = getRazorpayClient();
-    const convex = getConvexClient();
-    if (!razorpay || !convex) {
+    if (!razorpay) {
       return NextResponse.json(
         { error: "Razorpay is not configured" },
         { status: 503 },
@@ -107,11 +99,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const result = await convex.mutation(api.credits.creditPurchase, {
+    const result = await creditWalletPurchase({
       userId: orderUserId,
       amount: creditAmount,
-      stripePaymentId: `razorpay_${razorpay_payment_id}`,
-      webhookSecret: process.env.CREDIT_PURCHASE_SECRET || "",
+      providerPaymentId: `razorpay_${razorpay_payment_id}`,
+      description: `Purchased ${creditAmount} Credits`,
+      metadata: {
+        provider: "razorpay",
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+        packId: packId ?? null,
+      },
     });
 
     logger.info("Credits credited via Razorpay", {

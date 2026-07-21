@@ -987,47 +987,63 @@ export const approveAction = mutation({
     const now = Date.now();
     let executionResult: string = "approved_pending_execution";
 
+    const governedInvocation =
+      payload.governedInvocation &&
+      typeof payload.governedInvocation === "object"
+        ? (payload.governedInvocation as Record<string, unknown>)
+        : null;
+
     if (approval.action === "forum:create" && payload.title) {
-      const forumId = await ctx.db.insert("forums", {
-        twinId: approval.twinId,
-        masterId: twin.masterId ?? identity.subject,
-        title: payload.title as string,
-        description: payload.description as string | undefined,
-        participantType: "both",
-        status: "open",
-        reservationCount: 0,
-        postCount: 0,
-        lastActivityAt: now,
-        createdAt: now,
-      });
-      executionResult = `forum_created:${forumId}`;
+      if (governedInvocation?.toolName === "shothik.twin.create_forum") {
+        executionResult = "approved_pending_governed_execution";
+      } else {
+        const forumId = await ctx.db.insert("forums", {
+          twinId: approval.twinId,
+          masterId: twin.masterId ?? identity.subject,
+          title: payload.title as string,
+          description: payload.description as string | undefined,
+          participantType: "both",
+          status: "open",
+          reservationCount: 0,
+          postCount: 0,
+          lastActivityAt: now,
+          createdAt: now,
+        });
+        executionResult = `forum_created:${forumId}`;
+      }
     } else if (approval.action === "forum:post" && payload.content) {
-      const forumId = payload.forumId as Id<"forums">;
-      if (forumId) {
-        const forum = await ctx.db.get(forumId);
-        if (forum && forum.status !== "closed") {
-          const shareToken = generateShareToken() + now.toString(36);
-          const postId = await ctx.db.insert("forum_posts", {
-            forumId,
-            authorId: String(approval.twinId),
-            authorType: "agent",
-            authorName: twin.name,
-            content: payload.content as string,
-            shareToken,
-            reactions: { intrigued: 0, skeptical: 0, impressed: 0, unsettled: 0 },
-            createdAt: now,
-          });
-          await ctx.db.patch(forumId, {
-            postCount: (forum.postCount ?? 0) + 1,
-            lastActivityAt: now,
-          });
-          executionResult = `forum_post_created:${postId}`;
-        } else {
-          executionResult = "forum_closed_or_not_found";
+      if (governedInvocation?.toolName === "shothik.twin.create_forum_post") {
+        executionResult = "approved_pending_governed_execution";
+      } else {
+        const forumId = payload.forumId as Id<"forums">;
+        if (forumId) {
+          const forum = await ctx.db.get(forumId);
+          if (forum && forum.status !== "closed") {
+            const shareToken = generateShareToken() + now.toString(36);
+            const postId = await ctx.db.insert("forum_posts", {
+              forumId,
+              authorId: String(approval.twinId),
+              authorType: "agent",
+              authorName: twin.name,
+              content: payload.content as string,
+              shareToken,
+              reactions: { intrigued: 0, skeptical: 0, impressed: 0, unsettled: 0 },
+              createdAt: now,
+            });
+            await ctx.db.patch(forumId, {
+              postCount: (forum.postCount ?? 0) + 1,
+              lastActivityAt: now,
+            });
+            executionResult = `forum_post_created:${postId}`;
+          } else {
+            executionResult = "forum_closed_or_not_found";
+          }
         }
       }
     } else if (approval.action === "book:write") {
-      if (payload.bookId) {
+      if (governedInvocation?.toolName === "shothik.twin.execute_book_write") {
+        executionResult = "approved_pending_governed_execution";
+      } else if (payload.bookId) {
         const bookId = payload.bookId as Id<"books">;
         const book = await ctx.db.get(bookId);
         if (book && book.twinId === approval.twinId) {
@@ -1061,6 +1077,9 @@ export const approveAction = mutation({
         executionResult = "book_write_missing_bookId_or_title";
       }
     } else if (approval.action === "book:publish" && payload.bookId) {
+      if (governedInvocation?.toolName === "shothik.twin.publish_book") {
+        executionResult = "approved_pending_governed_execution";
+      } else {
       const bookId = payload.bookId as Id<"books">;
       const book = await ctx.db.get(bookId);
       if (book && book.twinId === approval.twinId) {
@@ -1078,25 +1097,33 @@ export const approveAction = mutation({
       } else {
         executionResult = "book_not_found_or_unauthorized";
       }
+      }
     } else if (approval.action === "community:preview" && payload.bookId) {
-      const bookId = payload.bookId as Id<"books">;
-      const book = await ctx.db.get(bookId);
-      if (book && book.twinId === approval.twinId && book.contentState === "published") {
-        const shareToken = generateShareToken() + now.toString(36);
-        const previewPostId = await ctx.db.insert("forum_posts", {
-          forumId: payload.forumId as Id<"forums">,
-          authorId: String(approval.twinId),
-          authorType: "agent",
-          authorName: twin.name,
-          content: `📖 Community Preview: "${book.title}" — ${book.description ?? "A new work by this Twin."}`,
-          shareToken,
-          reactions: { intrigued: 0, skeptical: 0, impressed: 0, unsettled: 0 },
-          createdAt: now,
-        });
-        await ctx.db.patch(bookId, { contentState: "community_preview_posted", updatedAt: now });
-        executionResult = `community_preview_posted:${previewPostId}`;
+      if (
+        governedInvocation?.toolName ===
+        "shothik.twin.post_community_preview"
+      ) {
+        executionResult = "approved_pending_governed_execution";
       } else {
-        executionResult = "book_must_be_published_for_community_preview";
+        const bookId = payload.bookId as Id<"books">;
+        const book = await ctx.db.get(bookId);
+        if (book && book.twinId === approval.twinId && book.contentState === "published") {
+          const shareToken = generateShareToken() + now.toString(36);
+          const previewPostId = await ctx.db.insert("forum_posts", {
+            forumId: payload.forumId as Id<"forums">,
+            authorId: String(approval.twinId),
+            authorType: "agent",
+            authorName: twin.name,
+            content: `📖 Community Preview: "${book.title}" — ${book.description ?? "A new work by this Twin."}`,
+            shareToken,
+            reactions: { intrigued: 0, skeptical: 0, impressed: 0, unsettled: 0 },
+            createdAt: now,
+          });
+          await ctx.db.patch(bookId, { contentState: "community_preview_posted", updatedAt: now });
+          executionResult = `community_preview_posted:${previewPostId}`;
+        } else {
+          executionResult = "book_must_be_published_for_community_preview";
+        }
       }
     }
 

@@ -49,13 +49,13 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
         <div className="flex items-center justify-between gap-3">
           <label className="text-muted-foreground text-xs">Model</label>
           <select
-            value={modelHandle ?? "gemini-2.5-flash"}
+            value={modelHandle ?? "gemini-flash-latest"}
             onChange={(event) => onModelChange?.(event.target.value)}
             className="border-input bg-background h-9 rounded-md border px-3 text-sm"
             disabled={disabled || activeStreaming}
           >
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+            <option value="gemini-flash-latest">Gemini Flash</option>
+            <option value="gemini-pro-latest">Gemini Pro</option>
           </select>
         </div>
         <div className="flex items-end gap-3 rounded-2xl border bg-muted/30 p-3">

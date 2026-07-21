@@ -39,8 +39,8 @@ export async function PATCH(
     return NextResponse.json({ error: auth.error ?? "Authentication required" }, { status: 401 });
   }
 
-  if (auth.authType !== "jwt") {
-    return NextResponse.json({ error: "JWT authentication required for task updates" }, { status: 403 });
+  if (auth.authType !== "user_session") {
+    return NextResponse.json({ error: "Authenticated session required for task updates" }, { status: 403 });
   }
 
   let body: Record<string, unknown> = {};

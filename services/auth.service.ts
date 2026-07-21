@@ -89,24 +89,27 @@ export class AuthService {
   }
 
   async forgotPassword(email: string): Promise<AxiosResponse<AuthResponse>> {
-    return axiosWithRetry(() => axios.post(`${this.apiUrl}/auth/forgot-password`, { email }));
+    return axiosWithRetry(() => axios.post(`/api/auth/forgot-password`, { email }));
   }
 
   async resetPassword(
-    key: string,
+    code: string,
     password: string,
   ): Promise<AxiosResponse<AuthResponse>> {
-    return axiosWithRetry(() => axios.post(`${this.apiUrl}/auth/reset-password/${key}`, { password }));
+    return axiosWithRetry(() => axios.post(`/api/auth/reset-password`, { code, password }));
   }
 
   async resendVerificationEmail(
     email: string,
   ): Promise<AxiosResponse<AuthResponse>> {
-    return axiosWithRetry(() => axios.post(`${this.apiUrl}/auth/send-verify-email`, { email }));
+    return axiosWithRetry(() => axios.post(`/api/auth/send-verify-email`, { email }));
   }
 
-  async verifyEmail(key: string): Promise<AxiosResponse<AuthResponse>> {
-    return axiosWithRetry(() => axios.post(`${this.apiUrl}/auth/verify-email/${key}`));
+  async verifyEmail(
+    email: string,
+    code: string,
+  ): Promise<AxiosResponse<AuthResponse>> {
+    return axiosWithRetry(() => axios.post(`/api/auth/verify-email`, { email, code }));
   }
 
   async regenerateToken(token: string): Promise<AxiosResponse<AuthResponse>> {

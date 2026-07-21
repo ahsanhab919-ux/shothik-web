@@ -118,16 +118,6 @@ export function PolishedWriteOnboarding({
     driverObj.drive();
   }, []);
 
-  useEffect(() => {
-    try {
-      const done = localStorage.getItem(ONBOARDING_KEY);
-      if (!done) {
-        const timer = setTimeout(() => startTour(), 800);
-        return () => clearTimeout(timer);
-      }
-    } catch {}
-  }, [startTour]);
-
   const dismiss = useCallback(() => {
     setIsOpen(false);
     try {

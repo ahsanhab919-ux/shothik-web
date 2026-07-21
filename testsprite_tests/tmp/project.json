@@ -1,0 +1,10 @@
+{
+  "id": "5e5de466-6873-48fc-8bd2-f778d0f86b6d",
+  "name": "shothik-web",
+  "type": "frontend",
+  "targetUrl": "https://staging.shothikgpt.com",
+  "createdFrom": "testsprite-cli",
+  "createdAt": null,
+  "updatedAt": null,
+  "syncedAt": "2026-07-16T20:59:38.053Z"
+}

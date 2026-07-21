@@ -1,8 +1,18 @@
-function getRequiredEnv(name: "NEXT_PUBLIC_INSFORGE_URL" | "NEXT_PUBLIC_INSFORGE_ANON_KEY") {
-  const value = process.env[name];
+function getPublicInsforgeBaseUrl() {
+  const value = process.env.NEXT_PUBLIC_INSFORGE_URL;
 
   if (!value) {
-    throw new Error(`Missing required InsForge environment variable: ${name}`);
+    throw new Error("Missing required InsForge environment variable: NEXT_PUBLIC_INSFORGE_URL");
+  }
+
+  return value;
+}
+
+function getPublicInsforgeAnonKey() {
+  const value = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
+
+  if (!value) {
+    throw new Error("Missing required InsForge environment variable: NEXT_PUBLIC_INSFORGE_ANON_KEY");
   }
 
   return value;
@@ -16,7 +26,7 @@ export function hasInsforgePublicConfig() {
 
 export function getInsforgePublicConfig() {
   return {
-    baseUrl: getRequiredEnv("NEXT_PUBLIC_INSFORGE_URL"),
-    anonKey: getRequiredEnv("NEXT_PUBLIC_INSFORGE_ANON_KEY"),
+    baseUrl: getPublicInsforgeBaseUrl(),
+    anonKey: getPublicInsforgeAnonKey(),
   };
 }

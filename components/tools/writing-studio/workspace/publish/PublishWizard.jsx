@@ -58,6 +58,7 @@ const INITIAL_FORM_DATA = {
   coverDimensions: null,
   listPrice: "9.99",
   currency: "USD",
+  distributionOptIn: false,
   agreementAccepted: false,
   agreementName: "",
   agreementScrolled: false,
@@ -219,6 +220,8 @@ export function PublishWizard({ bookTitle, project, onSubmitSuccess, editBookId 
   } = usePublishingBook({
     bookId: editBookId || null,
     initialTitle: bookTitle || "",
+    userId,
+    projectId: project?._id || project?.id || null,
   });
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -245,6 +248,7 @@ export function PublishWizard({ bookTitle, project, onSubmitSuccess, editBookId 
         keywords: savedBook.keywords || [],
         listPrice: savedBook.listPrice || "9.99",
         currency: savedBook.currency || "USD",
+        distributionOptIn: savedBook.distributionOptIn || false,
         agreementAccepted: savedBook.agreementAccepted || false,
         agreementName: savedBook.agreementName || "",
         agreementScrolled: savedBook.agreementScrolled || false,
@@ -274,6 +278,7 @@ export function PublishWizard({ bookTitle, project, onSubmitSuccess, editBookId 
           [
             "title", "subtitle", "description", "language", "category",
             "subcategory", "keywords", "listPrice", "currency",
+            "distributionOptIn",
             "agreementAccepted", "agreementName", "agreementScrolled",
             "manuscriptName", "manuscriptSize", "manuscriptFormat",
             "coverDimensions",

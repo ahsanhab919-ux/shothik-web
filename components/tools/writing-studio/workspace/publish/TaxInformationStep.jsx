@@ -2,8 +2,6 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import {
   Shield,
   Globe,
@@ -83,9 +81,7 @@ function SelectWrapper({ children, ...props }) {
 export function TaxInformationStep({ formData, updateFormData }) {
   const { user } = useSelector((state) => state.auth);
   const userId = user?._id ?? user?.id ?? "";
-
-  const existingTaxInfo = useQuery(api.publishing.getTaxInfo, { userId }, { enabled: !!userId });
-  const saveTaxInfo = useMutation(api.publishing.saveTaxInfo);
+  const [existingTaxInfo, setExistingTaxInfo] = useState(null);
 
   const [country, setCountry] = useState(formData.taxCountry ?? "");
   const [legalName, setLegalName] = useState(formData.taxLegalName ?? "");
@@ -106,16 +102,37 @@ export function TaxInformationStep({ formData, updateFormData }) {
 
   // Pre-fill from existing record
   useEffect(() => {
-    if (existingTaxInfo && !formData.taxSaved) {
-      setCountry(existingTaxInfo.country ?? "");
-      setLegalName(existingTaxInfo.legalName ?? "");
-      setAddress(existingTaxInfo.address ?? "");
-      setCity(existingTaxInfo.city ?? "");
-      setPostalCode(existingTaxInfo.postalCode ?? "");
-      setTreatyBenefit(existingTaxInfo.treatyBenefit ?? false);
-      setSaved(true);
+    async function loadTaxProfile() {
+      if (!userId) {
+        setExistingTaxInfo(null);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/publish/tax", {
+          credentials: "include",
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const taxProfile = data.taxProfile ?? null;
+        setExistingTaxInfo(taxProfile);
+
+        if (taxProfile && !formData.taxSaved) {
+          setCountry(taxProfile.country ?? "");
+          setLegalName(taxProfile.legalName ?? "");
+          setAddress(taxProfile.address ?? "");
+          setCity(taxProfile.city ?? "");
+          setPostalCode(taxProfile.postalCode ?? "");
+          setTreatyBenefit(taxProfile.treatyBenefit ?? false);
+          setSaved(true);
+        }
+      } catch (err) {
+        console.error("Failed to load tax information:", err);
+      }
     }
-  }, [existingTaxInfo]);
+
+    void loadTaxProfile();
+  }, [formData.taxSaved, userId]);
 
   const isComplete =
     country &&
@@ -132,21 +149,33 @@ export function TaxInformationStep({ formData, updateFormData }) {
     setSaving(true);
 
     try {
-      await saveTaxInfo({
-        userId,
-        formType,
-        country,
-        taxId: taxId.trim() || "UNCHANGED",
-        legalName: legalName.trim(),
-        address: address.trim(),
-        city: city.trim(),
-        postalCode: postalCode.trim(),
-        treatyBenefit,
-        treatyCountry: treatyBenefit ? country : undefined,
-        withholdingRate,
+      const response = await fetch("/api/publish/tax", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          formType,
+          country,
+          taxId: taxId.trim() || "UNCHANGED",
+          legalName: legalName.trim(),
+          address: address.trim(),
+          city: city.trim(),
+          postalCode: postalCode.trim(),
+          treatyBenefit,
+          treatyCountry: treatyBenefit ? country : undefined,
+          withholdingRate,
+        }),
       });
 
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "Failed to save tax information.");
+      }
+
       setSaved(true);
+      setExistingTaxInfo(data.taxProfile ?? null);
       updateFormData({
         taxSaved: true,
         taxCountry: country,
@@ -161,7 +190,7 @@ export function TaxInformationStep({ formData, updateFormData }) {
     } finally {
       setSaving(false);
     }
-  }, [isComplete, saving, userId, formType, country, taxId, legalName, address, city, postalCode, treatyBenefit, withholdingRate, saveTaxInfo, updateFormData]);
+  }, [isComplete, saving, formType, country, taxId, legalName, address, city, postalCode, treatyBenefit, withholdingRate, updateFormData]);
 
   return (
     <div className="space-y-6">

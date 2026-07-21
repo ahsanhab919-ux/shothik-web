@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { useSelector } from "react-redux";
@@ -29,7 +30,7 @@ function TrustScore({ score }: { score: number }) {
   );
 }
 
-export default function AgentProfilePage() {
+function AgentProfilePage() {
   const params = useParams();
   const twinId = params.agentId as Id<"twins">;
   const user = useSelector((state: any) => state.auth?.user);
@@ -190,3 +191,5 @@ export default function AgentProfilePage() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(AgentProfilePage), { ssr: false });

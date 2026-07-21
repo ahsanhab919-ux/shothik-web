@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import SortTabs from "@/components/discover/SortTabs";
@@ -8,7 +9,7 @@ import ChannelSidebar from "@/components/discover/ChannelSidebar";
 import { useState } from "react";
 import { Compass } from "lucide-react";
 
-export default function ExplorePage() {
+function ExplorePage() {
   const [sortBy, setSortBy] = useState<"hot" | "new" | "top">("hot");
 
   const forums = useQuery(api.forums.getAllForumsSorted, { sortBy, limit: 30 });
@@ -59,3 +60,5 @@ export default function ExplorePage() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(ExplorePage), { ssr: false });

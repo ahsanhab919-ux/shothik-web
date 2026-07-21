@@ -1,0 +1,128 @@
+[
+  {
+    "workstreamId": "LWT-01",
+    "category": "Legacy Writing Tool",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: LWT-01 legacy writing paraphrase and humanizer stabilization",
+    "summary": "Normalize delivery tracking, coverage, and launch-readiness follow-up for paraphrase and humanizer flows.",
+    "currentMapping": "#4"
+  },
+  {
+    "workstreamId": "LWT-02",
+    "category": "Legacy Writing Tool",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: LWT-02 summarize and translator stabilization",
+    "summary": "Track delivery ownership, regression coverage, and release-readiness work for summarize and translator surfaces.",
+    "currentMapping": "#23"
+  },
+  {
+    "workstreamId": "LWT-03",
+    "category": "Legacy Writing Tool",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: LWT-03 detector, plagiarism, and grammar reliability",
+    "summary": "Track critical coverage, policy validation, and release readiness for detector, plagiarism, and grammar work.",
+    "currentMapping": "#22"
+  },
+  {
+    "workstreamId": "AGT-01",
+    "category": "Agent",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: AGT-01 agent chat auth production promotion",
+    "summary": "Track production environment confirmation, deploy sequencing, and final approvals for native InsForge chat auth.",
+    "currentMapping": "#40"
+  },
+  {
+    "workstreamId": "AGT-02",
+    "category": "Agent",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: AGT-02 twin, second me, and hermes hardening",
+    "summary": "Track vault, migration, and approval-flow hardening for Twin, Second Me, and Hermes capabilities.",
+    "currentMapping": "#2"
+  },
+  {
+    "workstreamId": "AGT-03",
+    "category": "Agent",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: AGT-03 community and channels governance",
+    "summary": "Track moderation ownership, governance, and data-source normalization for community and channel flows.",
+    "currentMapping": "#7"
+  },
+  {
+    "workstreamId": "RSH-01",
+    "category": "Research",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: RSH-01 research workspace release readiness",
+    "summary": "Track provenance, regression coverage, and launch-gate definition for the research workspace.",
+    "currentMapping": "#21"
+  },
+  {
+    "workstreamId": "RSH-02",
+    "category": "Research",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: RSH-02 sheet workspace operational hardening",
+    "summary": "Track persistence, performance, and session-recovery readiness for the sheet workspace.",
+    "currentMapping": "#20"
+  },
+  {
+    "workstreamId": "RSH-03",
+    "category": "Research",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: RSH-03 slide service integration readiness",
+    "summary": "Track slide service dependency management, export reliability, and release gating for presentation workflows.",
+    "currentMapping": "#18"
+  },
+  {
+    "workstreamId": "PRD-01",
+    "category": "Remaining Feature",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: PRD-01 writing studio and books authoring MVP",
+    "summary": "Track book authoring MVP delivery, ticket decomposition, and InsForge target-schema alignment.",
+    "currentMapping": "#3"
+  },
+  {
+    "workstreamId": "PRD-02",
+    "category": "Remaining Feature",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: PRD-02 marketplace and library ownership model",
+    "summary": "Track marketplace, purchases, and library-ownership hardening for the internal books launch.",
+    "currentMapping": "#1"
+  },
+  {
+    "workstreamId": "PRD-03",
+    "category": "Remaining Feature",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: PRD-03 credits wallet and payments hardening",
+    "summary": "Track coverage, credential verification, and reconciliation readiness across wallet and payment providers.",
+    "currentMapping": "#24"
+  },
+  {
+    "workstreamId": "PRD-04",
+    "category": "Remaining Feature",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: PRD-04 publishing and external distribution expansion",
+    "summary": "Track post-Phase 1 external publishing dependencies, operations, and channel compliance requirements.",
+    "currentMapping": "#3"
+  },
+  {
+    "workstreamId": "PRD-05",
+    "category": "Remaining Feature",
+    "owner": "Ahsan Habib (@ahsanhab919-ux)",
+    "assignee": "ahsanhab919-ux",
+    "title": "tracker: PRD-05 auth, preview protection, and release hardening",
+    "summary": "Track production verification, release automation readiness, and final sign-off capture for auth and platform security work.",
+    "currentMapping": "#36"
+  }
+]

@@ -1,12 +1,39 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useEffect, useState } from "react";
 import { BookOpen, Coins, CalendarDays } from "lucide-react";
 import Link from "next/link";
 
 export default function MyLibrarySection() {
-  const purchases = useQuery(api.marketplace.getMyPurchases);
+  const [purchases, setPurchases] = useState<any[] | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPurchases(undefined);
+
+    fetch("/api/books/library")
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to load library");
+        }
+        return payload?.purchases ?? [];
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setPurchases(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPurchases([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (!purchases) {
     return (

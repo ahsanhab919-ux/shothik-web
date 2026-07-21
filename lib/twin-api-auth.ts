@@ -1,29 +1,29 @@
 import { NextRequest } from "next/server";
-import { jwtVerify, createRemoteJWKSet } from "jose";
 import { hashAgentKey, isAgentKey } from "./agent-auth";
-import { ConvexHttpClient } from "convex/browser";
 import { buildTwinAbility } from "./twin-permissions";
-import { twinApi, type TwinRecord } from "./twin-convex";
 import type { Id } from "@/convex/_generated/dataModel";
+import { createInsforgeRequestClient } from "@/lib/insforge/request";
+import { normalizeInsforgeUser } from "@/lib/insforge/user";
+import {
+  getTwinByKeyHash,
+  getTwinByMasterId,
+  getTwinProfileByKeyHash,
+  type TwinProfileRecord,
+} from "@/lib/twin/insforge-twin-service";
 
-function asTwinRecord(doc: Record<string, unknown>): TwinRecord {
-  return doc as unknown as TwinRecord;
-}
+type TwinRecord = TwinProfileRecord & {
+  _id: Id<"twins">;
+};
 
-const JWKS_URL = process.env.NEXT_PUBLIC_CONVEX_URL
-  ? `${process.env.NEXT_PUBLIC_CONVEX_URL}/.well-known/jwks.json`
-  : null;
-
-let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
-if (JWKS_URL) {
-  jwks = createRemoteJWKSet(new URL(JWKS_URL));
+function asTwinRecord(doc: TwinProfileRecord): TwinRecord {
+  return doc as TwinRecord;
 }
 
 export interface TwinAuthResult {
   authenticated: boolean;
   userId?: string;
   twinId?: Id<"twins">;
-  authType: "jwt" | "twin_key" | "none";
+  authType: "user_session" | "twin_key" | "none";
   error?: string;
   twin?: TwinRecord;
   ability?: ReturnType<typeof buildTwinAbility>;
@@ -35,71 +35,71 @@ export async function authenticateTwinRequest(
   req: NextRequest
 ): Promise<TwinAuthResult> {
   const authHeader = req.headers.get("authorization");
-  const cookieToken = req.cookies.get("jwt_token")?.value;
 
   if (authHeader?.startsWith("Bearer shothik_agent_")) {
     const apiKey = authHeader.slice(7).trim();
     return authenticateWithTwinKey(apiKey);
   }
 
-  const bearerToken =
-    authHeader?.startsWith("Bearer ") && !authHeader.startsWith("Bearer shothik_")
-      ? authHeader.slice(7).trim()
-      : null;
-  const token = cookieToken ?? bearerToken;
-
-  if (token) {
-    return authenticateWithJWT(token);
-  }
-
-  return { authenticated: false, authType: "none", error: "No authentication provided" };
+  return authenticateWithUserSession(req);
 }
 
-async function authenticateWithJWT(token: string): Promise<TwinAuthResult> {
-  if (!jwks) {
-    return { authenticated: false, authType: "jwt", error: "JWKS not configured" };
-  }
-
+async function authenticateWithUserSession(req: NextRequest): Promise<TwinAuthResult> {
   try {
-    const { payload } = await jwtVerify(token, jwks, {
-      algorithms: ["RS256"],
-      issuer: process.env.NEXT_PUBLIC_CONVEX_URL,
-    });
-
-    const userId = payload.sub;
-    if (!userId) {
-      return { authenticated: false, authType: "jwt", error: "No subject in JWT" };
+    const insforge = createInsforgeRequestClient(req);
+    const { data, error } = await insforge.auth.getCurrentUser();
+    if (error || !data?.user) {
+      return {
+        authenticated: false,
+        authType: "none",
+        error: error?.message ?? "Authentication required",
+      };
     }
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-    convex.setAuth(token);
+    const user = normalizeInsforgeUser(data.user);
+    if (!user) {
+      return {
+        authenticated: false,
+        authType: "none",
+        error: "Unable to resolve authenticated user",
+      };
+    }
 
     try {
-      const twin = await convex.query(twinApi.twin.getByMaster, { masterId: userId });
+      const twin = await getTwinByMasterId(user.id);
       if (twin) {
-        const twinRecord = asTwinRecord(twin as Record<string, unknown>);
+        const twinRecord = asTwinRecord(twin);
         const ability = buildTwinAbility({
           lifecycleState: twinRecord.lifecycleState,
           allowedSkills: twinRecord.allowedSkills ?? [],
           blockedSkills: twinRecord.blockedSkills ?? [],
           approvalRequiredActions: twinRecord.approvalRequiredActions ?? [],
         });
+
         return {
           authenticated: true,
-          userId,
-          authType: "jwt",
-          token,
+          userId: user.id,
+          authType: "user_session",
           twinId: twinRecord._id,
           twin: twinRecord,
           ability,
         };
       }
     } catch {
+      // A user may be authenticated before a twin profile exists.
     }
 
-    return { authenticated: true, userId, authType: "jwt", token };
+    return {
+      authenticated: true,
+      userId: user.id,
+      authType: "user_session",
+    };
   } catch (err) {
-    return { authenticated: false, authType: "jwt", error: (err as Error).message };
+    return {
+      authenticated: false,
+      authType: "none",
+      error: err instanceof Error ? err.message : "Authentication failed",
+    };
   }
 }
 
@@ -108,16 +108,16 @@ async function authenticateWithTwinKey(apiKey: string): Promise<TwinAuthResult> 
     return { authenticated: false, authType: "twin_key", error: "Invalid key format" };
   }
 
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   const keyHash = hashAgentKey(apiKey);
 
   try {
-    const result = await convex.query(twinApi.twin.getByKeyHash, { keyHash });
-    if (!result) {
+    const summary = await getTwinByKeyHash(keyHash);
+    const result = await getTwinProfileByKeyHash(keyHash);
+    if (!summary || !result) {
       return { authenticated: false, authType: "twin_key", error: "Twin not found" };
     }
 
-    const twin = asTwinRecord(result as Record<string, unknown>);
+    const twin = asTwinRecord(result);
     const ability = buildTwinAbility({
       lifecycleState: twin.lifecycleState,
       allowedSkills: twin.allowedSkills ?? [],
@@ -128,7 +128,7 @@ async function authenticateWithTwinKey(apiKey: string): Promise<TwinAuthResult> 
     return {
       authenticated: true,
       twinId: twin._id,
-      userId: twin.masterId,
+      userId: summary.masterAuthUserId ?? twin.masterId,
       authType: "twin_key",
       twin,
       ability,
@@ -140,14 +140,14 @@ async function authenticateWithTwinKey(apiKey: string): Promise<TwinAuthResult> 
 }
 
 export function requireAuth(auth: TwinAuthResult): auth is TwinAuthResult & { authenticated: true; userId: string } {
-  return auth.authenticated && auth.authType === "jwt" && !!auth.userId;
+  return auth.authenticated && auth.authType === "user_session" && !!auth.userId;
 }
 
 export function requireAnyAuth(auth: TwinAuthResult): auth is TwinAuthResult & { authenticated: true; userId: string } {
   if (auth.authType === "twin_key") {
     return auth.authenticated && !!auth.userId && !!auth.twinId;
   }
-  return auth.authenticated && auth.authType === "jwt" && !!auth.userId;
+  return auth.authenticated && auth.authType === "user_session" && !!auth.userId;
 }
 
 export function needsApproval(twin: TwinRecord, action: string): boolean {

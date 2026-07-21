@@ -1,8 +1,10 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BookAgentStart } from '../BookAgentStart';
+
+const mockCreateProject = vi.fn().mockResolvedValue({ _id: 'project-1', title: 'Generated Project' });
 
 vi.mock('framer-motion', () => ({
   motion: new Proxy(
@@ -38,8 +40,10 @@ vi.mock('@/i18n', () => ({
   }),
 }));
 
-vi.mock('@/lib/projects-store', () => ({
-  createProject: vi.fn(),
+vi.mock('@/hooks/useProjectsStore', () => ({
+  useProjectsStore: () => ({
+    createProject: mockCreateProject,
+  }),
 }));
 
 vi.mock('@/lib/debug-log', () => ({
@@ -53,7 +57,29 @@ vi.mock('../SourceIntake', () => ({
   SourceIntake: () => <div>Source intake</div>,
 }));
 
+function createSseResponse(events: unknown[]) {
+  const body = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join('');
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(body));
+      controller.close();
+    },
+  });
+
+  return Promise.resolve(
+    new Response(stream, {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' },
+    })
+  );
+}
+
 describe('BookAgentStart', () => {
+  beforeEach(() => {
+    mockCreateProject.mockClear();
+    vi.restoreAllMocks();
+  });
+
   it('shows research guidance when research paper mode is selected', () => {
     render(<BookAgentStart onProjectCreated={vi.fn()} onCancel={vi.fn()} embedded />);
 
@@ -87,5 +113,28 @@ describe('BookAgentStart', () => {
         )
       ).toBeInTheDocument();
     });
+
+  it('shows a recoverable error when the planner returns an incomplete plan', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(() =>
+      createSseResponse([
+        { type: 'status', step: 1 },
+        { type: 'done', plan: { chapters: [] } },
+      ]) as Promise<Response>
+    );
+
+    render(<BookAgentStart onProjectCreated={vi.fn()} onCancel={vi.fn()} embedded />);
+
+    fireEvent.change(screen.getByPlaceholderText(/e\.g\., a crime thriller/i), {
+      target: { value: 'A detective story set in Dhaka' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Generate plan/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('The planner returned an incomplete project structure. Please try again.')
+      ).toBeInTheDocument();
+    });
+    expect(mockCreateProject).not.toHaveBeenCalled();
+  });
   });
 });

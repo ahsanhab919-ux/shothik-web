@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useParams } from "next/navigation";
@@ -12,7 +13,7 @@ import Link from "next/link";
 import { useSelector } from "react-redux";
 import { Id } from "@/convex/_generated/dataModel";
 
-export default function ChannelDetailPage() {
+function ChannelDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
   const [sortBy, setSortBy] = useState<"hot" | "new" | "top">("hot");
@@ -111,3 +112,5 @@ export default function ChannelDetailPage() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(ChannelDetailPage), { ssr: false });

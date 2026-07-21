@@ -7,13 +7,13 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import AuthService from "@/services/auth.service";
 import { getInsforgeBrowserClient } from "@/lib/insforge/client";
 import {
   type AuthenticatedUser,
   normalizeInsforgeUser,
-  normalizeLegacyUser,
 } from "@/lib/insforge/user";
+
+const GOOGLE_OAUTH_CODE_VERIFIER_KEY = "shothik.oauth.google.codeVerifier";
 
 interface AuthContextProps {
   user: AuthenticatedUser | null;
@@ -21,12 +21,15 @@ interface AuthContextProps {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  register: (name: string, email: string, password: string, country: string) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    country: string,
+  ) => Promise<{ requiresEmailVerification: boolean }>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
-
-const authService = new AuthService();
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -46,51 +49,62 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       try {
         const insforge = getInsforgeBrowserClient();
+        const currentUrl = new URL(window.location.href);
+        const oauthCode = currentUrl.searchParams.get("insforge_code");
+        let exchangedUser: AuthenticatedUser | null = null;
+
+        if (oauthCode) {
+          const codeVerifier =
+            window.sessionStorage.getItem(GOOGLE_OAUTH_CODE_VERIFIER_KEY) ?? "";
+          const exchangeResponse = await fetch("/api/auth/oauth/exchange", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(
+              codeVerifier
+                ? { code: oauthCode, codeVerifier }
+                : { code: oauthCode },
+            ),
+          });
+          const exchangePayload = (await exchangeResponse.json().catch(() => null)) as {
+            user?: AuthenticatedUser | null;
+            message?: string;
+            error?: string;
+          } | null;
+
+          if (!exchangeResponse.ok) {
+            console.error(
+              "OAuth code exchange failed:",
+              exchangePayload?.message || exchangePayload?.error || "Unknown error",
+            );
+          } else {
+            exchangedUser = exchangePayload?.user ?? null;
+            window.sessionStorage.removeItem(GOOGLE_OAUTH_CODE_VERIFIER_KEY);
+            currentUrl.searchParams.delete("insforge_code");
+            window.history.replaceState({}, "", currentUrl.toString());
+          }
+        }
+
         const { data, error } = await insforge.auth.getCurrentUser();
         const insforgeUser = !error ? normalizeInsforgeUser(data?.user ?? null) : null;
+        const hydratedUser = insforgeUser ?? exchangedUser;
 
-        if (!cancelled && insforgeUser) {
+        if (!cancelled && hydratedUser) {
           localStorage.removeItem("jwt_token");
-          setUser(insforgeUser);
+          setUser(hydratedUser);
           setIsAuthenticated(true);
           setIsLoading(false);
           return;
         }
-      } catch (error) {
-        // Fall back to the legacy bridge while the rest of auth is still migrating.
-      }
-
-      const token = localStorage.getItem("jwt_token");
-      if (!token) {
-        if (!cancelled) {
-          setUser(null);
-          setIsAuthenticated(false);
-          setIsLoading(false);
-        }
-        return;
-      }
-
-      try {
-        const userData = await authService.validateToken(token);
-        const legacyUser = normalizeLegacyUser(userData);
-
-        if (!cancelled && legacyUser) {
-          setUser(legacyUser);
-          setIsAuthenticated(true);
-          return;
-        }
-
-        throw new Error("Invalid token");
       } catch (error) {
         localStorage.removeItem("jwt_token");
-        if (!cancelled) {
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+      }
+
+      if (!cancelled) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsLoading(false);
       }
     }
 
@@ -137,7 +151,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     email: string,
     password: string,
     country: string,
-  ): Promise<void> => {
+  ): Promise<{ requiresEmailVerification: boolean }> => {
     try {
       const response = await fetch("/api/auth/sign-up", {
         method: "POST",
@@ -156,6 +170,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (!response.ok) {
         throw new Error(payload?.message || "Unable to create account.");
       }
+
+      return {
+        requiresEmailVerification: Boolean(payload?.requiresEmailVerification),
+      };
     } catch (error) {
       console.error("Registration failed:", error);
       throw error;

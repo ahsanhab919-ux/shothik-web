@@ -22,7 +22,7 @@ import {
 import Link from 'next/link';
 import SvgColor from '@/components/common/SvgColor';
 import { useTranslation } from '@/i18n';
-import { createProject } from '@/lib/projects-store';
+import { useProjectsStore } from '@/hooks/useProjectsStore';
 import { cn } from '@/lib/utils';
 import { debugLog } from '@/lib/debug-log';
 import { SourceIntake, type ProjectSource } from './SourceIntake';
@@ -71,6 +71,68 @@ interface BookPlan {
     characterArchetypes: string[];
     keyConflicts: string[];
   };
+}
+
+function normalizeBookPlan(plan: BookPlan): BookPlan {
+  const normalizedChapters = Array.isArray(plan.chapters)
+    ? plan.chapters
+        .filter((chapter): chapter is GeneratedChapter => Boolean(chapter && typeof chapter === 'object'))
+        .map((chapter, index) => ({
+          id:
+            typeof chapter.id === 'string' && chapter.id.trim()
+              ? chapter.id
+              : `ch-${index + 1}`,
+          title:
+            typeof chapter.title === 'string' && chapter.title.trim()
+              ? chapter.title
+              : `Chapter ${index + 1}`,
+          synopsis:
+            typeof chapter.synopsis === 'string' ? chapter.synopsis : '',
+        }))
+    : [];
+
+  return {
+    title: plan.title.trim() || 'Untitled Project',
+    genre: typeof plan.genre === 'string' && plan.genre.trim() ? plan.genre : 'Book Project',
+    logline: typeof plan.logline === 'string' ? plan.logline : '',
+    chapters: normalizedChapters,
+    researchNotes: {
+      comparables: Array.isArray(plan.researchNotes?.comparables) ? plan.researchNotes.comparables : [],
+      themes: Array.isArray(plan.researchNotes?.themes) ? plan.researchNotes.themes : [],
+      settingNotes: typeof plan.researchNotes?.settingNotes === 'string' ? plan.researchNotes.settingNotes : '',
+      characterArchetypes: Array.isArray(plan.researchNotes?.characterArchetypes)
+        ? plan.researchNotes.characterArchetypes
+        : [],
+      keyConflicts: Array.isArray(plan.researchNotes?.keyConflicts) ? plan.researchNotes.keyConflicts : [],
+    },
+  };
+}
+
+function isBookPlan(value: unknown): value is BookPlan {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const plan = value as Partial<BookPlan>;
+  return (
+    typeof plan.title === 'string' &&
+    plan.title.trim().length > 0 &&
+    typeof plan.genre === 'string' &&
+    typeof plan.logline === 'string' &&
+    Array.isArray(plan.chapters) &&
+    plan.chapters.every((chapter) =>
+      chapter &&
+      typeof chapter === 'object' &&
+      typeof (chapter as GeneratedChapter).title === 'string' &&
+      typeof (chapter as GeneratedChapter).synopsis === 'string'
+    ) &&
+    Boolean(plan.researchNotes) &&
+    Array.isArray(plan.researchNotes?.comparables) &&
+    Array.isArray(plan.researchNotes?.themes) &&
+    typeof plan.researchNotes?.settingNotes === 'string' &&
+    Array.isArray(plan.researchNotes?.characterArchetypes) &&
+    Array.isArray(plan.researchNotes?.keyConflicts)
+  );
 }
 
 interface BookAgentStartProps {
@@ -193,6 +255,7 @@ export function BookAgentStart({
   const chapterRevealRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reducedMotion = useReducedMotion();
   const { t } = useTranslation();
+  const { createProject } = useProjectsStore();
 
   const config = TYPE_CONFIGS[projectType];
   const SelectedTypeIcon = config.icon;
@@ -302,13 +365,17 @@ export function BookAgentStart({
             }
 
             if (event.type === 'done') {
-              const plan: BookPlan = event.plan;
+              if (!isBookPlan(event.plan)) {
+                throw new Error('The planner returned an incomplete project structure. Please try again.');
+              }
+
+              const plan = normalizeBookPlan(event.plan);
               debugLog.info('BookAgent', 'AI streaming completed', { title: plan.title, genre: plan.genre, chapterCount: plan.chapters.length });
               setSteps(prev => prev.map(s => ({ ...s, status: 'done' })));
               setGeneratedPlan(plan);
               revealChapters(plan.chapters);
 
-              const project = createProject({
+              const project = await createProject({
                 title: plan.title,
                 type: projectType,
                 template: null,
@@ -321,6 +388,10 @@ export function BookAgentStart({
                 researchNotes: plan.researchNotes,
                 agentChapters: plan.chapters,
               });
+
+              if (!project?._id || typeof project.title !== 'string') {
+                throw new Error('Project creation completed without a usable project record.');
+              }
 
               setTimeout(() => {
                 setPhase('done');
@@ -677,7 +748,7 @@ export function BookAgentStart({
 
                     <div className="space-y-2">
                       <AnimatePresence>
-                        {visibleChapters.map((ch, i) => (
+                        {visibleChapters.filter(Boolean).map((ch, i) => (
                           <motion.div
                             key={ch.id}
                             initial={{ opacity: 0, x: 16 }}

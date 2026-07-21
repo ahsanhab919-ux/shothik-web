@@ -2,8 +2,6 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import {
   Bell,
   CheckCircle2,
@@ -34,16 +32,32 @@ export function NotificationBell({ onSelectBook }) {
   const { user } = useSelector((state) => state.auth);
   const userId = user?._id || "";
   const [isOpen, setIsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const panelRef = useRef(null);
 
-  const notifications = useQuery(
-    api.books.getUnreadNotifications,
-    userId ? { userId } : "skip"
-  );
-
-  const markRead = useMutation(api.books.markNotificationsRead);
-
   const unreadCount = notifications?.length || 0;
+
+  const loadNotifications = useCallback(async () => {
+    if (!userId) {
+      setNotifications([]);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/books/notifications", {
+        credentials: "include",
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    void loadNotifications();
+  }, [loadNotifications]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -58,12 +72,25 @@ export function NotificationBell({ onSelectBook }) {
   const handleMarkRead = useCallback(
     async (bookId, notifId) => {
       try {
-        await markRead({ bookId, userId, notificationIds: [notifId] });
+        const response = await fetch("/api/books/notifications", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ bookId, notificationIds: [notifId] }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to mark notification as read");
+        }
+        setNotifications((prev) =>
+          prev.filter((item) => item.notification.id !== notifId)
+        );
       } catch (err) {
         console.error("Failed to mark notification as read:", err);
       }
     },
-    [markRead, userId]
+    []
   );
 
   const handleMarkAllRead = useCallback(async () => {
@@ -75,12 +102,23 @@ export function NotificationBell({ onSelectBook }) {
     }
     for (const [bookId, ids] of Object.entries(byBook)) {
       try {
-        await markRead({ bookId, userId, notificationIds: ids });
+        const response = await fetch("/api/books/notifications", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ bookId, notificationIds: ids }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to mark notifications as read");
+        }
       } catch (err) {
         console.error("Failed to mark notifications as read:", err);
       }
     }
-  }, [notifications, markRead, userId]);
+    setNotifications([]);
+  }, [notifications]);
 
   if (!userId) return null;
 

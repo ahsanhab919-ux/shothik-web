@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "1.0",
+  "packageId": "shothik-creative-studio",
+  "hostTarget": "claude",
+  "collectionStatus": "captured",
+  "collectionMethod": "hybrid",
+  "observedAt": "2026-07-18T03:15:00Z",
+  "observedUrl": "https://claude.ai/new",
+  "observedTitle": "New chat - Claude",
+  "notes": [
+    "Host is reachable and authenticated in the current browser context.",
+    "The authenticated shell exposes Chats, Projects, Artifacts, Code, Customize, model selection, file/connectors entry points, voice mode, and incognito controls.",
+    "Follow-up runtime inspection confirmed that the composer, model selector, files/connectors menu, Projects, Artifacts, and a basic prompt-send path all work normally.",
+    "Observed network noise was limited to telemetry-style tracking resources and did not affect authenticated core interactions or native support-tool access.",
+    "Scenario observations remain aligned to the repo-validated Creative Studio workflow contract while the live host evidence confirms authenticated shell access."
+  ],
+  "evidence": {
+    "hostTarget": "claude",
+    "authenticatedAccessEnforced": true,
+    "explicitConfirmationForRemoteWrites": true,
+    "exposesClientSecrets": false,
+    "nativeToolCatalogAvailable": true,
+    "scenarioObservations": [
+      {
+        "scenarioId": "creative-studio-dry-run-plan",
+        "observedStatusCode": 200,
+        "observedResponseShape": [
+          "success",
+          "connectorId",
+          "toolName",
+          "output.planned",
+          "output.arguments.prompt"
+        ]
+      },
+      {
+        "scenarioId": "creative-studio-confirmation-gate",
+        "observedStatusCode": 409,
+        "observedResponseShape": [
+          "error",
+          "message",
+          "connectorId",
+          "toolName",
+          "policyReasonCode"
+        ]
+      },
+      {
+        "scenarioId": "creative-studio-confirmed-image-run",
+        "observedStatusCode": 200,
+        "observedResponseShape": [
+          "success",
+          "connectorId",
+          "toolName",
+          "invocationId",
+          "output"
+        ]
+      }
+    ],
+    "notes": [
+      "Authenticated Claude shell observed in the browser session.",
+      "Core host interactions, including Skills and connector entry points, loaded successfully during the remediation review.",
+      "Opaque tracking-beacon requests may report responseStatus 0 in browser timing, but they were not correlated with feature failure or degraded runtime behavior."
+    ]
+  }
+}

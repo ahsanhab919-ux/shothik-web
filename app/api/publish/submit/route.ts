@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
-import { getAuthToken } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import { decodeJwt } from "jose";
 import {
   createBookRecord,
   uploadManuscriptFile,
@@ -12,57 +8,39 @@ import {
   getAvailableChannels,
 } from "@/services/publishDriveService";
 import { v4 as uuidv4 } from "uuid";
+import { getAuthenticatedUser } from "@/lib/server-auth";
+import { getBookDraftForUser } from "@/lib/books/insforge-book-service";
+import {
+  createPublishingNotification,
+  getDistributionRecordForUser,
+  upsertDistributionRecord,
+  updateDistributionStatusByPublishDriveId,
+} from "@/lib/books/insforge-publishing-service";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-const PD_ENABLED = process.env.PUBLISHDRIVE_ENABLED === "true" ||
+const PD_ENABLED =
+  process.env.PUBLISHDRIVE_ENABLED === "true" ||
   process.env.NEXT_PUBLIC_PUBLISHDRIVE_ENABLED === "true";
 
 async function sendDistributionFailureNotification(
   userId: string,
   bookId: string,
   bookTitle: string,
-  errorMessage: string
+  errorMessage: string,
 ) {
-  await convex.mutation(api.notifications.createPublicNotification, {
+  await createPublishingNotification({
     userId,
+    bookId,
     type: "book_distribution_failed",
     title: "Distribution submission failed",
     message: `Failed to submit "${bookTitle}" for distribution: ${errorMessage}. You can retry from your book's distribution panel.`,
-    data: { bookId, error: errorMessage },
+    payload: { bookId, error: errorMessage },
   });
-
-  try {
-    await convex.mutation(api.agent_notifications.createNotification, {
-      masterId: userId,
-      type: "distribution_failed",
-      bookId: bookId as any,
-      bookTitle: bookTitle,
-      message: `Distribution failed for "${bookTitle}": ${errorMessage}`,
-    });
-  } catch (notifErr) {
-    logger.warn("Twin notification failed:", notifErr);
-  }
-}
-
-function getUserIdFromToken(token: string): string | null {
-  try {
-    const payload = decodeJwt(token);
-    const sub = payload.sub || (payload as Record<string, unknown>).userId;
-    return typeof sub === "string" ? sub : null;
-  } catch {
-    return null;
-  }
 }
 
 export async function POST(req: NextRequest) {
-  const token = getAuthToken(req);
-  if (!token) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
-
-  const callerId = getUserIdFromToken(token);
-  if (!callerId) {
-    return NextResponse.json({ error: "Invalid authentication token" }, { status: 401 });
   }
 
   let body: { bookId?: string; selectedChannels?: string[]; retry?: boolean };
@@ -78,30 +56,41 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    convex.setAuth(token);
-    const book = await convex.query(api.books.get, { id: bookId as any });
-    if (!book) {
-      return NextResponse.json({ error: "Book not found" }, { status: 404 });
+    const book = await getBookDraftForUser(bookId, user.id);
+
+    if (book.userId !== user.id) {
+      return NextResponse.json(
+        { error: "You do not have permission to distribute this book" },
+        { status: 403 },
+      );
     }
 
-    if (book.userId !== callerId) {
-      return NextResponse.json({ error: "You do not have permission to distribute this book" }, { status: 403 });
-    }
-
-    if (!(book as any).distributionOptIn && !retry) {
-      return NextResponse.json({ error: "Distribution opt-in is required. Enable it from your book review page." }, { status: 403 });
+    if (!book.distributionOptIn && !retry) {
+      return NextResponse.json(
+        {
+          error:
+            "Distribution opt-in is required. Enable it from your book review page.",
+        },
+        { status: 403 },
+      );
     }
 
     if (!book.title || book.title.trim().length < 3) {
-      return NextResponse.json({ error: "Book title is required (min 3 chars)" }, { status: 422 });
+      return NextResponse.json(
+        { error: "Book title is required (min 3 chars)" },
+        { status: 422 },
+      );
     }
     if (!book.description || book.description.trim().length < 50) {
-      return NextResponse.json({ error: "Book description must be at least 50 characters" }, { status: 422 });
+      return NextResponse.json(
+        { error: "Book description must be at least 50 characters" },
+        { status: 422 },
+      );
     }
-    if (!book.manuscriptStorageId) {
+    if (!book.manuscriptKey) {
       return NextResponse.json({ error: "Manuscript file is required" }, { status: 422 });
     }
-    if (!book.coverStorageId) {
+    if (!book.coverKey) {
       return NextResponse.json({ error: "Cover image is required" }, { status: 422 });
     }
     if (!book.category) {
@@ -110,19 +99,21 @@ export async function POST(req: NextRequest) {
 
     const jobId = uuidv4();
     const allChannels = getAvailableChannels() as Array<{ id: string; name: string }>;
-    const channelIds = selectedChannels || allChannels.map((ch) => ch.id);
+    const channelIds = selectedChannels || allChannels.map((channel) => channel.id);
 
     if (retry && PD_ENABLED) {
-      const existingDist = await convex.query(api.publishing.getDistributionRecord, {
+      const existingDist = await getDistributionRecordForUser({
         bookId,
+        userId: user.id,
       });
 
       if (existingDist?.publishDriveBookId) {
-        const failedChannelIds = channelIds.length > 0
-          ? channelIds
-          : (existingDist.channels || [])
-              .filter((ch: any) => ch.status === "failed")
-              .map((ch: any) => ch.channelId);
+        const failedChannelIds =
+          channelIds.length > 0
+            ? channelIds
+            : (existingDist.channels || [])
+                .filter((channel) => channel.status === "failed")
+                .map((channel) => channel.channelId);
 
         if (failedChannelIds.length === 0) {
           return NextResponse.json({
@@ -133,34 +124,47 @@ export async function POST(req: NextRequest) {
 
         const distributeResult = await submitToChannels(
           existingDist.publishDriveBookId,
-          failedChannelIds
+          failedChannelIds,
         );
 
         const channelStatusMap: Record<string, string> = {};
         if (distributeResult.success && distributeResult.channels) {
-          for (const ch of (distributeResult.channels as Array<{ id: string; status: string }>)) {
-            channelStatusMap[ch.id] = ch.status;
+          for (const channel of distributeResult.channels as Array<{
+            id: string;
+            status: string;
+          }>) {
+            channelStatusMap[channel.id] = channel.status;
           }
         }
 
-        const updatedChannels = (existingDist.channels || []).map((ch: any) => {
-          if (failedChannelIds.includes(ch.channelId)) {
+        const updatedChannels = (existingDist.channels || []).map((channel) => {
+          if (failedChannelIds.includes(channel.channelId)) {
             return {
-              ...ch,
-              status: channelStatusMap[ch.channelId] || "processing",
+              ...channel,
+              status: (channelStatusMap[channel.channelId] as
+                | "pending"
+                | "processing"
+                | "review"
+                | "in_review"
+                | "live"
+                | "failed"
+                | "removed") || "processing",
               updatedAt: Date.now(),
             };
           }
-          return ch;
+
+          return channel;
         });
 
-        await convex.mutation(api.publishing.updateDistributionStatus, {
+        await updateDistributionStatusByPublishDriveId({
           publishDriveBookId: existingDist.publishDriveBookId,
           status: "processing",
           channels: updatedChannels,
         });
 
-        logger.info(`Retry: book ${bookId} re-submitted ${failedChannelIds.length} channels`);
+        logger.info(
+          `Retry: book ${bookId} re-submitted ${failedChannelIds.length} channels`,
+        );
 
         return NextResponse.json({
           success: true,
@@ -173,16 +177,18 @@ export async function POST(req: NextRequest) {
 
     if (!PD_ENABLED) {
       const pendingChannels = channelIds.map((id) => {
-        const ch = allChannels.find((c) => c.id === id);
+        const channel = allChannels.find((entry) => entry.id === id);
         return {
           channelId: id,
-          channelName: ch?.name || id,
-          status: id === "google_play" ? "processing" : "pending",
+          channelName: channel?.name || id,
+          status: (id === "google_play" ? "processing" : "pending") as
+            | "pending"
+            | "processing",
           updatedAt: Date.now(),
         };
       });
 
-      await convex.mutation(api.publishing.createDistributionRecord, {
+      await upsertDistributionRecord({
         bookId,
         userId: book.userId,
         jobId,
@@ -198,48 +204,59 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const manuscriptUrl = (book as any).manuscriptUrl as string | null;
+    const manuscriptUrl = book.manuscriptUrl ?? null;
     if (!manuscriptUrl) {
-      return NextResponse.json({ error: "Could not retrieve manuscript file URL" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Could not retrieve manuscript file URL" },
+        { status: 500 },
+      );
     }
 
     const manuscriptRes = await fetch(manuscriptUrl);
     if (!manuscriptRes.ok) {
-      return NextResponse.json({ error: "Failed to download manuscript from storage" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to download manuscript from storage" },
+        { status: 500 },
+      );
     }
     const manuscriptBuffer = Buffer.from(await manuscriptRes.arrayBuffer());
 
-    const coverUrl = (book as any).coverUrl as string | null;
+    const coverUrl = book.coverUrl ?? null;
 
     const createResult = await createBookRecord({
       title: book.title,
-      subtitle: (book as any).subtitle || undefined,
+      subtitle: book.subtitle || undefined,
       description: book.description,
-      language: (book as any).language || "en",
-      isbn: (book as any).isbn || undefined,
+      language: book.language || "en",
+      isbn: book.isbn || undefined,
       category: book.category,
-      keywords: (book as any).keywords || [],
-      listPrice: (book as any).listPrice || "9.99",
-      currency: (book as any).currency || "USD",
-      author: (book as any).agreementName || "Unknown Author",
+      keywords: book.keywords || [],
+      listPrice: book.listPrice || "9.99",
+      currency: book.currency || "USD",
+      author: book.agreementName || "Unknown Author",
     });
 
     if (!createResult.success) {
       logger.error("PublishDrive createBookRecord failed:", createResult.error);
 
-      await sendDistributionFailureNotification(book.userId, bookId, book.title, createResult.error);
+      await sendDistributionFailureNotification(
+        book.userId,
+        bookId,
+        book.title,
+        createResult.error,
+      );
 
-      await convex.mutation(api.publishing.createDistributionRecord, {
+      await upsertDistributionRecord({
         bookId,
         userId: book.userId,
         jobId,
         status: "failed",
         channels: channelIds.map((id) => {
-          const ch = allChannels.find((c) => c.id === id);
+          const channel = allChannels.find((entry) => entry.id === id);
           return {
             channelId: id,
-            channelName: ch?.name || id,
-            status: "failed",
+            channelName: channel?.name || id,
+            status: "failed" as const,
             updatedAt: Date.now(),
           };
         }),
@@ -247,35 +264,39 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(
         { error: `PublishDrive error: ${createResult.error}` },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
     const { publishDriveBookId } = createResult;
-
     const uploadResult = await uploadManuscriptFile(
       publishDriveBookId,
       manuscriptBuffer,
-      "application/epub+zip"
+      "application/epub+zip",
     );
 
     if (!uploadResult.success) {
       logger.error("PublishDrive manuscript upload failed:", uploadResult.error);
 
-      await sendDistributionFailureNotification(book.userId, bookId, book.title, `Manuscript upload: ${uploadResult.error}`);
+      await sendDistributionFailureNotification(
+        book.userId,
+        bookId,
+        book.title,
+        `Manuscript upload: ${uploadResult.error}`,
+      );
 
-      await convex.mutation(api.publishing.createDistributionRecord, {
+      await upsertDistributionRecord({
         bookId,
         userId: book.userId,
         jobId,
         status: "failed",
         publishDriveBookId,
         channels: channelIds.map((id) => {
-          const ch = allChannels.find((c) => c.id === id);
+          const channel = allChannels.find((entry) => entry.id === id);
           return {
             channelId: id,
-            channelName: ch?.name || id,
-            status: "failed",
+            channelName: channel?.name || id,
+            status: "failed" as const,
             updatedAt: Date.now(),
           };
         }),
@@ -283,7 +304,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(
         { error: `Manuscript upload failed: ${uploadResult.error}` },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -292,14 +313,21 @@ export async function POST(req: NextRequest) {
         const coverRes = await fetch(coverUrl);
         if (coverRes.ok) {
           const coverBuffer = Buffer.from(await coverRes.arrayBuffer());
-          const contentType = coverRes.headers.get("content-type") || "image/jpeg";
-          const coverUploadResult = await uploadCoverFile(publishDriveBookId, coverBuffer, contentType);
+          const contentType =
+            coverRes.headers.get("content-type") || "image/jpeg";
+          const coverUploadResult = await uploadCoverFile(
+            publishDriveBookId,
+            coverBuffer,
+            contentType,
+          );
           if (!coverUploadResult.success) {
-            logger.warn(`Cover upload failed for book ${bookId}: ${coverUploadResult.error}`);
+            logger.warn(
+              `Cover upload failed for book ${bookId}: ${coverUploadResult.error}`,
+            );
           }
         }
-      } catch (coverErr) {
-        logger.warn(`Cover download/upload failed for book ${bookId}:`, coverErr);
+      } catch (coverError) {
+        logger.warn(`Cover download/upload failed for book ${bookId}:`, coverError);
       }
     }
 
@@ -309,18 +337,23 @@ export async function POST(req: NextRequest) {
       logger.error("PublishDrive submitToChannels failed:", distributeResult.error);
 
       const failedChannels = channelIds.map((id) => {
-        const ch = allChannels.find((c) => c.id === id);
+        const channel = allChannels.find((entry) => entry.id === id);
         return {
           channelId: id,
-          channelName: ch?.name || id,
-          status: "failed",
+          channelName: channel?.name || id,
+          status: "failed" as const,
           updatedAt: Date.now(),
         };
       });
 
-      await sendDistributionFailureNotification(book.userId, bookId, book.title, `Channel submission: ${distributeResult.error}`);
+      await sendDistributionFailureNotification(
+        book.userId,
+        bookId,
+        book.title,
+        `Channel submission: ${distributeResult.error}`,
+      );
 
-      await convex.mutation(api.publishing.createDistributionRecord, {
+      await upsertDistributionRecord({
         bookId,
         userId: book.userId,
         jobId,
@@ -331,28 +364,38 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(
         { error: `Channel submission failed: ${distributeResult.error}` },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
     const channelStatusMap: Record<string, string> = {};
     if (distributeResult.channels) {
-      for (const ch of (distributeResult.channels as Array<{ id: string; status: string }>)) {
-        channelStatusMap[ch.id] = ch.status;
+      for (const channel of distributeResult.channels as Array<{
+        id: string;
+        status: string;
+      }>) {
+        channelStatusMap[channel.id] = channel.status;
       }
     }
 
     const recordChannels = channelIds.map((id) => {
-      const ch = allChannels.find((c) => c.id === id);
+      const channel = allChannels.find((entry) => entry.id === id);
       return {
         channelId: id,
-        channelName: ch?.name || id,
-        status: channelStatusMap[id] || "processing",
+        channelName: channel?.name || id,
+        status: (channelStatusMap[id] as
+          | "pending"
+          | "processing"
+          | "review"
+          | "in_review"
+          | "live"
+          | "failed"
+          | "removed") || "processing",
         updatedAt: Date.now(),
       };
     });
 
-    await convex.mutation(api.publishing.createDistributionRecord, {
+    await upsertDistributionRecord({
       bookId,
       userId: book.userId,
       jobId,
@@ -361,7 +404,9 @@ export async function POST(req: NextRequest) {
       channels: recordChannels,
     });
 
-    logger.info(`Book ${bookId} submitted to PublishDrive as ${publishDriveBookId}, job ${jobId}`);
+    logger.info(
+      `Book ${bookId} submitted to PublishDrive as ${publishDriveBookId}, job ${jobId}`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -373,18 +418,20 @@ export async function POST(req: NextRequest) {
     logger.error("Book submission error:", error);
 
     try {
-      const book = await convex.query(api.books.get, { id: bookId as any });
+      const book = await getBookDraftForUser(bookId, user.id);
       if (book) {
         await sendDistributionFailureNotification(
           book.userId,
           bookId,
           book.title,
-          "An unexpected error occurred. Please try again."
+          "An unexpected error occurred. Please try again.",
         );
       }
-    } catch {
-    }
+    } catch {}
 
-    return NextResponse.json({ error: "Internal server error during submission" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error during submission" },
+      { status: 500 },
+    );
   }
 }

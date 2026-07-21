@@ -383,6 +383,13 @@ function ToolbarButton({
 }) {
   return (
     <button
+      type="button"
+      onMouseDown={event => {
+        if (!disabled) {
+          // Keep the editor selection intact while using formatting controls.
+          event.preventDefault();
+        }
+      }}
       onClick={onClick}
       disabled={disabled}
       title={title}

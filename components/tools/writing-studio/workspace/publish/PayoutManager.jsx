@@ -230,10 +230,10 @@ function StripeConnectSetup({ userId, email, onAccountSaved }) {
 
 export function PayoutManager() {
   const { user } = useSelector((state) => state.auth);
-  const userId = user?._id || "";
+  const userId = user?._id ?? user?.id ?? "";
   const email = user?.email || "";
 
-  const { summary } = useEarnings(userId);
+  const { summary, refreshSummary } = useEarnings(userId);
   const { history, accounts, isLoading, isRequesting, error, requestPayout, savePayoutAccount } = usePayouts(userId);
 
   const [showRequestForm, setShowRequestForm] = useState(false);
@@ -245,11 +245,12 @@ export function PayoutManager() {
     async (data) => {
       try {
         await requestPayout(data);
+        await refreshSummary();
         setShowRequestForm(false);
       } catch (err) {
       }
     },
-    [requestPayout]
+    [refreshSummary, requestPayout]
   );
 
   if (isLoading) {

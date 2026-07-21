@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTwin } from "@/hooks/useTwin";
@@ -676,7 +677,7 @@ function TransferSection({
   );
 }
 
-export default function TwinPage() {
+function TwinPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const {
@@ -1100,3 +1101,5 @@ export default function TwinPage() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(TwinPage), { ssr: false });

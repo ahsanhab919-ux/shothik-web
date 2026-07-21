@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { useSelector } from "react-redux";
 import Link from "next/link";
 import {
@@ -12,10 +10,8 @@ import {
   Bot,
   User,
   Tag,
-  Globe,
   Hash,
   MessageSquare,
-  ShoppingCart,
   ExternalLink,
   CalendarDays,
   Coins,
@@ -28,7 +24,7 @@ import {
 } from "lucide-react";
 import VoteButton from "@/components/common/VoteButton";
 import SendCreditsButton from "@/components/credits/SendCreditsButton";
-import { DistributionStatusPanel } from "@/components/books/DistributionStatusPanel";
+import { getInsforgeBrowserClient } from "@/lib/insforge/client";
 
 function TagBadge({ children }: { children: React.ReactNode }) {
   return (
@@ -41,18 +37,11 @@ function TagBadge({ children }: { children: React.ReactNode }) {
 export default function BookDetailPage() {
   const params = useParams();
   const bookId = params.bookId as string;
-  const { accessToken, user } = useSelector((state: any) => state.auth);
+  const { accessToken } = useSelector((state: any) => state.auth);
   const isAuthenticated = !!accessToken;
-
-  const book = useQuery(api.books.getPublishedBookById, { id: bookId as any });
-  const accessData = useQuery(
-    api.marketplace.hasAccess,
-    book ? { bookId: bookId as any } : "skip"
-  );
-  const balanceData = useQuery(api.credits.getBalance);
-  const purchaseBook = useMutation(api.marketplace.purchaseBook);
-
-  const setCreditPrice = useMutation(api.marketplace.setCreditPrice);
+  const [book, setBook] = useState<any | undefined>(undefined);
+  const [accessData, setAccessData] = useState<any | null>(null);
+  const [balanceData, setBalanceData] = useState<any | null>(null);
 
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
@@ -62,6 +51,89 @@ export default function BookDetailPage() {
   const [priceInput, setPriceInput] = useState("");
   const [savingPrice, setSavingPrice] = useState(false);
   const [priceSuccess, setPriceSuccess] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setBook(undefined);
+
+    fetch(`/api/books/published/${bookId}`)
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (response.status === 404) return null;
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to load book");
+        }
+        return payload?.book ?? null;
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setBook(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBook(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bookId]);
+
+  useEffect(() => {
+    if (!book) return;
+    let cancelled = false;
+
+    fetch(`/api/books/${bookId}/access`)
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to load access state");
+        }
+        return payload;
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setAccessData(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAccessData({ hasAccess: false, isAuthor: false, isFree: false });
+        }
+      });
+
+    if (!isAuthenticated) {
+      setBalanceData({ balance: 0 });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    fetch(`/api/credits/balance`)
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to load credit balance");
+        }
+        return payload;
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setBalanceData(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBalanceData({ balance: 0 });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [book, bookId, isAuthenticated]);
 
   if (book === undefined) {
     return (
@@ -110,8 +182,6 @@ export default function BookDetailPage() {
   const balance = balanceData?.balance ?? 0;
   const canAfford = balance >= creditPrice;
 
-  const price = parseFloat(book.listPrice ?? "0");
-  const priceLabel = price === 0 ? "Free" : `${book.currency ?? "USD"} ${price.toFixed(2)}`;
   const isAgent = book.userId?.startsWith("agent_") || book.userId?.includes("agent");
   const publishedDate = book.publishedAt
     ? new Date(book.publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
@@ -126,7 +196,20 @@ export default function BookDetailPage() {
     setSavingPrice(true);
     setPurchaseError(null);
     try {
-      await setCreditPrice({ bookId: bookId as any, creditPrice: parsed });
+      const response = await fetch(`/api/books/${bookId}/price`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ creditPrice: parsed }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to set price");
+      }
+      if (payload?.book) {
+        setBook(payload.book);
+      }
       setEditingPrice(false);
       setPriceSuccess(true);
       setTimeout(() => setPriceSuccess(false), 3000);
@@ -142,9 +225,26 @@ export default function BookDetailPage() {
     setPurchaseError(null);
     setPurchasing(true);
     try {
-      const result = await purchaseBook({ bookId: bookId as any });
+      const response = await fetch(`/api/books/${bookId}/purchase`, {
+        method: "POST",
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.message || "Purchase failed");
+      }
       if (result.success) {
         setJustPurchased(true);
+        setAccessData((current: any) => ({
+          ...(current ?? {}),
+          hasAccess: true,
+          isAuthor: false,
+        }));
+        if (typeof result.newBalance === "number") {
+          setBalanceData((current: any) => ({
+            ...(current ?? {}),
+            balance: result.newBalance,
+          }));
+        }
         if (result.alreadyPurchased) {
           setPurchaseError(null);
         }
@@ -167,27 +267,32 @@ export default function BookDetailPage() {
     setDownloading(true);
     setPurchaseError(null);
     try {
-      const manuscriptData = await fetch(`/api/books/manuscript?bookId=${bookId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const manuscriptData = await fetch(`/api/books/manuscript?bookId=${bookId}`);
       if (!manuscriptData.ok) {
         try {
           const err = await manuscriptData.json();
-          setPurchaseError(err.error || "Download failed");
+          setPurchaseError(err.message || err.error || "Download failed");
         } catch {
           setPurchaseError("Download failed. Please try again.");
         }
         return;
       }
       const data = await manuscriptData.json();
-      if (data.url) {
-        const a = document.createElement("a");
-        a.href = data.url;
-        a.download = data.name || "book.epub";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+      const { data: blob, error } = await getInsforgeBrowserClient()
+        .storage
+        .from(data.bucket)
+        .download(data.key);
+      if (error || !blob) {
+        throw error || new Error("Download failed");
       }
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = data.name || "book.epub";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
     } catch {
       setPurchaseError("Download failed. Please try again.");
     } finally {
@@ -519,12 +624,6 @@ export default function BookDetailPage() {
                 </div>
                 <ArrowLeft className="h-3 w-3 text-muted-foreground group-hover:text-brand rotate-180 transition-colors ml-auto" />
               </Link>
-            </div>
-          )}
-
-          {isAuthor && (
-            <div className="mb-6">
-              <DistributionStatusPanel bookId={bookId} userId={book.userId} />
             </div>
           )}
 

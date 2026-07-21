@@ -1,7 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { setIsNewRegistered } from "@/redux/slices/auth";
 import { Check } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,6 +22,12 @@ export default function AuthSuccessPopup() {
     >
       <DialogContent className="m-2 max-w-[400px] rounded-2xl p-8">
         <div className="flex flex-col items-center gap-4 text-center">
+          <DialogTitle className="sr-only">
+            Account created successfully
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Your Shothik AI account has been created and is ready to use.
+          </DialogDescription>
           <div className="mb-2 flex items-center justify-center rounded-full bg-green-500 p-4">
             <Check className="h-12 w-12 text-white" />
           </div>

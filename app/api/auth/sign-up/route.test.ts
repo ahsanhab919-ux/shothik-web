@@ -41,6 +41,21 @@ describe("POST /api/auth/sign-up", () => {
     });
   });
 
+  it("returns 400 when email format is invalid", async () => {
+    const request = new NextRequest("http://localhost:3000/api/auth/sign-up", {
+      method: "POST",
+      body: JSON.stringify({ email: "invalid-email", password: "secret123" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "AUTH_INVALID_REQUEST",
+      message: "Enter a valid email address.",
+    });
+  });
+
   it("signs up with the default redirect target", async () => {
     mockSignUp.mockResolvedValue({
       data: {
@@ -81,7 +96,37 @@ describe("POST /api/auth/sign-up", () => {
     });
   });
 
-  it("returns the upstream sign-up error", async () => {
+  it("falls back to the login route when redirectTo is external", async () => {
+    mockSignUp.mockResolvedValue({
+      data: {
+        user: {
+          id: "if-user-2",
+          email: "new@example.com",
+        },
+        requireEmailVerification: true,
+      },
+      error: null,
+    });
+
+    const request = new NextRequest("http://localhost:3000/api/auth/sign-up", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "new@example.com",
+        password: "secret123",
+        redirectTo: "https://evil.example/phish",
+      }),
+    });
+
+    await POST(request);
+
+    expect(mockSignUp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        redirectTo: "http://localhost:3000/auth/login",
+      }),
+    );
+  });
+
+  it("returns a generic upstream sign-up error", async () => {
     mockSignUp.mockResolvedValue({
       data: null,
       error: {
@@ -101,10 +146,10 @@ describe("POST /api/auth/sign-up", () => {
 
     const response = await POST(request);
 
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
       error: "AUTH_SIGN_UP_FAILED",
-      message: "Email already exists",
+      message: "Unable to create an account with the provided details.",
     });
   });
 });

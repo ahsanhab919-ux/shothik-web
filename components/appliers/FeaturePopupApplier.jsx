@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { hasPaymentSystemBaseUrl } from "@/lib/api-payment";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ const FeaturePopupApplier = () => {
         page: 1,
       });
     },
+    enabled: hasPaymentSystemBaseUrl,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     staleTime: 10 * 60 * 1000, // Consider data fresh for 10 minutes
@@ -367,4 +369,3 @@ const FeaturePopupApplier = () => {
 };
 
 export default FeaturePopupApplier;
-

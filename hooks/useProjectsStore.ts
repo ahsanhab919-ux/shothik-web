@@ -1,10 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useMutation, useQuery } from "convex/react";
 import { useSelector } from "react-redux";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import {
   getProjects as getLocalProjects,
   createProject as createLocalProject,
@@ -32,12 +29,12 @@ interface ProjectParams {
   template?: string;
   description?: string;
   settings?: Record<string, unknown>;
-  researchNotes?: unknown;
-  agentChapters?: unknown;
+  researchNotes?: Record<string, unknown> | null;
+  agentChapters?: unknown[] | null;
 }
 
 interface ProjectData {
-  _id: string | Id<"projects">;
+  _id: string;
   title: string;
   type: string;
   template?: string | null;
@@ -48,6 +45,8 @@ interface ProjectData {
   wordCount: number;
   progress: number;
   starred: boolean;
+  researchNotes?: Record<string, unknown> | null;
+  agentChapters?: unknown[] | null;
   lastEditedAt: number;
   _creationTime: number;
 }
@@ -61,117 +60,167 @@ interface ProjectUpdates {
   starred?: boolean;
   sections?: unknown[];
   settings?: Record<string, unknown>;
+  researchNotes?: Record<string, unknown> | null;
+  agentChapters?: unknown[] | null;
 }
 
 export function useProjectsStore() {
   const user = useSelector((state: AuthState) => state.auth.user);
-  const clerkUserId = user?.id || user?.clerkId || null;
-
-  const convexProjects = useQuery(
-    api.projects.list,
-    clerkUserId ? {} : "skip"
-  );
-
-  const createConvex = useMutation(api.projects.create);
-  const updateConvex = useMutation(api.projects.update);
-  const removeConvex = useMutation(api.projects.remove);
+  const authUserId = user?.id || user?.clerkId || (user as { _id?: string } | null)?._id || null;
 
   const [localProjects, setLocalProjects] = useState<ProjectData[]>([]);
+  const [remoteProjects, setRemoteProjects] = useState<ProjectData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!clerkUserId) {
-      setLocalProjects(getLocalProjects() as ProjectData[]);
-      setIsLoading(false);
-    } else if (convexProjects !== undefined) {
+  const fetchProjects = useCallback(async () => {
+    if (!authUserId) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/projects", {
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      const data = (await response.json().catch(() => null)) as {
+        projects?: ProjectData[];
+        message?: string;
+        error?: string;
+      } | null;
+
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || "Failed to load projects");
+      }
+
+      setRemoteProjects(data.projects ?? []);
+    } catch (error) {
+      console.error("[useProjectsStore] load failed:", error);
+      setRemoteProjects([]);
+    } finally {
       setIsLoading(false);
     }
-  }, [clerkUserId, convexProjects]);
+  }, [authUserId]);
 
-  const projects = clerkUserId && convexProjects
-    ? (convexProjects as ProjectData[])
+  useEffect(() => {
+    if (!authUserId) {
+      setLocalProjects(getLocalProjects() as ProjectData[]);
+      setIsLoading(false);
+      return;
+    }
+
+    void fetchProjects();
+  }, [authUserId, fetchProjects]);
+
+  const projects = authUserId
+    ? remoteProjects
     : localProjects;
 
   const createProject = useCallback(async (params: ProjectParams): Promise<ProjectData> => {
     const defaultSections = getDefaultSections(params.type);
 
-    if (clerkUserId) {
-      const id = await createConvex({
-        title: params.title,
-        type: params.type as "book" | "research" | "assignment",
-        template: params.template || undefined,
-        description: params.description || "",
-        sections: defaultSections as any,
-        settings: params.settings as any,
+    if (authUserId) {
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: params.title,
+          type: params.type,
+          template: params.template || null,
+          description: params.description || "",
+          sections: defaultSections,
+          settings: params.settings || {},
+          researchNotes: params.researchNotes ?? null,
+          agentChapters: params.agentChapters ?? null,
+        }),
       });
-      return {
-        _id: id,
-        title: params.title,
-        type: params.type,
-        template: params.template || null,
-        description: params.description || "",
-        content: "",
-        sections: defaultSections,
-        settings: (params.settings || {}) as Record<string, unknown>,
-        wordCount: 0,
-        progress: 0,
-        lastEditedAt: Date.now(),
-        _creationTime: Date.now(),
-        starred: false,
-      };
-    } else {
-      const project = createLocalProject(params as any);
-      setLocalProjects(getLocalProjects() as ProjectData[]);
-      return project as ProjectData;
+
+      const data = (await response.json().catch(() => null)) as {
+        project?: ProjectData;
+        message?: string;
+        error?: string;
+      } | null;
+
+      if (!response.ok || !data?.project) {
+        throw new Error(data?.message || data?.error || "Failed to create project");
+      }
+
+      setRemoteProjects((current) => [data.project!, ...current]);
+      return data.project;
     }
-  }, [clerkUserId, createConvex]);
+
+    const project = createLocalProject(params as any);
+    setLocalProjects(getLocalProjects() as ProjectData[]);
+    return project as ProjectData;
+  }, [authUserId]);
 
   const updateProject = useCallback(async (
     id: string,
     updates: ProjectUpdates
   ) => {
-    if (clerkUserId) {
-      const convexId = id as Id<"projects">;
-      try {
-        await updateConvex({
-          id: convexId,
-          ...(updates.title !== undefined && { title: updates.title }),
-          ...(updates.content !== undefined && { content: updates.content }),
-          ...(updates.wordCount !== undefined && { wordCount: updates.wordCount }),
-          ...(updates.progress !== undefined && { progress: updates.progress }),
-          ...(updates.starred !== undefined && { starred: updates.starred }),
-          ...(updates.sections !== undefined && { sections: updates.sections as any }),
-          ...(updates.settings !== undefined && { settings: updates.settings as any }),
-        });
-      } catch (err) {
-        console.error("[useProjectsStore] update failed:", err);
-        throw err;
+    if (authUserId) {
+      const response = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updates),
+      });
+
+      const data = (await response.json().catch(() => null)) as {
+        project?: ProjectData;
+        message?: string;
+        error?: string;
+      } | null;
+
+      if (!response.ok || !data?.project) {
+        throw new Error(data?.message || data?.error || "Failed to update project");
       }
-    } else {
+
+      setRemoteProjects((current) =>
+        current.map((project) => (project._id === id ? data.project! : project)),
+      );
+      return;
+    }
+
+    {
       updateLocalProject(id, updates);
       setLocalProjects(getLocalProjects() as ProjectData[]);
     }
-  }, [clerkUserId, updateConvex]);
+  }, [authUserId]);
 
   const deleteProject = useCallback(async (id: string) => {
-    if (clerkUserId) {
-      const convexId = id as Id<"projects">;
-      try {
-        await removeConvex({ id: convexId });
-      } catch (err) {
-        console.error("[useProjectsStore] delete failed:", err);
-        throw err;
+    if (authUserId) {
+      const response = await fetch(`/api/projects/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as {
+          message?: string;
+          error?: string;
+        } | null;
+        throw new Error(data?.message || data?.error || "Failed to delete project");
       }
-    } else {
+
+      setRemoteProjects((current) => current.filter((project) => project._id !== id));
+      return;
+    }
+
+    {
       deleteLocalProject(id);
       setLocalProjects(getLocalProjects() as ProjectData[]);
     }
-  }, [clerkUserId, removeConvex]);
+  }, [authUserId]);
 
   return {
     projects,
     isLoading,
-    isAuthenticated: !!clerkUserId,
+    isAuthenticated: !!authUserId,
     createProject,
     updateProject,
     deleteProject,

@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useQuery } from 'convex/react';
@@ -7,7 +8,7 @@ import { api } from '@/convex/_generated/api';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
-export default function CostsDashboard() {
+function CostsDashboard() {
   const { user } = useSelector((state: any) => state.auth);
   const isLoaded = user !== undefined;
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -166,6 +167,8 @@ export default function CostsDashboard() {
     </ErrorBoundary>
   );
 }
+
+export default dynamic(() => Promise.resolve(CostsDashboard), { ssr: false });
 
 function AdminCostsFallback() {
   return (

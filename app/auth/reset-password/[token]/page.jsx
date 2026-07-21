@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
           <h1 className="mb-3 text-4xl font-semibold">Reset your password</h1>
 
           <p className="text-muted-foreground mb-12">
-            Please enter the password
+            Enter the reset code from your email and choose a new password.
           </p>
 
           <AuthForgotPasswordForm />

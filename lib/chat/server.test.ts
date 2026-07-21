@@ -103,6 +103,44 @@ describe("chat server native ownership", () => {
     expect(data.userId).toBe("93b81112-7bc7-4c56-92da-d4715ed1771d");
   });
 
+  it("falls back to legacy user_id ownership when auth_user_id is unavailable", async () => {
+    mockInsforgeQuery
+      .mockRejectedValueOnce({
+        code: "42703",
+        message: 'column "auth_user_id" does not exist',
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "conv-legacy-schema",
+            auth_user_id: "6f77094c-b5d0-4f13-9ec7-b5947cabf669",
+            legacy_user_id: null,
+            surface: "flagship",
+            title: "Legacy schema chat",
+            status: "active",
+            pinned: false,
+            temporary: false,
+            model_handle: null,
+            context_ref: null,
+            last_message_at: new Date("2026-07-14T00:00:00.000Z"),
+            last_message_preview: null,
+            message_count: 0,
+            created_at: new Date("2026-07-14T00:00:00.000Z"),
+            updated_at: new Date("2026-07-14T00:00:00.000Z"),
+          },
+        ],
+      });
+
+    const data = await listConversationsForUser({
+      userId: "6f77094c-b5d0-4f13-9ec7-b5947cabf669",
+      limit: 5,
+    });
+
+    expect(mockInsforgeQuery).toHaveBeenCalledTimes(2);
+    expect(String(mockInsforgeQuery.mock.calls[1]?.[0])).toContain("user_id = $1::text");
+    expect(data[0].userId).toBe("6f77094c-b5d0-4f13-9ec7-b5947cabf669");
+  });
+
   it("falls back to the preserved legacy owner value only when auth_user_id is absent", async () => {
     mockInsforgeQuery.mockResolvedValue({
       rows: [

@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Bot, User, Search, SlidersHorizontal, ArrowRight, Globe, Coins, X, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -286,11 +284,42 @@ export default function MarketplacePage() {
   const [selectedCreditRange, setSelectedCreditRange] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [books, setBooks] = useState<any[] | undefined>(undefined);
   const { t } = useTranslation();
 
-  const books = useQuery(api.books.getPublishedBooks, {
-    category: selectedCategory !== "All" ? selectedCategory : undefined,
-  });
+  useEffect(() => {
+    let cancelled = false;
+    setBooks(undefined);
+
+    const searchParams = new URLSearchParams();
+    if (selectedCategory !== "All") {
+      searchParams.set("category", selectedCategory);
+    }
+    searchParams.set("limit", "200");
+
+    fetch(`/api/books/published?${searchParams.toString()}`)
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to load published books");
+        }
+        return payload?.books ?? [];
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setBooks(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBooks([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCategory]);
 
   const priceRange = PRICE_RANGE_DATA[selectedPriceRange];
 

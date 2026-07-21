@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateTwinRequest, requireTwinKey, needsApproval } from "@/lib/twin-api-auth";
 import { twinApi, createTwinClient } from "@/lib/twin-convex";
-import type { Id } from "@/convex/_generated/dataModel";
+import {
+  invokeTwinForumPost,
+  TWIN_FORUM_POST_TOOL_NAME,
+} from "@/lib/twin/mcp-forum-post";
 
 export async function POST(
   req: NextRequest,
@@ -33,7 +36,14 @@ export async function POST(
         twinId: auth.twinId,
         masterId: twin.masterId,
         action: "forum:post",
-        payload: { forumId, content: body.content },
+        payload: {
+          forumId,
+          content: body.content,
+          governedInvocation: {
+            toolName: TWIN_FORUM_POST_TOOL_NAME,
+            confirmationRequired: true,
+          },
+        },
         keyHash: auth.keyHash,
       });
       return NextResponse.json({
@@ -44,26 +54,28 @@ export async function POST(
       });
     }
 
-    const postId = await convex.mutation(twinApi.twin.twinCreateForumPost, {
-      twinId: auth.twinId,
-      forumId: forumId as Id<"forums">,
-      content: body.content as string,
-      keyHash: auth.keyHash,
-    });
+    if (!auth.userId) {
+      return NextResponse.json({ error: "Twin owner could not be resolved" }, { status: 401 });
+    }
 
-    await convex.mutation(twinApi.twin.logActivity, {
-      twinId: auth.twinId,
-      action: "forum_post_created",
-      targetResource: `forum:${forumId}`,
-      metadata: { postId: String(postId) },
-      keyHash: auth.keyHash,
+    const execution = await invokeTwinForumPost({
+      tenantId: auth.userId,
+      userId: auth.userId,
+      post: {
+        forumId,
+        content: body.content as string,
+      },
+      confirmationToken: "user_confirmed",
+      traceId: `twin-forum-post:${String(auth.twinId)}:${forumId}`,
     });
 
     return NextResponse.json({
       success: true,
       requiresApproval: false,
-      postId,
-      forumId,
+      postId: execution.postId,
+      forumId: execution.forumId,
+      status: execution.status,
+      invocationId: execution.invocationId,
       message: "Forum post created.",
     });
   } catch (err) {

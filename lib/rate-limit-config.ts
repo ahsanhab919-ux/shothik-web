@@ -7,6 +7,7 @@ export const ROUTE_RATE_LIMITS: Record<string, RateLimitRouteConfig> = {
   "/api/ai-cowriter": { windowMs: 60_000, maxRequests: 10 },
   "/api/stripe": { windowMs: 60_000, maxRequests: 10 },
   "/api/auth": { windowMs: 60_000, maxRequests: 20 },
+  "/api/auth/convex-token": { windowMs: 60_000, maxRequests: 60 },
   "/api/latex": { windowMs: 60_000, maxRequests: 20 },
   "/api/research": { windowMs: 60_000, maxRequests: 30 },
   "/api/sheet": { windowMs: 60_000, maxRequests: 30 },
@@ -22,6 +23,10 @@ export const DEFAULT_RATE_LIMIT: RateLimitRouteConfig = {
 export const MAX_RATE_LIMIT_STORE_SIZE = 10_000;
 
 export function getRateLimitForPath(path: string): RateLimitRouteConfig {
+  if (ROUTE_RATE_LIMITS[path]) {
+    return ROUTE_RATE_LIMITS[path];
+  }
+
   for (const [prefix, config] of Object.entries(ROUTE_RATE_LIMITS)) {
     if (path.startsWith(prefix)) return config;
   }

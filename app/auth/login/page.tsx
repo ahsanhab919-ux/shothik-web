@@ -1,17 +1,25 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import Link from "next/link";
 import AuthWithSocial from "@/components/auth/AuthWithSocial";
+import AuthComplianceNotice from "@/components/auth/AuthComplianceNotice";
 import { ArrowRight, BookOpen, FilePenLine, FlaskConical, Layers3, Sparkles } from "lucide-react";
 import {
   getLoginFlowVariant,
+  isSafeInternalPath,
   normalizeAuthIntent,
   saveAuthFlowState,
   type AuthIntent,
+  type LoginFlowVariant,
 } from "@/lib/auth-flow";
+import {
+  clearRememberedLoginEmail,
+  getRememberedLoginEmail,
+  saveRememberedLoginEmail,
+} from "@/lib/auth-login-preferences";
 import { trackLoginIntentCaptured } from "@/lib/posthog";
 
 const INTENT_CONFIG: Record<
@@ -73,11 +81,51 @@ const LoginPage = () => {
     const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
     const [success, setSuccess] = useState("");
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [verificationCode, setVerificationCode] = useState("");
+    const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+    const [isSendingVerificationEmail, setIsSendingVerificationEmail] = useState(false);
 
-    const loginVariant = useMemo(() => getLoginFlowVariant(), []);
+    const [loginVariant, setLoginVariant] = useState<LoginFlowVariant>("contextual");
     const initialIntent = normalizeAuthIntent(searchParams.get("intent"));
     const redirectTo = searchParams.get("redirect");
+    const registeredEmail = searchParams.get("email");
+    const shouldVerifyEmail = searchParams.get("verifyEmail") === "1";
+    const verificationCompleted =
+        searchParams.get("verified") === "1" ||
+        (
+            searchParams.get("insforge_status") === "success" &&
+            searchParams.get("insforge_type") === "verify_email"
+        );
     const [intent, setIntent] = useState<AuthIntent>(initialIntent);
+
+    useEffect(() => {
+        setLoginVariant(getLoginFlowVariant());
+    }, []);
+
+    useEffect(() => {
+        const rememberedEmail = getRememberedLoginEmail();
+        if (rememberedEmail) {
+            setEmail(rememberedEmail);
+            setRememberMe(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (registeredEmail) {
+            setEmail(registeredEmail);
+        }
+        if (verificationCompleted) {
+            setSuccess("Email verified. You can now sign in.");
+        } else if (shouldVerifyEmail) {
+            setSuccess(
+                "Registration successful. Enter the verification code from your email before signing in.",
+            );
+        } else if (searchParams.get("registered") === "1") {
+            setSuccess("Registration successful. You can now sign in.");
+        } else if (searchParams.get("reset") === "1") {
+            setSuccess("Password reset successful. You can now sign in.");
+        }
+    }, [registeredEmail, searchParams, shouldVerifyEmail, verificationCompleted]);
 
     const validateEmail = (email: string) => {
         return /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email);
@@ -87,13 +135,112 @@ const LoginPage = () => {
         return password.length >= 6;
     };
 
+    const getLoginFailureMessage = (error: unknown) => {
+        const message = error instanceof Error ? error.message : "";
+
+        if (
+            shouldVerifyEmail ||
+            /email verification|verify your email|unverified/i.test(message)
+        ) {
+            return "Your account needs email verification before you can sign in.";
+        }
+
+        if (/too many|rate limit|throttl|please wait|retry-after/i.test(message)) {
+            return "Too many authentication attempts. Please wait before trying again.";
+        }
+
+        return "Login failed. Please check your credentials and try again.";
+    };
+
+    const handleResendVerificationEmail = async () => {
+        const verificationEmail = (registeredEmail || email).trim();
+
+        if (!validateEmail(verificationEmail)) {
+            setError("Enter the same email address you used to register, then request a new code.");
+            return;
+        }
+
+        setError("");
+        setIsSendingVerificationEmail(true);
+
+        try {
+            const response = await fetch("/api/auth/send-verify-email", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email: verificationEmail }),
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload?.message || "Unable to send verification email.");
+            }
+
+            setSuccess(`Verification code sent to ${verificationEmail}.`);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Unable to send verification email.");
+        } finally {
+            setIsSendingVerificationEmail(false);
+        }
+    };
+
+    const handleVerifyEmail = async () => {
+        const verificationEmail = (registeredEmail || email).trim();
+
+        if (!validateEmail(verificationEmail)) {
+            setError("Enter the same email address you used to register before verifying.");
+            return;
+        }
+
+        if (verificationCode.trim().length < 6) {
+            setError("Enter the verification code from your email.");
+            return;
+        }
+
+        setError("");
+        setIsVerifyingEmail(true);
+
+        try {
+            const response = await fetch("/api/auth/verify-email", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: verificationEmail,
+                    code: verificationCode.trim(),
+                }),
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload?.message || "Unable to verify email.");
+            }
+
+            const nextParams = new URLSearchParams();
+            nextParams.set("intent", intent);
+            nextParams.set("verified", "1");
+            nextParams.set("email", verificationEmail);
+            if (redirectTo) {
+                nextParams.set("redirect", redirectTo);
+            }
+            router.replace(`/auth/login?${nextParams.toString()}`);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Unable to verify email.");
+        } finally {
+            setIsVerifyingEmail(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
         setFieldErrors({});
+        const normalizedEmail = email.trim();
 
         const nextFieldErrors: { email?: string; password?: string } = {};
-        if (!validateEmail(email)) {
+        if (!validateEmail(normalizedEmail)) {
             nextFieldErrors.email = "Enter a valid email address.";
         }
 
@@ -117,12 +264,20 @@ const LoginPage = () => {
                 variant: loginVariant,
             });
             trackLoginIntentCaptured(intent, loginVariant, "password");
-            await login(email, password);
+            await login(normalizedEmail, password);
+            if (rememberMe) {
+                saveRememberedLoginEmail(normalizedEmail);
+            } else {
+                clearRememberedLoginEmail();
+            }
             setIsLoading(false);
             setSuccess("Login successful! Preparing your workspace...");
-            router.replace("/auth/post-login");
+            const postLoginDestination = isSafeInternalPath(redirectTo)
+                ? `/auth/post-login?redirect=${encodeURIComponent(redirectTo)}`
+                : "/auth/post-login";
+            router.replace(postLoginDestination);
         } catch (err) {
-            setError("Login failed. Please check your credentials and try again.");
+            setError(getLoginFailureMessage(err));
             setIsLoading(false);
         }
     };
@@ -130,7 +285,7 @@ const LoginPage = () => {
     const selectedIntentConfig = INTENT_CONFIG[intent];
     const SelectedIntentIcon = selectedIntentConfig.icon;
 
-    const handleSocialSuccess = () => {
+    const handleSocialStart = () => {
         saveAuthFlowState({
             intent,
             redirectTo,
@@ -138,7 +293,6 @@ const LoginPage = () => {
             variant: loginVariant,
         });
         trackLoginIntentCaptured(intent, loginVariant, "google");
-        router.replace("/auth/post-login");
     };
 
     return (
@@ -287,16 +441,26 @@ const LoginPage = () => {
                                 <input
                                     type="checkbox"
                                     checked={rememberMe}
-                                    onChange={() => setRememberMe(!rememberMe)}
+                                    onChange={() => {
+                                        const nextRememberMe = !rememberMe;
+                                        setRememberMe(nextRememberMe);
+                                        if (!nextRememberMe) {
+                                            clearRememberedLoginEmail();
+                                        }
+                                    }}
                                     className="h-4 w-4 rounded border-input"
                                     disabled={isLoading}
                                 />
-                                Remember me on this device
+                                Remember email on this device
                             </label>
 
                             <Link href="/auth/forgot-password" className="text-sm text-primary hover:underline">
                                 Forgot password?
                             </Link>
+                        </div>
+
+                        <div className="mb-6">
+                            <AuthComplianceNotice mode="login" />
                         </div>
 
                         <button
@@ -319,6 +483,49 @@ const LoginPage = () => {
                             </p>
                         )}
 
+                        {shouldVerifyEmail && !verificationCompleted && (
+                            <div className="mt-4 rounded-2xl border border-border bg-muted/30 p-4">
+                                <p className="text-sm font-semibold text-foreground">Verify your email</p>
+                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                    Enter the verification code we sent to your inbox. If you did not receive one,
+                                    request a new code with the same email address.
+                                </p>
+                                <div className="mt-4">
+                                    <label htmlFor="verification-code" className="block text-sm font-medium text-foreground">
+                                        Verification code
+                                    </label>
+                                    <input
+                                        id="verification-code"
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={verificationCode}
+                                        onChange={(e) => setVerificationCode(e.target.value)}
+                                        className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                        placeholder="Enter the code from your email"
+                                        disabled={isVerifyingEmail || isSendingVerificationEmail}
+                                    />
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={handleVerifyEmail}
+                                        disabled={isVerifyingEmail || isSendingVerificationEmail}
+                                        className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                                    >
+                                        {isVerifyingEmail ? "Verifying..." : "Verify email"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleResendVerificationEmail}
+                                        disabled={isVerifyingEmail || isSendingVerificationEmail}
+                                        className="inline-flex items-center justify-center rounded-xl border border-border bg-background px-4 py-2 font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                                    >
+                                        {isSendingVerificationEmail ? "Sending..." : "Resend code"}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="mt-6 rounded-2xl border border-border bg-muted/30 p-4">
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                                 After login
@@ -331,7 +538,8 @@ const LoginPage = () => {
                             loading={googleLoading}
                             setLoading={setGoogleLoading}
                             title="in"
-                            onAuthSuccess={handleSocialSuccess}
+                            onBeforeAuthStart={handleSocialStart}
+                            onAuthError={setError}
                         />
 
                         <div className="mt-6 flex items-center justify-between gap-4 text-sm">

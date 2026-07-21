@@ -69,11 +69,13 @@ create index if not exists chat_messages_conversation_created_idx
   on public.chat_messages (conversation_id, created_at);
 create index if not exists chat_messages_user_idx
   on public.chat_messages (user_id);
+create index if not exists chat_messages_parent_message_idx
+  on public.chat_messages (parent_message_id);
 
 create or replace function public.sync_chat_conversation_stats(target_conversation_id uuid)
 returns void
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $$
 declare
@@ -109,10 +111,13 @@ begin
 end;
 $$;
 
+revoke execute on function public.sync_chat_conversation_stats(uuid) from public;
+grant execute on function public.sync_chat_conversation_stats(uuid) to project_admin;
+
 create or replace function public.sync_chat_conversation_stats_trigger()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $$
 begin
@@ -129,6 +134,9 @@ begin
   return new;
 end;
 $$;
+
+revoke execute on function public.sync_chat_conversation_stats_trigger() from public;
+grant execute on function public.sync_chat_conversation_stats_trigger() to project_admin;
 
 drop trigger if exists chat_conversations_set_updated_at on public.chat_conversations;
 create trigger chat_conversations_set_updated_at
@@ -156,29 +164,29 @@ create policy "chat_conversations_select_own"
 on public.chat_conversations
 for select
 to authenticated
-using (user_id = auth.uid());
+using (user_id = (select auth.uid()));
 
 drop policy if exists "chat_conversations_insert_own" on public.chat_conversations;
 create policy "chat_conversations_insert_own"
 on public.chat_conversations
 for insert
 to authenticated
-with check (user_id = auth.uid());
+with check (user_id = (select auth.uid()));
 
 drop policy if exists "chat_conversations_update_own" on public.chat_conversations;
 create policy "chat_conversations_update_own"
 on public.chat_conversations
 for update
 to authenticated
-using (user_id = auth.uid())
-with check (user_id = auth.uid());
+using (user_id = (select auth.uid()))
+with check (user_id = (select auth.uid()));
 
 drop policy if exists "chat_conversations_delete_own" on public.chat_conversations;
 create policy "chat_conversations_delete_own"
 on public.chat_conversations
 for delete
 to authenticated
-using (user_id = auth.uid());
+using (user_id = (select auth.uid()));
 
 drop policy if exists "chat_messages_select_own" on public.chat_messages;
 create policy "chat_messages_select_own"
@@ -186,12 +194,12 @@ on public.chat_messages
 for select
 to authenticated
 using (
-  user_id = auth.uid()
+  user_id = (select auth.uid())
   and exists (
     select 1
     from public.chat_conversations c
     where c.id = conversation_id
-      and c.user_id = auth.uid()
+      and c.user_id = (select auth.uid())
   )
 );
 
@@ -201,12 +209,12 @@ on public.chat_messages
 for insert
 to authenticated
 with check (
-  user_id = auth.uid()
+  user_id = (select auth.uid())
   and exists (
     select 1
     from public.chat_conversations c
     where c.id = conversation_id
-      and c.user_id = auth.uid()
+      and c.user_id = (select auth.uid())
   )
 );
 
@@ -216,21 +224,21 @@ on public.chat_messages
 for update
 to authenticated
 using (
-  user_id = auth.uid()
+  user_id = (select auth.uid())
   and exists (
     select 1
     from public.chat_conversations c
     where c.id = conversation_id
-      and c.user_id = auth.uid()
+      and c.user_id = (select auth.uid())
   )
 )
 with check (
-  user_id = auth.uid()
+  user_id = (select auth.uid())
   and exists (
     select 1
     from public.chat_conversations c
     where c.id = conversation_id
-      and c.user_id = auth.uid()
+      and c.user_id = (select auth.uid())
   )
 );
 
@@ -240,11 +248,11 @@ on public.chat_messages
 for delete
 to authenticated
 using (
-  user_id = auth.uid()
+  user_id = (select auth.uid())
   and exists (
     select 1
     from public.chat_conversations c
     where c.id = conversation_id
-      and c.user_id = auth.uid()
+      and c.user_id = (select auth.uid())
   )
 );

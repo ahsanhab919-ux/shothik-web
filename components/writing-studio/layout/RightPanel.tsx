@@ -25,9 +25,6 @@ import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { NeuralPanel } from '@/components/writing-studio/nobel/NeuralPanel';
 import { UXAgentPanel } from '@/components/writing-studio/ux/UXAgentPanel';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import type { Id } from '@/convex/_generated/dataModel';
 
 const NobelPanel = dynamic(() => import('@/components/writing-studio/nobel/NobelPanel').then(m => ({ default: m.NobelPanel })), { ssr: false });
 const CharacterPanel = dynamic(() => import('@/components/writing-studio/nobel/CharacterPanel').then(m => ({ default: m.CharacterPanel })), { ssr: false });
@@ -41,8 +38,9 @@ import type { UXAnalysisResult } from '@/lib/ux-agent-engine';
 
 interface Version {
   id: string;
-  timestamp: string;
+  savedAt: number;
   preview: string;
+  label: string;
   isAISuggestion?: boolean;
   status?: 'pending' | 'applied' | 'rejected';
 }
@@ -66,6 +64,8 @@ interface RightPanelProps {
   interfaceMode?: InterfaceMode;
   uxResult?: UXAnalysisResult | null;
   onJumpToSection?: (anchor: string) => void;
+  versions?: Version[];
+  onRestoreVersion?: (versionId: string) => void | Promise<void>;
 }
 
 const ALL_TABS: { id: TabId; label: string; advancedOnly?: boolean }[] = [
@@ -105,6 +105,8 @@ export function RightPanel({
   interfaceMode = 'beginner',
   uxResult,
   onJumpToSection,
+  versions = [],
+  onRestoreVersion,
 }: RightPanelProps) {
   const insights = useWritingInsights(content, { projectType, debounceMs: 5000, maxInsights: 3 });
   const visibleTabs = interfaceMode === 'beginner'
@@ -117,25 +119,6 @@ export function RightPanel({
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const isValidProjectId = projectId && projectId !== 'default';
-  const convexVersions = useQuery(
-    api.projects.getVersions,
-    isValidProjectId ? { projectId: projectId as Id<"projects"> } : "skip"
-  );
-
-  const versions: Version[] = (convexVersions ?? []).map((v) => ({
-    id: v._id,
-    timestamp: new Date(v.savedAt).toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-    preview: v.label || v.content.substring(0, 120).replace(/<[^>]*>/g, '') + (v.content.length > 120 ? '…' : ''),
-    isAISuggestion: false,
-    status: 'applied' as const,
-  }));
 
   const { generate, isGenerating, streamedText, abort } = useAiCoWriter();
   const streamingIdRef = useRef<string | null>(null);
@@ -257,10 +240,28 @@ export function RightPanel({
                       className="bg-white dark:bg-zinc-800/40 p-3 rounded-lg border border-brand/30 bg-brand/5 dark:bg-brand/10 transition-colors"
                     >
                       <div className="flex justify-between items-center mb-1.5">
-                        <span className="text-[10px] font-semibold text-zinc-500">{version.timestamp}</span>
+                        <span className="text-[10px] font-semibold text-zinc-500">
+                          {new Date(version.savedAt).toLocaleString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
                         <span className="text-[9px] font-bold text-brand uppercase">Saved</span>
                       </div>
+                      <p className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                        {version.label}
+                      </p>
                       <p className="text-[11px] line-clamp-2 text-zinc-600 dark:text-zinc-400">{version.preview}</p>
+                      {onRestoreVersion && (
+                        <button
+                          onClick={() => void onRestoreVersion(version.id)}
+                          className="mt-2 text-[10px] font-bold text-brand hover:underline"
+                        >
+                          Restore this version
+                        </button>
+                      )}
                     </motion.div>
                   ))}
                 </div>

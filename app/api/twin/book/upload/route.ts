@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateTwinRequest, requireTwinKey, needsApproval } from "@/lib/twin-api-auth";
 import { twinApi, createTwinClient } from "@/lib/twin-convex";
-import type { Id } from "@/convex/_generated/dataModel";
+import {
+  invokeTwinBookWrite,
+  TWIN_BOOK_WRITE_TOOL_NAME,
+} from "@/lib/twin/mcp-book-write";
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateTwinRequest(req);
@@ -32,7 +35,16 @@ export async function POST(req: NextRequest) {
         twinId: auth.twinId,
         masterId: twin.masterId,
         action: "book:write",
-        payload: { bookId: body.bookId, contentLength: (body.content as string).length },
+        payload: {
+          operation: "upload",
+          bookId: body.bookId,
+          content: body.content,
+          contentLength: (body.content as string).length,
+          governedInvocation: {
+            toolName: TWIN_BOOK_WRITE_TOOL_NAME,
+            confirmationRequired: true,
+          },
+        },
         keyHash: auth.keyHash,
       });
       return NextResponse.json({
@@ -42,34 +54,27 @@ export async function POST(req: NextRequest) {
         message: "Book content upload queued for master approval.",
       });
     }
-    const bookId = body.bookId as Id<"books">;
+    if (!auth.userId) {
+      return NextResponse.json({ error: "Twin owner could not be resolved" }, { status: 401 });
+    }
 
-    await convex.mutation(twinApi.twin.twinUpdateBookContent, {
-      twinId: auth.twinId,
-      bookId,
-      content: body.content as string,
-      keyHash: auth.keyHash,
-    });
-
-    const result = await convex.mutation(twinApi.twin.twinAdvanceBookContentState, {
-      twinId: auth.twinId,
-      bookId,
-      targetState: "agent_generated",
-      keyHash: auth.keyHash,
-    });
-
-    await convex.mutation(twinApi.twin.logActivity, {
-      twinId: auth.twinId,
-      action: "book_content_uploaded",
-      targetResource: `book:${bookId}`,
-      metadata: { contentLength: String((body.content as string).length) },
-      keyHash: auth.keyHash,
+    const execution = await invokeTwinBookWrite({
+      tenantId: auth.userId,
+      userId: auth.userId,
+      bookWrite: {
+        operation: "upload",
+        bookId: body.bookId as string,
+        content: body.content as string,
+      },
+      confirmationToken: "user_confirmed",
+      traceId: `twin-book-write:${String(auth.twinId)}:${String(body.bookId)}:upload`,
     });
 
     return NextResponse.json({
       success: true,
-      contentState: result.newState,
-      previousState: result.previousState,
+      contentState: execution.newState,
+      previousState: execution.previousState,
+      invocationId: execution.invocationId,
       message: "Content uploaded. Submit metadata for review: POST /api/twin/book/metadata",
     });
   } catch (err) {

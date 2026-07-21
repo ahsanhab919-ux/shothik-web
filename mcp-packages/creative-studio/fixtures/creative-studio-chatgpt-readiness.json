@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0",
+  "fixtureId": "creative-studio-chatgpt-readiness",
+  "packageId": "shothik-creative-studio",
+  "title": "Creative Studio ChatGPT Readiness",
+  "purpose": "Review host-target readiness assertions for ChatGPT before live package generation or host-runtime automation begins.",
+  "fixtureType": "host_readiness",
+  "uiPath": "/creative-studio",
+  "apiPath": "/api/mcp/creative-studio",
+  "expectedRemoteConnectorSlug": "higgsfield",
+  "requiredNativeTools": [
+    "shothik.paraphrase.rewrite_text",
+    "shothik.summarize.summarize_text",
+    "shothik.translator.translate_text",
+    "shothik.humanize.rewrite_humanized_text"
+  ],
+  "hostTarget": "chatgpt",
+  "assertions": [
+    {
+      "id": "chatgpt-auth-required",
+      "description": "The package surface must keep authenticated access enforced before workflow execution begins.",
+      "severity": "required"
+    },
+    {
+      "id": "chatgpt-confirmation-gate",
+      "description": "The host package must preserve explicit confirmation for remote creative mutations.",
+      "severity": "required"
+    },
+    {
+      "id": "chatgpt-no-client-secrets",
+      "description": "The host package must not expose connector secrets or raw MCP credentials in client-accessible state.",
+      "severity": "required"
+    },
+    {
+      "id": "chatgpt-native-tool-catalog",
+      "description": "The host package should expose the approved native support-tool catalog for helper workflows and future inspectors.",
+      "severity": "recommended"
+    }
+  ]
+}

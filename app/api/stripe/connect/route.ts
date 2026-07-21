@@ -1,90 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
-import { getAuthToken } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/server-auth";
 import logger from "@/lib/logger";
-import { decodeJwt } from "jose";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-function getUserIdFromToken(token: string): string | null {
-  try {
-    const payload = decodeJwt(token);
-    const sub = payload.sub || (payload as Record<string, unknown>).userId;
-    return typeof sub === "string" ? sub : null;
-  } catch {
-    return null;
-  }
-}
+import { syncStripeAccountStatusForUser } from "@/lib/books/insforge-earnings-service";
+import {
+  getStripe,
+  isStripeConfigurationError,
+} from "@/lib/stripe/config";
 
 export async function POST(req: NextRequest) {
   try {
-    const token = getAuthToken(req);
-    if (!token) {
+    const stripe = getStripe();
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    const authenticatedUserId = getUserIdFromToken(token);
-    if (!authenticatedUserId) {
+    const { userId, email, returnUrl } = await req.json();
+
+    if ((!email && !user.email) || (userId && userId !== user.id)) {
       return NextResponse.json(
-        { error: "Invalid authentication token" },
-        { status: 401 }
+        { error: userId && userId !== user.id ? "Forbidden: userId does not match authenticated user" : "userId and email are required" },
+        { status: userId && userId !== user.id ? 403 : 400 }
       );
     }
 
-    const { userId, email } = await req.json();
-
-    if (!userId || !email) {
-      return NextResponse.json(
-        { error: "userId and email are required" },
-        { status: 400 }
-      );
-    }
-
-    if (userId !== authenticatedUserId) {
-      logger.warn("Stripe Connect userId mismatch", {
-        tokenUserId: authenticatedUserId,
-        bodyUserId: userId,
-      });
-      return NextResponse.json(
-        { error: "Forbidden: userId does not match authenticated user" },
-        { status: 403 }
-      );
-    }
+    const resolvedBaseUrl = typeof returnUrl === "string" && returnUrl.length > 0
+      ? returnUrl
+      : process.env.NEXT_PUBLIC_APP_URL;
 
     const account = await stripe.accounts.create({
       type: "express",
-      email,
+      email: email || user.email,
       capabilities: { transfers: { requested: true } },
       business_type: "individual",
-      metadata: { userId: authenticatedUserId, platform: "shothik" },
+      metadata: { userId: user.id, platform: "shothik" },
     });
 
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
-      refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/payouts/onboarding?refresh=true`,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/payouts/onboarding?success=true`,
+      refresh_url: `${resolvedBaseUrl}/dashboard/payouts/onboarding?refresh=true`,
+      return_url: `${resolvedBaseUrl}/dashboard/payouts/onboarding?success=true`,
       type: "account_onboarding",
     });
 
     try {
-      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-      if (convexUrl) {
-        const convex = new ConvexHttpClient(convexUrl);
-        convex.setAuth(token);
-        await convex.mutation(api.earnings.savePayoutAccount, {
-          method: "stripe",
-          isDefault: true,
-          stripeConnectAccountId: account.id,
-          stripeOnboardingComplete: false,
-        });
-      }
+      await syncStripeAccountStatusForUser({
+        userId: user.id,
+        accountId: account.id,
+        payoutsEnabled: false,
+        isDefault: true,
+      });
     } catch (e) {
-      logger.warn("Failed to persist Stripe Connect account to Convex", {
+      logger.warn("Failed to persist Stripe Connect account to InsForge", {
         error: e instanceof Error ? e.message : String(e),
       });
     }
@@ -94,6 +64,12 @@ export async function POST(req: NextRequest) {
       onboardingUrl: accountLink.url,
     });
   } catch (error) {
+    if (isStripeConfigurationError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 503 },
+      );
+    }
     logger.error("Stripe Connect error:", error);
     return NextResponse.json(
       { error: "Failed to create Connect account" },
@@ -104,8 +80,9 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const token = getAuthToken(req);
-    if (!token) {
+    const stripe = getStripe();
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
@@ -122,36 +99,23 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const authenticatedUserId = getUserIdFromToken(token);
-    if (!authenticatedUserId) {
-      return NextResponse.json(
-        { error: "Invalid authentication token" },
-        { status: 401 }
-      );
-    }
-
     const account = await stripe.accounts.retrieve(accountId);
     if ((account as any).deleted) {
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
-    if ((account as any).metadata?.userId && (account as any).metadata.userId !== authenticatedUserId) {
+    if ((account as any).metadata?.userId && (account as any).metadata.userId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     try {
-      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-      if (convexUrl) {
-        const convex = new ConvexHttpClient(convexUrl);
-        convex.setAuth(token);
-        await convex.mutation(api.earnings.savePayoutAccount, {
-          method: "stripe",
-          isDefault: true,
-          stripeConnectAccountId: account.id,
-          stripeOnboardingComplete: Boolean((account as any).payouts_enabled),
-        });
-      }
+      await syncStripeAccountStatusForUser({
+        userId: user.id,
+        accountId: account.id,
+        payoutsEnabled: Boolean((account as any).payouts_enabled),
+        isDefault: true,
+      });
     } catch (e) {
-      logger.warn("Failed to sync Stripe Connect status to Convex", {
+      logger.warn("Failed to sync Stripe Connect status to InsForge", {
         error: e instanceof Error ? e.message : String(e),
       });
     }
@@ -163,6 +127,12 @@ export async function GET(req: NextRequest) {
       requirements: (account as any).requirements?.currently_due || [],
     });
   } catch (error) {
+    if (isStripeConfigurationError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 503 },
+      );
+    }
     logger.error("Stripe account status error:", error);
     return NextResponse.json(
       { error: "Failed to get account status" },

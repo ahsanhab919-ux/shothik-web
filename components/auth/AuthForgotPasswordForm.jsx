@@ -4,12 +4,11 @@ import RHFTextField from "@/components/common/RHFTextField";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
-import { useResetPasswordMutation } from "@/redux/api/auth/authApi";
 import { setShowLoginModal } from "@/redux/slices/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Circle, Eye, EyeOff } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
 import { z } from "zod";
@@ -35,13 +34,19 @@ const commonPasswords = [
 
 export default function AuthForgotPasswordForm() {
   const { push } = useRouter();
-  const { token } = useParams();
-  const [resetPassword, { isLoading, isError, error }] =
-    useResetPasswordMutation();
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const routeToken = typeof params?.token === "string" ? params.token : "";
+  const initialCode = routeToken || searchParams.get("code") || "";
+  const email = searchParams.get("email") || "";
+  const sent = searchParams.get("sent") === "1";
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
 
   const ResetSchema = z.object({
+    code: z.string().min(6, "Enter the reset code from your email"),
     password: z.string()
       .min(8, "Password must be at least 8 characters long")
       .max(20, "Password must not exceed 20 characters")
@@ -52,8 +57,7 @@ export default function AuthForgotPasswordForm() {
   });
 
   const defaultValues = {
-    key: "",
-    email: "",
+    code: initialCode,
     password: "",
   };
 
@@ -65,6 +69,7 @@ export default function AuthForgotPasswordForm() {
   const {
     reset,
     setError,
+    setValue,
     handleSubmit,
     formState: { errors },
     watch,
@@ -72,28 +77,50 @@ export default function AuthForgotPasswordForm() {
 
   const password = watch().password;
 
-  const onSubmit = async (data) => {
-    let payload = {
-      key: token,
-      password: data.password,
-    };
+  useEffect(() => {
+    if (initialCode) {
+      setValue("code", initialCode);
+    }
+  }, [initialCode, setValue]);
 
+  const onSubmit = async (data) => {
     try {
-      const result = await resetPassword(payload);
-      if (result.data) {
+      setIsLoading(true);
+      setApiError("");
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code: data.code,
+          password: data.password,
+        }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Unable to reset password.");
+      }
+
+      if (result?.success) {
         toast.success("Update success! Please login");
-        push("/");
+        push(`/auth/login?reset=1${email ? `&email=${encodeURIComponent(email)}` : ""}`);
         dispatch(setShowLoginModal(true));
       }
     } catch (error) {
-      console.error(error);
+      const message =
+        error instanceof Error ? error.message : "Unable to reset password.";
+      setApiError(message);
 
       reset();
 
       setError("afterSubmit", {
         ...error,
-        message: error.message || error,
+        message,
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -106,11 +133,25 @@ export default function AuthForgotPasswordForm() {
           </Alert>
         )}
 
-        {isError && (
+        {!!apiError && (
           <Alert variant="destructive">
-            <AlertDescription>{error?.data?.message}</AlertDescription>
+            <AlertDescription>{apiError}</AlertDescription>
           </Alert>
         )}
+
+        {sent && email && (
+          <Alert>
+            <AlertDescription>
+              We sent a reset code to {email}. Enter that code and choose a new password.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <RHFTextField
+          name="code"
+          label="Reset code"
+          placeholder="Enter the code from your email"
+        />
 
         <RHFTextField
           name="password"

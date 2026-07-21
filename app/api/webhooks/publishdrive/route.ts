@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
 import { createHmac, timingSafeEqual } from "crypto";
 import { defineRoute, z } from "@/lib/api-validation";
 import { logger } from "@/lib/logger";
+import {
+  createPublishingNotification,
+  getDistributionRecordByPublishDriveId,
+  updateDistributionStatusByPublishDriveId,
+} from "@/lib/books/insforge-publishing-service";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const WEBHOOK_SECRET = process.env.PUBLISHDRIVE_WEBHOOK_SECRET || "";
 
 function verifySignature(rawBody: string, signature: string): boolean {
@@ -63,9 +65,7 @@ export const POST = defineRoute({
       return NextResponse.json({ error: "Missing book_id" }, { status: 400 });
     }
 
-    const record = await convex.query(api.publishing.getDistributionRecordByPdId, {
-      publishDriveBookId,
-    });
+    const record = await getDistributionRecordByPublishDriveId(publishDriveBookId);
 
     if (!record) {
       logger.warn(`PublishDrive webhook: no record found for book_id=${publishDriveBookId}`);
@@ -92,16 +92,30 @@ export const POST = defineRoute({
           const existingChannels: Array<{
             channelId: string;
             channelName: string;
-            status: string;
+            status:
+              | "pending"
+              | "processing"
+              | "review"
+              | "in_review"
+              | "live"
+              | "failed"
+              | "removed";
             url?: string;
             updatedAt: number;
           }> = record.channels || [];
 
-          const updatedChannels = existingChannels.map((ch) => {
+          const updatedChannels: typeof existingChannels = existingChannels.map((ch) => {
             if (statusMap[ch.channelId]) {
               return {
                 ...ch,
-                status: statusMap[ch.channelId].status,
+                status: statusMap[ch.channelId].status as
+                  | "pending"
+                  | "processing"
+                  | "review"
+                  | "in_review"
+                  | "live"
+                  | "failed"
+                  | "removed",
                 url: statusMap[ch.channelId].url || ch.url,
                 updatedAt: Date.now(),
               };
@@ -114,7 +128,7 @@ export const POST = defineRoute({
           const anyFailed = updatedChannels.some((ch) => ch.status === "failed");
           const overallStatus = allLive ? "completed" : anyFailed ? "failed" : "processing";
 
-          await convex.mutation(api.publishing.updateDistributionStatus, {
+          await updateDistributionStatusByPublishDriveId({
             publishDriveBookId,
             status: overallStatus,
             channels: updatedChannels,
@@ -126,14 +140,15 @@ export const POST = defineRoute({
             const channelNames = liveChannels.slice(0, 3).map((ch) => ch.channelName).join(", ");
             const more = liveChannels.length > 3 ? ` and ${liveChannels.length - 3} more` : "";
 
-            await convex.mutation(api.notifications.createPublicNotification, {
+            await createPublishingNotification({
               userId: record.userId,
+              bookId: record.bookId,
               type: "book_distribution_update",
               title: allLive ? "Your book is live!" : "Distribution update",
               message: allLive
                 ? `Your book is now live on ${channelNames}${more}.`
                 : `Distribution update: now live on ${channelNames}${more}.`,
-              data: {
+              payload: {
                 bookId: record.bookId,
                 publishDriveBookId,
                 liveCount: liveChannels.length,
@@ -144,12 +159,13 @@ export const POST = defineRoute({
           const failedChannels = updatedChannels.filter((ch) => ch.status === "failed");
           if (failedChannels.length > 0) {
             const failedNames = failedChannels.slice(0, 3).map((ch) => ch.channelName).join(", ");
-            await convex.mutation(api.notifications.createPublicNotification, {
+            await createPublishingNotification({
               userId: record.userId,
+              bookId: record.bookId,
               type: "book_distribution_failed",
               title: "Distribution issue",
               message: `Distribution failed on ${failedNames}. You can retry from your book's distribution panel.`,
-              data: {
+              payload: {
                 bookId: record.bookId,
                 publishDriveBookId,
                 failedChannels: failedChannels.map((ch) => ch.channelId),

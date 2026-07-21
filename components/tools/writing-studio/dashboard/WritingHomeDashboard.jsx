@@ -80,6 +80,13 @@ function ProjectCard({ project, onOpen, onDelete, viewMode }) {
   const [showMenu, setShowMenu] = useState(false);
   const config = TYPE_CONFIG[project.type];
   const Icon = config.icon;
+  const openProject = () => onOpen(project);
+  const handleCardKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openProject();
+    }
+  };
 
   if (viewMode === "list") {
     return (
@@ -89,7 +96,12 @@ function ProjectCard({ project, onOpen, onDelete, viewMode }) {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         className="group flex items-center gap-4 px-4 py-3 bg-card border border-border rounded-xl hover:border-brand/40 hover:shadow-md transition-all cursor-pointer"
-        onClick={() => onOpen(project)}
+        onClick={openProject}
+        onKeyDown={handleCardKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label={`Open project ${project.title}`}
+        data-testid={`project-card-${project._id}`}
       >
         <div className={`w-10 h-10 rounded-lg ${config.bgColor} flex items-center justify-center shrink-0`}>
           <Icon size={18} style={{ color: config.color }} />
@@ -108,7 +120,7 @@ function ProjectCard({ project, onOpen, onDelete, viewMode }) {
         <div className="relative">
           <button
             onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+            className="p-1.5 rounded-lg opacity-70 group-hover:opacity-100 focus:opacity-100 hover:bg-muted transition-all"
             aria-label="Project options"
           >
             <MoreHorizontal size={14} />
@@ -135,7 +147,12 @@ function ProjectCard({ project, onOpen, onDelete, viewMode }) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       className="group bg-card border border-border rounded-2xl hover:border-brand/40 hover:shadow-lg transition-all cursor-pointer overflow-hidden"
-      onClick={() => onOpen(project)}
+      onClick={openProject}
+      onKeyDown={handleCardKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open project ${project.title}`}
+      data-testid={`project-card-${project._id}`}
     >
       <div className={`h-2 w-full`} style={{ backgroundColor: config.color }} />
       <div className="p-5">
@@ -150,7 +167,7 @@ function ProjectCard({ project, onOpen, onDelete, viewMode }) {
             <div className="relative">
               <button
                 onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-                className="p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+                className="p-1 rounded-lg opacity-70 group-hover:opacity-100 focus:opacity-100 hover:bg-muted transition-all"
                 aria-label="Project options"
               >
                 <MoreHorizontal size={14} />

@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateTwinRequest, requireAuth } from "@/lib/twin-api-auth";
 import { twinApi, createTwinClient } from "@/lib/twin-convex";
 import { checkAbility, logRouteActivity } from "@/lib/twin-route-guard";
-import { getStyleProfile } from "@/lib/twin/get-style-profile";
-import { resolveWritingMd, generateWithVoiceGate } from "@/lib/twin/writing-voice";
+import {
+  invokeTwinTaskExecution,
+  TWIN_TASK_EXECUTION_TOOL_NAME,
+} from "@/lib/twin/mcp-task-execution";
 
 export async function GET(req: NextRequest) {
   const auth = await authenticateTwinRequest(req);
@@ -105,6 +107,10 @@ export async function POST(req: NextRequest) {
           title: body.title as string,
           description: body.description,
           taskType: body.taskType as string,
+          governedInvocation: {
+            toolName: TWIN_TASK_EXECUTION_TOOL_NAME,
+            confirmationRequired: true,
+          },
         },
       });
 
@@ -115,49 +121,24 @@ export async function POST(req: NextRequest) {
       }, { status: 201 });
     }
 
-    await convex.mutation(twinApi.twin.updateTaskStatus, {
-      taskId,
-      status: "running",
-    });
-
     try {
-      const styleProfile = await getStyleProfile(convex, auth.userId);
-      const writingMd = await resolveWritingMd(auth.userId);
-
-      const gateResult = await generateWithVoiceGate({
-        task: {
-          title: body.title as string,
-          description: body.description as string | undefined,
-          taskType: body.taskType as "research" | "writing" | "analysis" | "summary",
-        },
-        profile: {
-          name: profile.name,
-          persona: profile.persona,
-          expertiseAreas: profile.expertiseAreas,
-          communicationStyle: profile.communicationStyle as "formal" | "casual" | "academic" | "creative" | undefined,
-          goals: profile.goals,
-          languages: profile.languages,
-        },
-        styleProfile,
-        writingMd,
-      });
-
-      const result = gateResult.text;
-
-      await convex.mutation(twinApi.twin.updateTaskStatus, {
-        taskId,
-        status: "completed",
-        result,
+      const execution = await invokeTwinTaskExecution({
+        tenantId: auth.userId,
+        userId: auth.userId,
+        taskId: String(taskId),
+        confirmationToken: "user_confirmed",
+        traceId: `twin-task:${String(taskId)}`,
       });
 
       return NextResponse.json({
-        taskId,
-        status: "completed",
-        result,
-        voiceDriftFindings: gateResult.finalFindings,
-        voiceGatePassed: gateResult.voiceGatePassed,
-        repairAttempts: gateResult.repairAttempts,
-        bestEffort: gateResult.bestEffort,
+        taskId: execution.taskId,
+        status: execution.status,
+        result: execution.result,
+        voiceDriftFindings: execution.voiceDriftFindings,
+        voiceGatePassed: execution.voiceGatePassed,
+        repairAttempts: execution.repairAttempts,
+        bestEffort: execution.bestEffort,
+        invocationId: execution.invocationId,
       }, { status: 201 });
     } catch (execErr) {
       console.error("[twin/tasks POST] execution failed:", execErr);

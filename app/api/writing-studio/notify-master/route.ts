@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
 import { isAgentKey, hashAgentKey } from "@/lib/agent-auth";
 import logger from "@/lib/logger";
-import type { Id } from "@/convex/_generated/dataModel";
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+import {
+  createTwinNotification,
+  getTwinByKeyHash,
+  type TwinNotificationType,
+} from "@/lib/twin/insforge-twin-service";
 
 export async function POST(req: NextRequest) {
   let body: {
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     wordCount?: number;
     agentId?: string;
     masterId?: string;
-    type?: "format_complete" | "review_needed" | "forum_opened" | "revision_requested";
+    type?: TwinNotificationType;
     bookId?: string;
     bookTitle?: string;
     feedback?: string;
@@ -38,21 +38,30 @@ export async function POST(req: NextRequest) {
 
   let resolvedAgentId: string | undefined;
   let resolvedMasterId: string | undefined;
+  let resolvedMasterAuthUserId: string | undefined;
+  let resolvedMasterEmail: string | undefined;
+  let resolvedAgentName: string | undefined;
 
   try {
     const keyHash = hashAgentKey(apiKey);
-    const agent = await convex.query(api.twin.getByKeyHash, { keyHash });
+    const agent = await getTwinByKeyHash(keyHash);
     if (!agent) {
       return NextResponse.json({ error: "Invalid agent API key" }, { status: 401 });
     }
-    resolvedAgentId = String(agent._id);
-    resolvedMasterId = String(agent.masterId);
+    if (agent.lifecycleState === "suspended") {
+      return NextResponse.json({ error: "Invalid agent API key" }, { status: 401 });
+    }
+    resolvedAgentId = agent.id;
+    resolvedMasterId = agent.masterId;
+    resolvedMasterAuthUserId = agent.masterAuthUserId;
+    resolvedMasterEmail = agent.masterEmail;
+    resolvedAgentName = agent.name;
   } catch (err) {
     logger.warn("notify-master: failed to resolve agent from key", err);
     return NextResponse.json({ error: "Invalid agent API key" }, { status: 401 });
   }
 
-  const notificationType: "format_complete" | "review_needed" | "forum_opened" | "revision_requested" =
+  const notificationType: TwinNotificationType =
     type ?? "review_needed";
 
   const notifMessage = message ?? (
@@ -66,18 +75,19 @@ export async function POST(req: NextRequest) {
   );
 
   try {
-    await convex.mutation(api.agent_notifications.createNotification, {
+    await createTwinNotification({
       masterId: resolvedMasterId,
-      twinId: resolvedAgentId as Id<"twins">,
-      agentName: title ?? "Twin",
+      masterAuthUserId: resolvedMasterAuthUserId,
+      twinId: resolvedAgentId,
+      twinName: resolvedAgentName ?? title ?? "Twin",
       type: notificationType,
-      bookId: bookId as Id<"books">,
+      bookId,
       bookTitle: bookTitle ?? title,
       message: notifMessage,
       feedback,
     });
 
-    if (process.env.RESEND_API_KEY && resolvedMasterId.includes("@")) {
+    if (process.env.RESEND_API_KEY && resolvedMasterEmail) {
       try {
         await fetch("https://api.resend.com/emails", {
           method: "POST",
@@ -87,7 +97,7 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             from: "notifications@shothik.ai",
-            to: resolvedMasterId,
+            to: resolvedMasterEmail,
             subject: `Agent notification: ${title ?? "Untitled"}`,
             html: `<p>${notifMessage}</p><p><a href="https://shothik.ai/agents">View in Agent Studio</a></p>`,
           }),
@@ -110,7 +120,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    logger.error("notify-master: Convex write failed:", err?.message);
+    logger.error("notify-master: notification persistence failed:", err?.message);
     return NextResponse.json({
       success: true,
       notification: {

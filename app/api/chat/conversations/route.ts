@@ -21,39 +21,51 @@ export async function GET(request: NextRequest) {
   const user = await getChatAuthenticatedUser();
   if (!user?._id) return unauthorized();
 
-  const { searchParams } = new URL(request.url);
-  const surface = searchParams.get("surface") as ChatSurface | null;
-  const status = searchParams.get("status") as ConversationStatus | null;
-  const includeTemporary = searchParams.get("includeTemporary") === "true";
-  const query = searchParams.get("query")?.trim();
-  const limitValue = Number(searchParams.get("limit") ?? "");
-  const limit = Number.isFinite(limitValue) ? limitValue : undefined;
+  try {
+    const { searchParams } = new URL(request.url);
+    const surface = searchParams.get("surface") as ChatSurface | null;
+    const status = searchParams.get("status") as ConversationStatus | null;
+    const includeTemporary = searchParams.get("includeTemporary") === "true";
+    const query = searchParams.get("query")?.trim();
+    const limitValue = Number(searchParams.get("limit") ?? "");
+    const limit = Number.isFinite(limitValue) ? limitValue : undefined;
 
-  const conversations = await listConversationsForUser({
-    userId: String(user._id),
-    ...(surface ? { surface } : {}),
-    ...(status ? { status } : {}),
-    includeTemporary,
-    ...(typeof limit === "number" ? { limit } : {}),
-    ...(query ? { query } : {}),
-  });
+    const conversations = await listConversationsForUser({
+      userId: String(user._id),
+      ...(surface ? { surface } : {}),
+      ...(status ? { status } : {}),
+      includeTemporary,
+      ...(typeof limit === "number" ? { limit } : {}),
+      ...(query ? { query } : {}),
+    });
 
-  return Response.json({ data: conversations });
+    return Response.json({ data: conversations });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unable to load conversations";
+    return Response.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
   const user = await getChatAuthenticatedUser();
   if (!user?._id) return unauthorized();
 
-  const body = await request.json();
-  const conversation = await createPersistedConversation({
-    userId: String(user._id),
-    surface: body.surface,
-    title: body.title,
-    modelHandle: body.modelHandle,
-    temporary: body.temporary,
-    contextRef: body.contextRef,
-  });
+  try {
+    const body = await request.json();
+    const conversation = await createPersistedConversation({
+      userId: String(user._id),
+      surface: body.surface,
+      title: body.title,
+      modelHandle: body.modelHandle,
+      temporary: body.temporary,
+      contextRef: body.contextRef,
+    });
 
-  return Response.json({ data: conversation });
+    return Response.json({ data: conversation });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unable to create conversation";
+    return Response.json({ error: message }, { status: 500 });
+  }
 }

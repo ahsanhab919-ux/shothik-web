@@ -1,7 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useEffect, useState } from "react";
 import { Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +11,34 @@ interface CreditBalanceProps {
 }
 
 export default function CreditBalance({ onClick, className, size = "md" }: CreditBalanceProps) {
-  const balanceData = useQuery(api.credits.getBalance);
+  const [balanceData, setBalanceData] = useState<{ balance: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/credits/balance")
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to load balance");
+        }
+        return payload;
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setBalanceData(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBalanceData({ balance: 0 });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const balance = balanceData?.balance ?? 0;
 
   return (

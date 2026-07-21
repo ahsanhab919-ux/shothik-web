@@ -1,0 +1,1120 @@
+[
+  {
+    "id": "TC001",
+    "title": "Sign in and continue into a protected destination",
+    "description": "An existing member can sign in with email and password and continue into a protected area after the post-login redirect.",
+    "category": "User authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the post-login redirect page is shown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an authenticated destination is reached"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Register a new account and reach the authenticated area",
+    "description": "A new visitor can create an account and arrive at the post-login destination with access to authenticated content.",
+    "category": "User authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/register"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify account creation is complete"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user reaches an authenticated destination"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Continue into the writing studio after signing in",
+    "description": "An authenticated user can sign in, reach the post-login destination, and open the writing studio workspace successfully.",
+    "category": "Research and writing studio workspaces",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to continue into the writing studio"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the writing studio workspace is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Show sign-in feedback for invalid credentials",
+    "description": "A visitor entering incorrect credentials sees sign-in validation feedback instead of being granted access.",
+    "category": "User authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with invalid@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with invalid-password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify sign-in validation feedback is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Open the writing studio after signing in",
+    "description": "A signed-in user can enter the writing studio and continue working in a protected workspace.",
+    "category": "User authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the writing studio entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the writing studio workspace is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Open chat after sign-in and review prior context",
+    "description": "A signed-in user can open the Shothik AI chat workspace and see the conversation history and workspace context.",
+    "category": "Agent chat workspace",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the chat workspace entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the chat workspace is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify conversation history is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Send a prompt in chat and receive a response",
+    "description": "A signed-in user can submit a prompt in the chat workspace and see the assistant response added to the conversation.",
+    "category": "Agent chat workspace",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the chat workspace entry"
+      },
+      {
+        "type": "action",
+        "description": "Enter a prompt into the chat input"
+      },
+      {
+        "type": "action",
+        "description": "Submit the prompt"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the assistant response is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the conversation history includes the new exchange"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Create and quality-check writing content",
+    "description": "An authenticated user can draft long-form writing, run a quality check, and see feedback for the content.",
+    "category": "Research and writing studio workspaces",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the writing studio"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the writing content field with a long-form draft about sustainable urban gardening"
+      },
+      {
+        "type": "action",
+        "description": "Trigger a quality check for the draft"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify quality check feedback is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Open account settings after signing in",
+    "description": "A signed-in user can reach the account overview from the authenticated area and view account details.",
+    "category": "User authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the account entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the account overview is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Save writing progress and resume editing later",
+    "description": "An authenticated user can save in-progress writing and return to the same work to continue editing.",
+    "category": "Research and writing studio workspaces",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the writing studio"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the writing content field with a draft about local community food systems"
+      },
+      {
+        "type": "action",
+        "description": "Save the current work"
+      },
+      {
+        "type": "action",
+        "description": "Refresh the writing workspace by reopening it"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the saved writing content is still available for editing"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Recover access from the sign-in page",
+    "description": "A visitor who cannot sign in can request password recovery and see that the recovery process has started.",
+    "category": "User authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Choose the password recovery option"
+      },
+      {
+        "type": "action",
+        "description": "Enter the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the recovery request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a recovery initiation confirmation is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Continue research work after signing in",
+    "description": "An authenticated user can open the research workspace, create or edit research content, and see the workspace state persist within the session.",
+    "category": "Research and writing studio workspaces",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the research workspace"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the research content field with notes about renewable energy policy"
+      },
+      {
+        "type": "action",
+        "description": "Trigger a workspace action for the research draft"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the research workspace state is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Continue a draft in writing studio and run a quality check",
+    "description": "A signed-in user can create or edit long-form content in writing studio, run a quality check, and keep working on the draft.",
+    "category": "User authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the writing studio entry"
+      },
+      {
+        "type": "action",
+        "description": "Enter draft content into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Run the quality check"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify quality check results are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the draft remains available for continued editing"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Open billing from account settings",
+    "description": "A signed-in user can move from account overview to billing and view subscription management information.",
+    "category": "User authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the account entry"
+      },
+      {
+        "type": "action",
+        "description": "Open billing settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify billing and subscription information is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Discover a community feed after signing in",
+    "description": "A signed-in user can open the community area and see community content instead of an access block.",
+    "category": "Community participant",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the community entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the community feed is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Browse community topics after signing in",
+    "description": "An authenticated user can sign in, open the community area, and browse shared discussion topics.",
+    "category": "Community and channels",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the community area"
+      },
+      {
+        "type": "action",
+        "description": "Scroll through the community topics"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify community topics are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Use paraphrase to transform pasted text",
+    "description": "A visitor can paste text into the paraphrasing tool and receive a transformed output after submitting the request.",
+    "category": "Legacy writing tools",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /paraphrase"
+      },
+      {
+        "type": "action",
+        "description": "Enter text into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Submit the tool action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify paraphrased output is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "Open a community discussion and read its content",
+    "description": "An authenticated user can open a community forum or detail page and read the shared discussion content.",
+    "category": "Community and channels",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the community area"
+      },
+      {
+        "type": "action",
+        "description": "Open a community discussion from the feed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the discussion detail page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify shared discussion content is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Show validation when paraphrase input is empty",
+    "description": "A visitor attempting to paraphrase without content sees input validation instead of an empty submission.",
+    "category": "Legacy writing tools",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /paraphrase"
+      },
+      {
+        "type": "action",
+        "description": "Submit the tool action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify input validation feedback is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC020",
+    "title": "Browse marketplace listings and open a book detail page",
+    "description": "A visitor can browse marketplace items and open a book detail page to review its information.",
+    "category": "Marketplace and books",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /marketplace"
+      },
+      {
+        "type": "action",
+        "description": "Scroll through the marketplace listings"
+      },
+      {
+        "type": "action",
+        "description": "Open a book detail page from the marketplace"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the book detail page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify book information is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC021",
+    "title": "Summarize entered content",
+    "description": "A visitor can submit content to the summarizer and see a summary result returned in the page.",
+    "category": "Legacy writing tools",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /summarize"
+      },
+      {
+        "type": "action",
+        "description": "Enter content into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Submit the tool action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify summary output is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Review ownership or publishing state on a book detail page",
+    "description": "A visitor can open a book detail page and see the ownership or publishing-related information associated with the item.",
+    "category": "Marketplace and books",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /marketplace"
+      },
+      {
+        "type": "action",
+        "description": "Open a book detail page from the marketplace"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the book detail page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify ownership or publishing-related information is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC023",
+    "title": "Check grammar for pasted text",
+    "description": "A visitor can submit text to the grammar checker and see grammar analysis results returned.",
+    "category": "Legacy writing tools",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /grammar-checker"
+      },
+      {
+        "type": "action",
+        "description": "Enter text into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Submit the tool action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify grammar analysis output is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC024",
+    "title": "Browse channels and open a channel detail page",
+    "description": "A visitor can explore available channels and open a channel detail page to review the discussion content.",
+    "category": "Community and channels",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /explore/channels"
+      },
+      {
+        "type": "action",
+        "description": "Browse the available channels"
+      },
+      {
+        "type": "action",
+        "description": "Open a channel detail page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the channel detail page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify channel discussion content is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC025",
+    "title": "Inspect chat debug information when available",
+    "description": "A signed-in user can open the chat debug log and review diagnostic details without leaving the workspace.",
+    "category": "Agent chat workspace",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the chat workspace entry"
+      },
+      {
+        "type": "action",
+        "description": "Open the debug log control"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify diagnostic information is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC026",
+    "title": "Translate entered text",
+    "description": "A visitor can submit source text in the translation tool and see translated output displayed.",
+    "category": "Legacy writing tools",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /translator"
+      },
+      {
+        "type": "action",
+        "description": "Enter source text into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Submit the tool action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify translated output is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Move from marketplace browsing toward purchase or publishing",
+    "description": "A visitor can browse marketplace items and reach a book or publishing-related follow-up state from the marketplace.",
+    "category": "Marketplace and books",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /marketplace"
+      },
+      {
+        "type": "action",
+        "description": "Browse the available marketplace items"
+      },
+      {
+        "type": "action",
+        "description": "Select an item to explore further"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a follow-up purchase or publishing-related pathway is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Browse channels from the discovery page",
+    "description": "A visitor can open channel discovery and review available community channels.",
+    "category": "Community participant",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /explore/channels"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify available channels are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC029",
+    "title": "Review the platform health information",
+    "description": "A visitor can open the API documentation page and review the available health information for the platform.",
+    "category": "Platform health and API docs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /api-docs"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify health information is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the platform status information is available"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC030",
+    "title": "Open the API documentation surface",
+    "description": "A visitor can open the API documentation page and see the documentation surface for the platform.",
+    "category": "Platform health and API docs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /api-docs"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the API documentation surface is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify documentation content is available"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC031",
+    "title": "Review the protected-route guidance in the docs",
+    "description": "A visitor can open the API documentation page and find guidance about protected routes in the documentation.",
+    "category": "Platform health and API docs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /api-docs"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify protected-route guidance is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify route contract information is available"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC032",
+    "title": "Access the API docs from the public landing page",
+    "description": "A visitor can start on the public site and reach the API documentation page from normal navigation.",
+    "category": "Platform health and API docs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the API documentation page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the API documentation surface is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC033",
+    "title": "Return to the docs after exploring another public page",
+    "description": "A visitor can move from a public discovery page back to the API documentation surface through standard navigation.",
+    "category": "Platform health and API docs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /marketplace"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the API documentation page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the API documentation surface is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC034",
+    "title": "Load the public homepage successfully",
+    "description": "A visitor can open the public homepage and see the marketing shell render without authentication.",
+    "category": "Platform health and API docs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the homepage is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the public navigation shell is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC035",
+    "title": "Check the health endpoint from the local app",
+    "description": "A visitor or operator can request the local health endpoint and receive a healthy platform response.",
+    "category": "Platform health and API docs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /api/health"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the endpoint responds successfully"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify status and timestamp fields are present"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC036",
+    "title": "Open the swagger JSON endpoint",
+    "description": "A visitor or operator can request the swagger JSON route and receive a valid protected or healthy response from the app.",
+    "category": "Platform health and API docs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /api/docs/swagger.json"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the endpoint responds without a framework error"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the response indicates documentation or access protection"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC037",
+    "title": "Open the public paraphrase tool page",
+    "description": "A visitor can open the paraphrase tool page and view the core tool interface without signing in.",
+    "category": "Legacy writing tools",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /paraphrase"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the paraphrase tool page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the tool editor or input surface is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC038",
+    "title": "Follow the dashboard compatibility redirect",
+    "description": "A visitor reaching the legacy dashboard route is redirected into the current post-login flow instead of a missing page.",
+    "category": "User authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the request does not end on a 404 page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the route redirects into the current authentication flow"
+      }
+    ],
+    "priority": "Medium"
+  }
+]

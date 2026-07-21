@@ -2,51 +2,43 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Users, Brain, Heart, Shield, Sparkles, Cloud, CloudOff } from 'lucide-react';
-import { useMutation, useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
 import { EnneagramEngine, type CharacterDNA, type EnneagramType } from '@/lib/nobel-engine';
 import { cn } from '@/lib/utils';
+import { useProjectCharacters } from '@/hooks/useProjectCharacters';
 
 interface CharacterPanelProps {
   projectId: string;
 }
 
 export function CharacterPanel({ projectId }: CharacterPanelProps) {
-  const [characters, setCharacters] = useState<CharacterDNA[]>([]);
   const [selectedChar, setSelectedChar] = useState<CharacterDNA | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-
-  const saveCharactersMutation = useMutation(api.writing.saveCharacters);
-  const savedData = useQuery(api.writing.getCharacters, { localProjectId: projectId });
+  const { characters, isLoading, saveCharacters } = useProjectCharacters(projectId);
 
   useEffect(() => {
-    if (Array.isArray(savedData)) {
-      setCharacters(savedData as CharacterDNA[]);
+    if (!isLoading && characters.length === 0) {
+      setSelectedChar((current) => (current ? null : current));
     }
-  }, [savedData]);
+  }, [characters.length, isLoading]);
 
   const persistCharacters = useCallback(async (updated: CharacterDNA[]) => {
     setSyncStatus('saving');
     try {
-      await saveCharactersMutation({
-        localProjectId: projectId,
-        characters: updated as any,
-      });
+      await saveCharacters(updated);
       setSyncStatus('saved');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch {
       setSyncStatus('error');
     }
-  }, [projectId, saveCharactersMutation]);
+  }, [saveCharacters]);
 
   const createCharacter = (name: string, type: EnneagramType) => {
     const newChar = EnneagramEngine.generateCharacterDNA(name, type);
     const updated = [...characters, newChar];
-    setCharacters(updated);
     setSelectedChar(newChar);
     setShowCreate(false);
-    persistCharacters(updated);
+    void persistCharacters(updated);
   };
 
   if (showCreate) {
@@ -101,7 +93,13 @@ export function CharacterPanel({ projectId }: CharacterPanelProps) {
         </div>
       </div>
 
-      {characters.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-8 text-zinc-500">
+          <Cloud className="w-12 h-12 mx-auto mb-3 opacity-30 animate-pulse" />
+          <p className="text-sm mb-2">Loading characters…</p>
+          <p className="text-xs">Restoring saved character profiles</p>
+        </div>
+      ) : characters.length === 0 ? (
         <div className="text-center py-8 text-zinc-500">
           <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm mb-2">No characters yet</p>

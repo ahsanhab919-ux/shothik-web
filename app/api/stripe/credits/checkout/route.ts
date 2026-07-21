@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { getAuthToken } from "@/lib/auth";
 import logger from "@/lib/logger";
 import { decodeJwt } from "jose";
 import { CREDIT_PACKS, type PackId } from "@/lib/payment-config";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import {
+  getStripe,
+  isStripeConfigurationError,
+} from "@/lib/stripe/config";
 
 function getUserIdFromToken(token: string): string | null {
   try {
@@ -19,6 +20,7 @@ function getUserIdFromToken(token: string): string | null {
 
 export async function POST(req: NextRequest) {
   try {
+    const stripe = getStripe();
     const token = getAuthToken(req);
     if (!token) {
       return NextResponse.json(
@@ -74,6 +76,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ checkoutUrl: session.url });
   } catch (error) {
+    if (isStripeConfigurationError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 503 },
+      );
+    }
     logger.error("Credit checkout error:", error);
     return NextResponse.json(
       { error: "Failed to create checkout session" },

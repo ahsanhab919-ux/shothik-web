@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import {
   Globe,
   Store,
@@ -169,11 +167,46 @@ export function DistributionManager({ book }) {
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedChannels, setSelectedChannels] = useState(() => channels.map((ch) => ch.id));
   const [pollTick, setPollTick] = useState(0);
+  const [distRecord, setDistRecord] = useState(null);
 
-  const distRecord = useQuery(
-    api.publishing.getDistributionRecord,
-    book?._id ? { bookId: book._id, userId: book.userId } : "skip"
-  );
+  const loadDistributionRecord = useCallback(async () => {
+    if (!book?._id) {
+      setDistRecord(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/publish/status?bookId=${encodeURIComponent(book._id)}`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (response.status === 404) {
+        setDistRecord(null);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to load distribution status");
+      }
+
+      const data = await response.json();
+      setDistRecord({
+        status: data.status,
+        channels: data.channels || [],
+        updatedAt: data.updatedAt || Date.now(),
+        source: data.source,
+      });
+    } catch (err) {
+      console.error("Failed to load distribution status:", err);
+    }
+  }, [book?._id]);
+
+  useEffect(() => {
+    void loadDistributionRecord();
+  }, [loadDistributionRecord, pollTick]);
 
   const channelStatusMap = {};
   if (distRecord?.channels) {
@@ -226,15 +259,12 @@ export function DistributionManager({ book }) {
     if (!book?._id || selectedChannels.length === 0) return;
     setIsSubmitting(true);
     try {
-      const token = typeof window !== "undefined"
-        ? localStorage.getItem("auth_token") || ""
-        : "";
       const res = await fetch("/api/publish/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ bookId: book._id, selectedChannels }),
       });
 
@@ -244,6 +274,7 @@ export function DistributionManager({ book }) {
         trackBookPublished();
         toast.success(data.message || "Distribution started!");
         setIsSelectMode(false);
+        await loadDistributionRecord();
       } else {
         toast.error(data.error || "Distribution failed. Please try again.");
       }
@@ -258,22 +289,20 @@ export function DistributionManager({ book }) {
     if (!book?._id) return;
     setRetryingChannel(channelId);
     try {
-      const token = typeof window !== "undefined"
-        ? localStorage.getItem("auth_token") || ""
-        : "";
       const retryChannels = channelId ? [channelId] : undefined;
       const res = await fetch("/api/publish/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ bookId: book._id, selectedChannels: retryChannels, retry: true }),
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
         toast.success("Retry submitted successfully!");
+        await loadDistributionRecord();
       } else {
         toast.error(data.error || "Retry failed. Please try again later.");
       }
@@ -282,7 +311,7 @@ export function DistributionManager({ book }) {
     } finally {
       setRetryingChannel(null);
     }
-  }, [book]);
+  }, [book, loadDistributionRecord]);
 
   const filteredChannels = channels.filter((ch) => {
     if (filter === "all") return true;

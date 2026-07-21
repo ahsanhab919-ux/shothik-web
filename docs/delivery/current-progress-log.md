@@ -2,7 +2,7 @@
 
 ## Review Baseline
 
-Date: `2026-07-17`
+Date: `2026-07-21`
 
 This log records the current review of all incomplete workstreams, their
 priority, acceptance criteria, active risks, and the most recent execution
@@ -13,87 +13,103 @@ updates. It is intended to be read alongside:
 
 ## Pending Work Review
 
-### 1. Production deploy-first auth/chat promotion
+### 1. Batch 0: Stabilization and control gate
 
 - Priority: `P0`
 - Status: `Completed`
-- Dependency: completed in deploy-first order against live production
+- Dependency: approved batch plan and audit-driven control reset
 - Acceptance criteria:
-  - `pnpm audit:vercel:production` passes at execution time
-  - legacy compatibility variables are either explicitly retained or safely removed
-  - production deployment completes without rollback
-  - production chat ownership migration completes with `0` mismatched rows
-  - authenticated production smoke validation passes for chat create/read/delete and post-login routing
+  - tracked InsForge linkage files are sanitized and contain no committed API keys
+  - current delivery control documents reflect the active batch sequence and
+    actual blocker state
+  - Batch 1 entry criteria are explicit and testable
 - Current risk:
-  - retain cleanup awareness for the disposable production smoke account and residual non-blocking console noise
+  - closed; monitor only for documentation drift during later batches
 
-### 2. Authenticated TestSprite smoke credentials and coverage
-
-- Priority: `P1`
-- Status: `Blocked`
-- Dependency: populate `PLAYWRIGHT_SMOKE_EMAIL` and `PLAYWRIGHT_SMOKE_PASSWORD`
-- Acceptance criteria:
-  - staging-safe smoke credentials are stored securely
-  - authenticated TestSprite run executes against `https://staging.shothikgpt.com`
-  - login and chat coverage complete without Vercel protection regressions
-  - TestSprite cloud project metadata remains synchronized after the run
-- Current risk:
-  - no code-only fix exists until credentials are provisioned
-
-### 3. Formal launch-gate approver capture in delivery tracker
-
-- Priority: `P1`
-- Status: `Completed`
-- Dependency: completed with the validated in-repo contributor roster and issue-aligned governance refresh
-- Acceptance criteria:
-  - every active workstream has a named approver, not an acting placeholder
-  - launch-gate evidence links are attached per workstream
-  - unresolved dependencies move from narrative text into issue-level checklists
-  - production rollout workstream records release-window approval
-- Current risk:
-  - maintain the governance source whenever new workstreams or approvers are added so placeholder drift does not return
-
-### 4. Books Phase 1 schema, services, and UI migration
-
-- Priority: `P1`
-- Status: `Completed`
-- Dependency: production rollout stabilization and approved target schema
-- Acceptance criteria:
-  - InsForge schema covers drafts, published books, purchases, owned library access, and moderation transitions
-  - RLS rules enforce tenant-safe ownership and purchase access semantics
-  - migration scripts are versioned and reversible where appropriate
-  - targeted validation confirms creator, buyer, and moderation access paths behave as specified
-- Current risk:
-  - remaining legacy Convex code still exists for out-of-scope publishing/distribution and unrelated platform modules
-
-### 5. MCP platform enablement
-
-- Priority: `P1`
-- Status: `Completed`
-- Dependency: completed through the approved Creative Studio slice with captured host-runtime evidence, remediation review, and release-readiness gating
-- Acceptance criteria:
-  - first vertical slice includes gateway contract, managed connector scaffold, server workflow, and user-visible entry point
-  - confirmation-required tool execution is explicit and test-covered
-  - selected Shothik-native tools are mapped to MCP-compatible definitions before packaging
-  - sunpeak packaging scaffold and inspector coverage are added after the workflow surface is stable
-  - the phase remains inside the existing unified plan with no parallel roadmap branch
-- Current risk:
-  - completed lane should remain closed unless a new host evidence or package-validation blocker invalidates the gate evidence
-
-### 6. Coverage and release automation repair
+### 2. Batch 1: Auth and runtime foundation
 
 - Priority: `P0`
 - Status: `Completed`
-- Dependency: MCP lane closed, current validation baseline collected, and release-readiness generator reviewed against delivery-tracker ownership rules
+- Dependency:
+  - authoritative staging `DATABASE_URL`
+  - localhost OAuth session persistence remediation
 - Acceptance criteria:
-  - `pnpm test:coverage` passes locally without scanning workspace-local third-party cache content
-  - CI and security workflows align with the repo-pinned `pnpm@11.10.0` toolchain
-  - release-readiness reports publish the current validated baseline without overwriting human-managed delivery trackers
-  - type-check, unit/integration, coverage, browser smoke, and production-style build evidence are captured for approval
+  - `/api/projects` succeeds against the active InsForge schema
+  - password sign-in and Google OAuth both establish durable protected sessions
+  - authenticated smoke can reach `/agents/chat` and post-login project-aware
+    routing without degraded backend fallbacks
 - Current risk:
-  - remaining blockers are external support-lane dependencies, not implementation defects in the repaired automation path
+  - closed; preserve PKCE verifier cleanup and redirect-preservation coverage
 
-### 7. GitHub live tracker sync permission repair
+### 3. Batch 2: Native tool runtime enablement
+
+- Priority: `P1`
+- Status: `Completed`
+- Dependency: Batch 1 complete
+- Acceptance criteria:
+  - selected Shothik-native tools are executable through the governed MCP path
+  - provider discovery and invocation routes exist and are authenticated
+  - audit and policy boundaries are enforced during tool execution
+- Current risk:
+  - closed; maintain parity between native adapter routing and public MCP host
+    exposure rules
+
+### 4. Batch 3: Agent-system unification
+
+- Priority: `P1`
+- Status: `Completed`
+- Dependency: Batch 2 complete
+- Acceptance criteria:
+  - twin/agent execution uses the approved governed tool runtime
+  - discovery endpoints resolve to live routes
+  - task execution and approval flows are traceable and durable
+- Current risk:
+  - closed; preserve governed runtime parity and internal-only host exposure
+    rules during Batch 4 integration work
+
+### 5. Batch 4: Writing workflow consolidation
+
+- Priority: `P1`
+- Status: `Completed`
+- Dependency: Batches 1 through 3 complete
+- Acceptance criteria:
+  - writing project outputs can become publishable draft inputs without manual
+    metadata re-entry
+  - project, planner, and manuscript contracts are aligned
+  - mixed backend ownership is reduced on the active authoring path
+- Current risk:
+  - closed; preserve project-linked draft bootstrap and publish-mode persistence
+    on future Batch 5 changes
+
+### 6. Batch 5: Publishing workflow completion
+
+- Priority: `P1`
+- Status: `Completed`
+- Dependency: Batch 4 complete
+- Acceptance criteria:
+  - creator, moderation, distribution, access, sales, earnings, and payout
+    flows behave as one continuous workflow
+  - legacy backend split is removed from the active publishing path
+  - high-risk commerce and moderation routes gain direct regression coverage
+- Current risk:
+  - live provider certification still depends on environment secrets for
+    PublishDrive and Stripe, which are unset in the local precheck environment
+
+### 7. Batch 6: End-to-end certification and release readiness
+
+- Priority: `P0`
+- Status: `Pending`
+- Dependency: Batches 1 through 5 complete
+- Acceptance criteria:
+  - unit, integration, browser, and workflow certification artifacts exist for
+    auth, native tools, agents, and book publishing
+  - current reports and runbooks match the implemented runtime behavior
+  - final go/no-go status is evidence-backed
+- Current risk:
+  - there is currently no single certification pass covering the full
+    agent-enabled writing-to-publishing loop
+
+### 8. GitHub live tracker sync permission repair
 
 - Priority: `P1`
 - Status: `Blocked`
@@ -105,6 +121,644 @@ updates. It is intended to be read alongside:
   - local delivery artifacts remain the source of truth until permission repair is completed
 
 ## Latest Execution Updates
+
+### 2026-07-21: Batch 6 release-readiness control artifacts refreshed
+
+- Milestone: Batch 6 — certification control-layer kickoff
+- Responsible team:
+  - delivery owner: `Ahsan Habib (@ahsanhab919-ux)`
+  - implementation owner: `TRAE/Codex pair-programming agent`
+  - reviewer and approver: `Project reviewer / user`
+- Completed deliverables:
+  - refreshed active Batch 6 control gate:
+    `docs/delivery/current-execution-plan.md`
+  - refreshed release-readiness model:
+    `scripts/lib/release-readiness-report.mjs`
+  - refreshed reporting validation:
+    `test/release-readiness-report.test.ts`
+  - generated Batch 6 readiness artifacts:
+    `docs/reports/release-readiness-milestones-2026-07-21.md`
+    `docs/reports/test-report-2026-07-21.md`
+    `docs/reports/functional-acceptance-2026-07-21.md`
+- Key outcomes:
+  - Batch 6 is now the active control gate in the execution plan
+  - generated readiness reports now reflect the current roadmap state through
+    Batch 5 completion instead of the stale July 18 baseline
+  - the release-readiness model now records the active blockers for live
+    certification: authenticated smoke credentials, PublishDrive secrets,
+    Stripe secrets, and GitHub tracker token repair
+- Validation executed:
+  - `pnpm exec vitest run test/release-readiness-report.test.ts`
+  - `pnpm run report:readiness`
+  - `pnpm exec tsc --noEmit --pretty false`
+- Outcome:
+  - Batch 6 certification tooling is synchronized and ready for the next
+    credentialed release-readiness pass
+  - release-status messaging now correctly reports a non-go state until live
+    certification prerequisites are provisioned
+
+### 2026-07-21: Batch 6 go/no-go decision module added
+
+- Milestone: Batch 6 — release decision artifact generation
+- Completed deliverables:
+  - go/no-go report model:
+    `scripts/lib/release-go-no-go-report.mjs`
+  - go/no-go generator:
+    `scripts/generate-release-go-no-go.mjs`
+  - package command:
+    `package.json` (`report:go-no-go`)
+  - validation suite:
+    `test/release-go-no-go-report.test.ts`
+  - generated decision artifact:
+    `docs/reports/release-go-no-go-2026-07-21.md`
+- Key outcomes:
+  - Batch 6 now has one generated decision artifact that consolidates the
+    current release decision, evidence, hard blockers, informational tracker
+    blockers, and next actions
+  - hard release blockers are now separated from tracker-level blocked items so
+    the decision engine can model both `GO` and `NO_GO` states correctly
+- Validation executed:
+  - `pnpm exec vitest run test/release-readiness-report.test.ts test/release-go-no-go-report.test.ts`
+  - `pnpm run report:go-no-go`
+  - `pnpm exec tsc --noEmit --pretty false`
+- Outcome:
+  - the Batch 6 reporting pipeline now produces a review-ready go/no-go artifact
+    for stakeholder approval and final certification tracking
+
+### 2026-07-21: Batch 5 publishing workflow completion completed
+
+- Milestone: Batch 5 — publishing workflow completion
+- Responsible team:
+  - delivery owner: `Ahsan Habib (@ahsanhab919-ux)`
+  - implementation owner: `TRAE/Codex pair-programming agent`
+  - reviewer and approver: `Project reviewer / user`
+- Pre-execution checks:
+  - verified Batch 4 completion and refreshed delivery controls before Batch 5
+    edits
+  - verified focused publish/moderation test coverage was present for the active
+    routes
+  - verified local provider resource availability and recorded the anomaly:
+    `PUBLISHDRIVE_ENABLED`, `NEXT_PUBLIC_PUBLISHDRIVE_ENABLED`,
+    `PUBLISHDRIVE_WEBHOOK_SECRET`, and `STRIPE_SECRET_KEY` are unset in the
+    current local environment
+- KPIs for this slice:
+  - `100%` of active author review flows now capture distribution consent before
+    distribution submission
+  - `100%` of active publish-status tracking now derives from the real book and
+    distribution state model
+  - `0` legacy Convex dependencies remain on the active ONIX export path
+  - `100%` pass rate on focused publish/moderation/payout regressions plus repo
+    type-check
+- Completed deliverables:
+  - author review consent persistence:
+    `components/tools/writing-studio/workspace/publish/PublishWizard.jsx`
+    `components/tools/writing-studio/workspace/publish/ReviewSubmit.jsx`
+  - canonical publish-status tracking:
+    `components/tools/writing-studio/workspace/publish/StatusTracker.jsx`
+  - shared Stripe payout execution:
+    `lib/books/stripe-payout-service.ts`
+    `app/api/publish/payouts/route.ts`
+    `app/api/stripe/payout/route.ts`
+  - legacy ONIX bridge removal:
+    `app/api/publish/onix/route.ts`
+  - direct regression coverage:
+    `app/api/publish/onix/route.test.ts`
+    `app/api/publish/payouts/route.test.ts`
+    `app/api/stripe/payout/route.test.ts`
+    `components/tools/writing-studio/workspace/publish/ReviewSubmit.test.jsx`
+- Key technical decisions:
+  - distribution consent is captured on the author review step and persisted with
+    the book draft so later distribution submission does not fail on a missing
+    consent flag
+  - the publish tracker now renders against real moderation/distribution states
+    instead of unsupported legacy UI-only states like `in_review` and
+    `uploading`
+  - Stripe payout execution is centralized in one shared service used by both
+    `/api/publish/payouts` and `/api/stripe/payout`
+  - the shared Stripe service now fails closed with an explicit `503` when the
+    provider secret is unavailable, preventing ambiguous partial execution
+  - ONIX export now uses InsForge-backed drafts and no longer depends on the
+    legacy Convex publishing path
+- Issues encountered and resolutions:
+  - local provider-secret precheck failed because PublishDrive and Stripe
+    environment variables are unset in the current environment; resolved in code
+    by preserving mock/local distribution behavior and hardening Stripe execution
+    with explicit fail-closed handling
+  - the active publish-status UI still referenced unsupported legacy states;
+    resolved by aligning it to the real moderation/distribution lifecycle and
+    distribution status polling contract
+- Validation executed:
+  - `pnpm exec tsc --noEmit --pretty false`
+  - `pnpm exec vitest run app/api/publish/payouts/route.test.ts app/api/stripe/payout/route.test.ts app/api/publish/onix/route.test.ts app/api/publish/submit/route.test.ts app/api/publish/status/route.test.ts app/api/admin/books/route.test.ts app/api/admin/books/stats/route.test.ts components/tools/writing-studio/workspace/publish/ReviewSubmit.test.jsx`
+- Outcome:
+  - the active author publishing path now captures consent, renders the real
+    lifecycle state, executes Stripe payouts through the publishing lane, and no
+    longer uses Convex for ONIX export
+  - Batch 5 publishing workflow completion is closed in code and regression
+    coverage, with live provider certification deferred to Batch 6 because the
+    local environment lacks external provider secrets
+- Remaining blockers:
+  - GitHub live tracker sync remains externally blocked on write-capable token
+    permissions
+  - Batch 6 still needs live environment certification for PublishDrive and
+    Stripe secrets
+
+### 2026-07-21: Batch 4 writing workflow consolidation completed
+
+- Milestone: Batch 4 — project-to-book-draft bridge and publish-mode convergence
+- Responsible team:
+  - delivery owner: `Ahsan Habib (@ahsanhab919-ux)`
+  - implementation owner: `TRAE/Codex pair-programming agent`
+  - reviewer and approver: `Project reviewer / user`
+- KPIs for this slice:
+  - `100%` of writing-studio publish-mode entry points now bootstrap a linked
+    draft through `/api/books/drafts`
+  - `100%` of active `PolishedWriteView` publish transitions save the latest
+    persisted project state before draft bootstrap
+  - `100%` pass rate on focused Batch 4 route and hook tests plus repo
+    type-check
+- Completed deliverables:
+  - project-linked draft bootstrap and reuse logic:
+    `lib/books/insforge-book-service.ts`
+  - route contract update:
+    `app/api/books/drafts/route.ts`
+  - publishing hook bootstrap update:
+    `hooks/usePublishingBook.js`
+  - real publish workflow handoff:
+    `components/writing-studio/PublishingPage.tsx`
+    `components/writing-studio/PolishedWriteView.tsx`
+    `components/tools/writing-studio/workspace/publish/PublishWizard.jsx`
+  - focused regression coverage:
+    `app/api/books/drafts/route.test.ts`
+    `hooks/usePublishingBook.test.jsx`
+- Key technical decisions:
+  - reused `source_project_id` as the canonical project-to-book linkage instead
+    of extending the legacy `legacy_project_id` bridge
+  - reused the existing persisted `PublishWizard` rather than evolving the mock
+    `PublishingPage`, reducing mixed backend ownership on the active publish path
+  - saved the current project before entering publish mode on the active
+    `PolishedWriteView` shell so the draft bootstrap consumes current project
+    metadata instead of stale authoring state
+- Issues encountered and resolutions:
+  - patch-context drift in the legacy mock `PublishingPage` made surgical edits
+    noisy; resolved by replacing the file with a thin wrapper over the real
+    publish wizard
+  - editor diagnostics briefly reported a stale module-resolution error after the
+    file replacement; resolved by validating the repo through a clean
+    `pnpm exec tsc --noEmit --pretty false` pass
+- Check-ins completed:
+  - implementation checkpoint passed after project-linked draft bootstrap,
+    publish-shell convergence, and pre-handoff project persistence were wired
+  - validation checkpoint passed after focused route and hook coverage plus
+    repo-level type-check
+  - delivery checkpoint completed by refreshing execution plan, progress log,
+    milestones, and the Batch 4 execution report
+- Validation executed:
+  - `pnpm exec vitest run app/api/books/drafts/route.test.ts hooks/usePublishingBook.test.jsx`
+  - `pnpm exec tsc --noEmit --pretty false`
+- Outcome:
+  - writing projects now transition into a reusable persisted draft without
+    manual title/category/language/bootstrap re-entry
+  - the active writing-studio publish path now uses the real persisted publish
+    workflow instead of a mock screen
+  - Batch 4 writing workflow consolidation is closed and ready to hand off to
+    Batch 5 publishing workflow completion
+- Remaining blockers:
+  - GitHub live tracker sync remains externally blocked on write-capable token
+    permissions
+
+### 2026-07-21: Batch 3 Phase 6 community preview moved onto the governed MCP runtime
+
+- Milestone: Batch 3 Phase 6 — governed `community:preview` execution
+- Responsible team:
+  - delivery owner: `Ahsan Habib (@ahsanhab919-ux)`
+  - implementation owner: `TRAE/Codex pair-programming agent`
+  - reviewer and approver: `Project reviewer / user`
+- KPIs for this slice:
+  - `100%` of `community:preview` direct and approval-triggered execution routed
+    through governed MCP
+  - `0` public MCP exposure for the internal community-preview governance tool
+  - `100%` pass rate on targeted tests, `pnpm type-check`, and MCP runtime
+    regression coverage
+- Completed deliverables:
+  - internal MCP tool registry entry for `shothik.twin.post_community_preview`
+  - shared helper: `lib/twin/mcp-community-preview.ts`
+  - internal execution route:
+    `app/api/twin/book/community-preview/execute/route.ts`
+  - direct route conversion:
+    `app/api/twin/book/community-preview/route.ts`
+  - approval-route conversion: `app/api/twin/approvals/route.ts`
+  - focused regression tests for helper, internal executor, direct route,
+    approval route, and native tool registry
+- Key technical decisions:
+  - wrapped the existing `twinPostCommunityPreview` mutation instead of
+    duplicating the published-book and open-forum state rules in route logic
+  - kept the tool internal-only because preview posting is a stateful,
+    approval-managed publication action
+- Check-ins completed:
+  - implementation checkpoint passed after converging direct and approval
+    community-preview execution on one governed runtime boundary
+  - validation checkpoint passed after focused tests, type-check, and MCP
+    runtime regression
+  - delivery checkpoint completed by refreshing execution plan, progress log,
+    milestones, and the phase report
+- Validation executed:
+  - `pnpm exec vitest run lib/twin/mcp-community-preview.test.ts lib/twin/mcp-book-publish.test.ts lib/twin/mcp-book-write.test.ts lib/twin/mcp-forum-post.test.ts lib/twin/mcp-forum-create.test.ts lib/twin/mcp-task-execution.test.ts lib/__tests__/native-tools.test.ts app/api/twin/book/community-preview/execute/__tests__/route.test.ts app/api/twin/book/community-preview/__tests__/route.test.ts app/api/twin/book/publish/execute/__tests__/route.test.ts app/api/twin/book/publish/__tests__/route.test.ts app/api/twin/book/write/execute/__tests__/route.test.ts app/api/twin/book/start/__tests__/route.test.ts app/api/twin/book/upload/__tests__/route.test.ts app/api/twin/book/metadata/__tests__/route.test.ts app/api/twin/forum/post/execute/__tests__/route.test.ts 'app/api/twin/forum/[forumId]/post/__tests__/route.test.ts' app/api/twin/forum/__tests__/route.test.ts app/api/twin/approvals/__tests__/route.test.ts`
+  - `pnpm type-check`
+  - `pnpm mcp:creative-studio:test`
+- Outcome:
+  - `community:preview` now shares one governed execution model across direct
+    twin-key execution and approval-triggered execution
+  - all planned Batch 3 approval-managed twin actions are now governed through
+    the MCP runtime
+- Remaining blockers:
+  - Batch 3 runtime-governance backlog is closed
+  - GitHub live tracker sync remains externally blocked on write-capable token
+    permissions
+
+### 2026-07-21: Batch 3 Phase 5 book publish moved onto the governed MCP runtime
+
+- Milestone: Batch 3 Phase 5 — governed `book:publish` execution
+- Responsible team:
+  - delivery owner: `Ahsan Habib (@ahsanhab919-ux)`
+  - implementation owner: `TRAE/Codex pair-programming agent`
+  - reviewer and approver: `Project reviewer / user`
+- KPIs for this slice:
+  - `100%` of `book:publish` direct and approval-triggered execution routed
+    through governed MCP
+  - `0` public MCP exposure for the internal book-publish governance tool
+  - `100%` pass rate on targeted tests, `pnpm type-check`, and MCP runtime
+    regression coverage
+- Completed deliverables:
+  - internal MCP tool registry entry for `shothik.twin.publish_book`
+  - shared helper: `lib/twin/mcp-book-publish.ts`
+  - internal execution route: `app/api/twin/book/publish/execute/route.ts`
+  - new direct route: `app/api/twin/book/publish/route.ts`
+  - approval-route conversion: `app/api/twin/approvals/route.ts`
+  - focused regression tests for helper, internal executor, direct route,
+    approval route, and native tool registry
+- Key technical decisions:
+  - introduced the missing direct publish API surface instead of skipping
+    straight to approval-only governance, because `book:publish` already exists
+    as a permissioned twin action in the roadmap and approval resolver
+  - kept the tool internal-only because publishing is a high-risk state
+    transition and should not be exposed on the public MCP host surface
+- Check-ins completed:
+  - implementation checkpoint passed after adding the missing direct route and
+    converging direct plus approval execution on one governed runtime boundary
+  - validation checkpoint passed after focused tests, type-check, and MCP
+    runtime regression
+  - delivery checkpoint completed by refreshing execution plan, progress log,
+    milestones, and the phase report
+- Validation executed:
+  - `pnpm exec vitest run lib/twin/mcp-book-publish.test.ts lib/twin/mcp-book-write.test.ts lib/twin/mcp-forum-post.test.ts lib/twin/mcp-forum-create.test.ts lib/twin/mcp-task-execution.test.ts lib/__tests__/native-tools.test.ts app/api/twin/book/publish/execute/__tests__/route.test.ts app/api/twin/book/publish/__tests__/route.test.ts app/api/twin/book/write/execute/__tests__/route.test.ts app/api/twin/book/start/__tests__/route.test.ts app/api/twin/book/upload/__tests__/route.test.ts app/api/twin/book/metadata/__tests__/route.test.ts app/api/twin/forum/post/execute/__tests__/route.test.ts 'app/api/twin/forum/[forumId]/post/__tests__/route.test.ts' app/api/twin/forum/__tests__/route.test.ts app/api/twin/approvals/__tests__/route.test.ts`
+  - `pnpm type-check`
+  - `pnpm mcp:creative-studio:test`
+- Outcome:
+  - `book:publish` now shares one governed execution model across direct
+    twin-key execution and approval-triggered execution
+  - the roadmap gap is closed by adding the missing direct publish route under
+    `app/api/twin/book/publish/route.ts`
+- Remaining blockers:
+  - `community:preview` is the last remaining Batch 3 action that still
+    requires the same governed-MCP migration pattern
+
+### 2026-07-21: Batch 3 Phase 4 book write moved onto the governed MCP runtime
+
+- Milestone: Batch 3 Phase 4 — governed `book:write` execution
+- Responsible team:
+  - delivery owner: `Ahsan Habib (@ahsanhab919-ux)`
+  - implementation owner: `TRAE/Codex pair-programming agent`
+  - reviewer and approver: `Project reviewer / user`
+- KPIs for this slice:
+  - `100%` of `book:write` direct and approval-triggered execution routed
+    through governed MCP across `start`, `upload`, and `metadata`
+  - `0` public MCP exposure for the internal book-write governance tool
+  - `100%` pass rate on targeted tests, `pnpm type-check`, and MCP runtime
+    regression coverage
+- Completed deliverables:
+  - internal MCP tool registry entry for `shothik.twin.execute_book_write`
+  - shared helper: `lib/twin/mcp-book-write.ts`
+  - internal execution route: `app/api/twin/book/write/execute/route.ts`
+  - direct route conversions:
+    - `app/api/twin/book/start/route.ts`
+    - `app/api/twin/book/upload/route.ts`
+    - `app/api/twin/book/metadata/route.ts`
+  - approval-route conversion: `app/api/twin/approvals/route.ts`
+  - focused regression tests for helper, internal executor, direct routes,
+    approval route, and native tool registry
+- Key technical decisions:
+  - kept `book:write` as one governed tool with an explicit operation mode so it
+    matches the existing shared approval action instead of fragmenting the lane
+  - preserved internal-only exposure because the operation spans multiple
+    side-effectful draft transitions and should not be available on the public
+    MCP host surface
+- Check-ins completed:
+  - implementation checkpoint passed after converging `start`, `upload`, and
+    `metadata` on one governed runtime boundary
+  - validation checkpoint passed after focused tests, type-check, and MCP
+    runtime regression
+  - delivery checkpoint completed by refreshing execution plan, progress log,
+    milestones, and the phase report
+- Validation executed:
+  - `pnpm exec vitest run lib/twin/mcp-book-write.test.ts lib/twin/mcp-forum-post.test.ts lib/twin/mcp-forum-create.test.ts lib/twin/mcp-task-execution.test.ts lib/__tests__/native-tools.test.ts app/api/twin/book/write/execute/__tests__/route.test.ts app/api/twin/book/start/__tests__/route.test.ts app/api/twin/book/upload/__tests__/route.test.ts app/api/twin/book/metadata/__tests__/route.test.ts app/api/twin/forum/post/execute/__tests__/route.test.ts 'app/api/twin/forum/[forumId]/post/__tests__/route.test.ts' app/api/twin/forum/__tests__/route.test.ts app/api/twin/approvals/__tests__/route.test.ts`
+  - `pnpm type-check`
+  - `pnpm mcp:creative-studio:test`
+- Outcome:
+  - `book:write` now shares one governed execution model across direct twin-key
+    execution and approval-triggered execution
+  - `book:start`, `book:upload`, and `book:metadata` now route through one
+    internal MCP executor with operation-specific validation
+- Remaining blockers:
+  - `book:publish` and `community:preview` still require the same governed-MCP
+    migration pattern
+  - unresolved edge case: approval payloads now carry full upload content for
+    governed parity, which should be revisited if payload-size limits become an
+    operational concern
+
+### 2026-07-21: Batch 3 Phase 3 forum posting moved onto the governed MCP runtime
+
+- Milestone: Batch 3 Phase 3 — governed `forum:post` execution
+- Responsible team:
+  - delivery owner: `Ahsan Habib (@ahsanhab919-ux)`
+  - implementation owner: `TRAE/Codex pair-programming agent`
+  - reviewer and approver: `Project reviewer / user`
+- KPIs for this slice:
+  - `100%` of `forum:post` direct and approval-triggered execution routed
+    through governed MCP
+  - `0` public MCP exposure for the internal forum-post governance tool
+  - `100%` pass rate on targeted tests, `pnpm type-check`, and MCP runtime
+    regression coverage
+- Completed deliverables:
+  - internal MCP tool registry entry for `shothik.twin.create_forum_post`
+  - shared helper: `lib/twin/mcp-forum-post.ts`
+  - internal execution route: `app/api/twin/forum/post/execute/route.ts`
+  - direct route conversion: `app/api/twin/forum/[forumId]/post/route.ts`
+  - approval-route conversion: `app/api/twin/approvals/route.ts`
+  - focused regression tests for helper, internal executor, direct route,
+    approval route, and native tool registry
+- Check-ins completed:
+  - implementation checkpoint passed after direct/approval path convergence
+  - validation checkpoint passed after focused tests, type-check, and MCP
+    runtime regression
+  - delivery checkpoint completed by refreshing execution plan, progress log,
+    milestones, and the phase report
+- Validation executed:
+  - `pnpm exec vitest run lib/twin/mcp-forum-post.test.ts lib/twin/mcp-forum-create.test.ts lib/twin/mcp-task-execution.test.ts lib/__tests__/native-tools.test.ts app/api/twin/forum/post/execute/__tests__/route.test.ts 'app/api/twin/forum/[forumId]/post/__tests__/route.test.ts' app/api/twin/forum/__tests__/route.test.ts app/api/twin/approvals/__tests__/route.test.ts`
+  - `pnpm type-check`
+  - `pnpm mcp:creative-studio:test`
+- Outcome:
+  - `forum:post` now shares one governed execution model across twin-key direct
+    execution and approval-triggered execution
+  - public MCP host routes still do not expose the internal forum-post
+    governance surface
+- Remaining blockers:
+  - `book:write`, `book:publish`, and `community:preview` still require the
+    same governed-MCP migration pattern
+
+### 2026-07-21: Batch 3 Phase 2 forum creation moved onto the governed MCP runtime
+
+- Milestone: Batch 3 Phase 2 — governed `forum:create` execution
+- Responsible team:
+  - delivery owner: `Ahsan Habib (@ahsanhab919-ux)`
+  - implementation owner: `TRAE/Codex pair-programming agent`
+  - reviewer and approver: `Project reviewer / user`
+- KPIs for this slice:
+  - `100%` of `forum:create` direct and approval-triggered execution routed
+    through governed MCP
+  - `0` public MCP exposure for the internal forum-governance tool
+  - `100%` pass rate on targeted tests, `pnpm type-check`, and MCP runtime
+    regression coverage
+- Completed deliverables:
+  - internal MCP tool registry entry for `shothik.twin.create_forum`
+  - shared helper: `lib/twin/mcp-forum-create.ts`
+  - internal execution route: `app/api/twin/forum/execute/route.ts`
+  - direct route conversion: `app/api/twin/forum/route.ts`
+  - approval-route conversion: `app/api/twin/approvals/route.ts`
+  - twin-key auth propagation in `lib/mcp/shothik-native-adapter.ts`
+  - focused regression tests for helper, forum route, approval route, and native
+    tool registry
+- Check-ins completed:
+  - implementation checkpoint passed after direct/approval path convergence
+  - validation checkpoint passed after focused tests, type-check, and MCP
+    runtime regression
+  - delivery checkpoint completed by refreshing execution plan, progress log,
+    milestones, and the phase report
+- Validation executed:
+  - `pnpm exec vitest run lib/twin/mcp-forum-create.test.ts lib/twin/mcp-task-execution.test.ts lib/__tests__/native-tools.test.ts app/api/twin/forum/__tests__/route.test.ts app/api/twin/approvals/__tests__/route.test.ts`
+  - `pnpm type-check`
+  - `pnpm mcp:creative-studio:test`
+- Outcome:
+  - `forum:create` now shares one governed execution model across twin-key direct
+    execution and approval-triggered execution
+  - public MCP host routes still do not expose the internal forum-governance
+    surface
+- Remaining blockers:
+  - `forum:post`, `book:write`, `book:publish`, and `community:preview` still
+    require the same governed-MCP migration pattern
+
+### 2026-07-21: Local OAuth session bridge implemented for InsForge callback hydration
+
+- Added a local server-side OAuth exchange route:
+  - `app/api/auth/oauth/exchange/route.ts`
+- Added focused route coverage for request validation, success mapping, and
+  upstream failure handling:
+  - `app/api/auth/oauth/exchange/route.test.ts`
+- Updated `providers/AuthProvider.tsx` to exchange `insforge_code` through the
+  local app-domain route instead of relying on browser-only exchange plus
+  refresh fallback
+- Updated `providers/AuthProvider.test.tsx` so auth hydration now verifies the
+  local callback route contract
+- Focused validation executed:
+  - `pnpm exec vitest run app/api/auth/oauth/exchange/route.test.ts providers/AuthProvider.test.tsx app/api/auth/sign-in/route.test.ts app/auth/post-login/__tests__/page.test.tsx`
+- Current Batch 1 status after this change:
+  - localhost OAuth callback persistence is implemented at the app-route layer
+  - remaining runtime blocker is the authoritative staging `DATABASE_URL` needed
+    to re-certify `/api/projects` and authenticated smoke end to end
+
+### 2026-07-21: Batch 0 control reset initiated
+
+- Re-audited the full repo state across auth/runtime, native tools, agent
+  systems, and the writing-to-publishing workflow
+- Confirmed the previously closed July 18 delivery lanes remain closed, but the
+  repo is not yet end-to-end ready because active work now concentrates in:
+  - auth/runtime stabilization
+  - native tool runtime completion
+  - agent-system unification
+  - writing-to-publishing continuity
+- Sanitized the tracked InsForge linkage files so committed project metadata no
+  longer retains API keys:
+  - `.insforge/project.json`
+  - `.insforge/project.parent.json`
+- Updated the execution plan and milestone tracker to the new batch-oriented
+  sequence starting with the stabilization and control gate
+- Reclassified the main executable blocker set:
+  - staging `DATABASE_URL` drift remains the primary backend blocker
+  - localhost Google OAuth callback persistence remains the primary auth blocker
+  - GitHub tracker sync remains an external support-lane blocker
+- Updated the platform and environment control docs so tracked InsForge linkage
+  files are explicitly treated as non-secret reference metadata
+
+### 2026-07-19: Auth compliance assertions standardized with list-item plus regex helpers
+
+- Refactored `e2e/auth-compliance.spec.ts` to replace brittle whole-notice text
+  assertions with a reusable list-item plus regex approach
+- Added the shared regex catalog in:
+  - `lib/auth-compliance-patterns.ts`
+- Added the shared Playwright assertion helpers in:
+  - `e2e/support/auth-compliance-assertions.ts`
+- Added unit coverage for regex behavior and edge cases in:
+  - `lib/__tests__/auth-compliance-patterns.test.ts`
+- Added the maintainability standard and workflow documentation in:
+  - `docs/testing/auth-compliance-list-item-regex-standard.md`
+- Added the maintainability audit report in:
+  - `docs/reports/auth-compliance-maintainability-audit-2026-07-19.md`
+- Added targeted lint enforcement for the auth compliance suite in:
+  - `eslint.auth-compliance.config.mjs`
+  - `package.json` via `pnpm lint:auth-compliance`
+- Validation executed:
+  - `pnpm exec vitest run lib/__tests__/auth-compliance-patterns.test.ts` -> passed
+  - `pnpm exec playwright test e2e/auth-compliance.spec.ts --project=chrome-stable` -> passed
+  - `pnpm lint:auth-compliance` -> passed
+
+### 2026-07-19: Auth/login disclosure phase completed and aligned with privacy policy
+
+- Implemented a shared auth disclosure component in:
+  - `components/auth/AuthComplianceNotice.tsx`
+- Integrated the disclosure notice into:
+  - `app/auth/login/page.tsx`
+  - `app/auth/register/page.tsx`
+- Added explicit disclosure coverage for:
+  - service provider identity and privacy contact path
+  - account-data collection purpose
+  - optional remembered-email browser storage
+  - third-party sign-in processing notice
+  - direct links to `Privacy Policy`, `Terms & Conditions`, and `Data Deletion Policy`
+- Updated registration consent text to link directly to the relevant legal pages
+- Rewrote the privacy policy in:
+  - `app/(secondary-layout)/privacy/page.jsx`
+  so the auth/login clauses accurately reflect the live product's account, storage,
+  analytics, and rights model
+- Added compliance validation assets:
+  - browser suite: `e2e/auth-compliance.spec.ts`
+  - alignment report: `docs/reports/auth-login-privacy-alignment-2026-07-19.md`
+  - test report: `docs/reports/auth-login-compliance-test-report-2026-07-19.md`
+- Validation executed:
+  - focused auth UI and route regression tests via `vitest` -> passed
+  - cross-browser auth compliance validation via Playwright on `chrome-stable`
+    and `firefox-stable` -> passed
+
+### 2026-07-19: Auth/login compliance baseline adopted and P0 server controls implemented
+
+- Established the first scoped compliance baseline for the auth/login surface in
+  `docs/delivery/auth-login-compliance-baseline-2026-07-19.md`
+- Adopted the following standards and reference frameworks for this lane:
+  - `OWASP ASVS 5.0.0`
+  - `OWASP Top 10`
+  - `NIST SP 800-63B`
+  - `W3C WCAG 2.2 AA`
+  - `W3C HTML Living Standard` and `WAI-ARIA`
+  - `RFC 9110`
+  - `ISO/IEC 27001:2022`
+  - `ISO/IEC 27701:2019`
+  - `IEEE 29148:2018`
+  - `GDPR Articles 5, 12, 13, 25, 32`
+- Implemented first-pass P0 remediation in:
+  - `lib/auth-compliance.ts`
+  - `app/api/auth/sign-in/route.ts`
+  - `app/api/auth/sign-up/route.ts`
+  - `app/api/auth/forgot-password/route.ts`
+  - `app/api/auth/send-verify-email/route.ts`
+  - `app/api/auth/verify-email/route.ts`
+  - `app/api/auth/reset-password/route.ts`
+- Delivered the following controls:
+  - generic sign-in and sign-up failure messages to reduce enumeration leakage
+  - generic success responses for forgot-password and resend-verification after
+    valid email submission
+  - sanitized verify-email and reset-password upstream failure messaging
+  - normalized server-side email validation for auth endpoints that accept email
+  - same-origin/internal redirect enforcement for sign-up verification targets
+- Added regression coverage for the new controls in:
+  - `app/api/auth/sign-in/route.test.ts`
+  - `app/api/auth/sign-up/route.test.ts`
+  - `app/api/auth/forgot-password/route.test.ts`
+  - `app/api/auth/send-verify-email/route.test.ts`
+  - `app/api/auth/verify-email/route.test.ts`
+  - `app/api/auth/reset-password/route.test.ts`
+- Current boundary:
+  - UI-level privacy disclosures and legal-link alignment remain a follow-up
+    phase because the active auth UI files contain broader in-progress changes
+    outside this narrow compliance hardening slice
+
+### 2026-07-19: Login-validation suite refactored into isolated Playwright tests
+
+- Refactored the login browser-validation coverage in
+  `e2e/login-validation.spec.ts` from a single multi-scenario mega-test into
+  focused Playwright test cases so failures map directly to the broken behavior
+- Implemented distinct tests for:
+  - page load and critical element availability
+  - empty-field submission blocking and browser validation feedback
+  - invalid-credential error handling while remaining on the login page
+  - remembered-email hydration from browser-local state in an isolated context
+  - successful-login flow when smoke credentials are available
+- Updated the suite structure to align with Playwright best practices:
+  - one behavior per test for clearer failure diagnostics
+  - browser/page fixture isolation for the page-based tests
+  - explicit fresh browser context creation for remembered-email hydration
+  - per-test robots metadata attachment and evidence screenshots instead of a
+    single aggregated report
+- Validation after the refactor:
+  - `pnpm exec playwright test e2e/login-validation.spec.ts --project=chrome-stable` -> passed
+- Remaining boundary:
+  - the successful-login test remains credential-gated and skips unless
+    `PLAYWRIGHT_SMOKE_EMAIL` and `PLAYWRIGHT_SMOKE_PASSWORD` are available
+
+### 2026-07-19: Local login-validation browser workflow restored and reverified
+
+- Continued the next logical post-review step by restoring the local
+  Playwright validation path for the login workflow
+- Root causes identified:
+  - `components/(primary-layout)/(home-v3-page)/components/features/agents/InspirationGallery.tsx`
+    referenced a missing generated image asset, which prevented the local app
+    from booting under Playwright's managed `next dev` server
+  - `app/auth/login/page.tsx` rendered login-flow variant copy using
+    `getLoginFlowVariant()` during render, which allowed server/client variant
+    drift and caused a hydration mismatch in the browser
+  - `lib/auth-flow.ts` still had unguarded local-storage reads/writes for login
+    flow state and variant persistence, leaving the login path vulnerable to the
+    same storage-restriction class of failures already fixed for remembered
+    email
+  - `e2e/login-validation.spec.ts` used `getByLabel("Email")`, which became
+    ambiguous after the UI shifted to the label text `Remember email on this
+    device`
+- Implemented the targeted repairs in:
+  - `components/(primary-layout)/(home-v3-page)/components/features/agents/InspirationGallery.tsx`
+  - `app/auth/login/page.tsx`
+  - `lib/auth-flow.ts`
+  - `lib/__tests__/auth-flow.test.ts`
+  - `e2e/login-validation.spec.ts`
+- Updated the runtime and test behavior to:
+  - replace the missing local gallery image import with a valid generated image
+    URL so the local app can boot
+  - defer login-flow variant selection until after hydration so SSR markup stays
+    deterministic
+  - ignore auth-flow local-storage failures so login can continue without local
+    routing hints
+  - raise the multi-scenario Playwright test timeout to fit the combined
+    reporting workflow
+  - make Playwright email-field selectors target the textbox role instead of an
+    ambiguous shared label string
+- Added focused regression coverage to verify:
+  - auth-flow storage failures no longer throw
+  - variant fallback remains stable when local storage is unavailable
+- Re-ran validation after the repair:
+  - `pnpm exec vitest run lib/__tests__/auth-flow.test.ts app/auth/login/__tests__/page.test.tsx lib/auth-login-preferences.test.ts app/api/auth/sign-in/route.test.ts app/api/auth/forgot-password/route.test.ts app/api/auth/reset-password/route.test.ts app/api/auth/send-verify-email/route.test.ts app/api/auth/verify-email/route.test.ts app/auth/post-login/__tests__/page.test.tsx scripts/run-login-validation.test.ts` -> passed
+  - `pnpm exec tsc --noEmit --pretty false` -> passed
+  - `pnpm exec playwright test e2e/login-validation.spec.ts --project=chrome-stable` -> passed
+- Remaining boundary:
+  - the successful-login branch in the browser suite still depends on real
+    smoke credentials when that scenario needs to be executed against a valid
+    account
 
 ### 2026-07-19: Remembered-email storage failures no longer break successful login
 
@@ -717,9 +1371,9 @@ updates. It is intended to be read alongside:
 
 The next user-directed sequence returns to the broader roadmap:
 
-1. authenticated TestSprite staging coverage after credentials are provisioned
-2. GitHub live tracker sync permission repair after token access is restored
-3. next approved roadmap workstream after the external support-lane blockers are resolved
+1. Batch 6 end-to-end certification and release readiness
+2. authenticated TestSprite staging coverage after credentials are provisioned
+3. GitHub live tracker sync permission repair after token access is restored
 
 ### 2026-07-18: Active roadmap inventory reconfirmed
 

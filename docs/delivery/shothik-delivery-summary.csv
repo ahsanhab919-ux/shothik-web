@@ -1,0 +1,9 @@
+Metric,Value,Notes
+On-track workstream percentage,14.3%,Count of green workstreams divided by total workstreams.
+Resolved dependency count,0,Dependencies marked Complete in the matrix.
+Unresolved dependency count,30,"Dependencies marked Not Started, In Progress, or Blocked."
+Launch gate pass rate,3.6%,Passed gates divided by required gates across all workstreams.
+Formal gate owner coverage,100%,All workstreams now reference named formal approvers from the validated contributor directory instead of acting placeholders.
+Legend,🟢 On Track | 🟡 Needs Monitoring | 🔴 At Risk,CSV preserves label text; XLSX preserves label text and color styling.
+Export note,.xlsx and .csv generated,Hyperlinks are preserved in the .xlsx workbook. The CSV exports retain raw URLs and status labels for downstream spreadsheet ingestion.
+Governance caveat,"Jira IDs remain intentionally absent; named approvers, evidence sources, and dependency checklists are now captured in repo governance artifacts","Dedicated GitHub issues remain the active tracker system, while the local governance refresh captures the formal approver roster, evidence sources, and issue-aligned dependency checklists."

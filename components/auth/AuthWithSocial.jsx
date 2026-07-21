@@ -1,83 +1,96 @@
 import { Button } from "@/components/ui/button";
-import { useGoogleLoginMutation } from "@/redux/api/auth/authApi";
-import {
-  logout,
-  setShowLoginModal,
-  setShowRegisterModal,
-} from "@/redux/slices/auth";
-import { useGoogleLogin } from "@react-oauth/google";
+import { getInsforgeBrowserClient } from "@/lib/insforge/client";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useEffect, useState } from "react";
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const GOOGLE_OAUTH_CODE_VERIFIER_KEY = "shothik.oauth.google.codeVerifier";
 
-function GoogleLoginButton({ loading, setLoading, title, onAuthSuccess }) {
-  const [googleLogin] = useGoogleLoginMutation();
-  const dispatch = useDispatch();
-  const router = useRouter();
+function hasGoogleProvider(config) {
+  const providers =
+    config?.oAuthProviders ??
+    config?.oauthProviders ??
+    config?.providers ??
+    config?.auth?.oAuthProviders ??
+    [];
 
-  const handleLogout = async () => {
-    try {
-      dispatch(logout());
-      if (typeof window !== "undefined") {
-        localStorage.setItem("logout-event", Date.now().toString());
-      }
-    } catch (error) {
-    }
-  };
+  return Array.isArray(providers) && providers.includes("google");
+}
+
+function GoogleLoginButton({ loading, setLoading, title, onBeforeAuthStart, onAuthError }) {
+  const [googleAvailability, setGoogleAvailability] = useState("unknown");
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    let active = true;
 
-    const syncLogout = (event) => {
-      if (event.key === "logout-event") {
-        dispatch(logout());
-        router.replace("/");
-      }
-    };
+    async function loadProviderAvailability() {
+      try {
+        const { data, error } = await getInsforgeBrowserClient().auth.getPublicAuthConfig();
+        if (!active) {
+          return;
+        }
 
-    window.addEventListener("storage", syncLogout);
+        if (error) {
+          setGoogleAvailability("unknown");
+          return;
+        }
 
-    return () => {
-      window.removeEventListener("storage", syncLogout);
-    };
-  }, [dispatch, router]);
-
-  const onGoogleLogin = useGoogleLogin({
-    onSuccess: async (res) => {
-      handleLogout();
-      const { code } = res;
-      if (code) {
-        const res = await googleLogin({ code });
-        if (res?.data) {
-          dispatch(setShowLoginModal(false));
-          dispatch(setShowRegisterModal(false));
-          if (onAuthSuccess) {
-            onAuthSuccess();
-          }
+        setGoogleAvailability(hasGoogleProvider(data) ? "enabled" : "disabled");
+      } catch (error) {
+        if (active) {
+          // Keep the Google entry point visible if config probing fails.
+          setGoogleAvailability("unknown");
         }
       }
+    }
+
+    void loadProviderAvailability();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (googleAvailability === "disabled") {
+    return null;
+  }
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    window.sessionStorage.removeItem(GOOGLE_OAUTH_CODE_VERIFIER_KEY);
+
+    try {
+      onBeforeAuthStart?.();
+      const redirectTo = new URL("/auth/post-login", window.location.origin).toString();
+      const { data, error } = await getInsforgeBrowserClient().auth.signInWithOAuth("google", {
+        redirectTo,
+        skipBrowserRedirect: true,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.codeVerifier) {
+        window.sessionStorage.setItem(GOOGLE_OAUTH_CODE_VERIFIER_KEY, data.codeVerifier);
+      }
+
+      if (data?.url) {
+        window.location.assign(data.url);
+      }
+    } catch (error) {
+      window.sessionStorage.removeItem(GOOGLE_OAUTH_CODE_VERIFIER_KEY);
+      console.error(error, "google login error");
+      onAuthError?.("Google sign-in could not be started. Please try again.");
       setLoading(false);
-    },
-    flow: "auth-code",
-    onError: (err) => {
-      console.error(err, "google login error");
-      setLoading(false);
-    },
-    scope: "email profile",
-  });
+    }
+  };
 
   return (
     <Button
       type="button"
       variant="outline"
       className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-lg"
-      onClick={() => {
-        setLoading(true);
-        onGoogleLogin();
-      }}
+      onClick={handleGoogleLogin}
       disabled={loading}
     >
       <div className="mt-1">
@@ -111,11 +124,13 @@ function GoogleLoginButton({ loading, setLoading, title, onAuthSuccess }) {
   );
 }
 
-export default function AuthWithSocial({ loading, setLoading, title = "in", onAuthSuccess }) {
-  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.trim() === "") {
-    return null;
-  }
-
+export default function AuthWithSocial({
+  loading,
+  setLoading,
+  title = "in",
+  onBeforeAuthStart,
+  onAuthError,
+}) {
   return (
     <div className="mt-5">
       <div className="flex justify-center">
@@ -123,7 +138,8 @@ export default function AuthWithSocial({ loading, setLoading, title = "in", onAu
           loading={loading}
           setLoading={setLoading}
           title={title}
-          onAuthSuccess={onAuthSuccess}
+          onBeforeAuthStart={onBeforeAuthStart}
+          onAuthError={onAuthError}
         />
       </div>
     </div>

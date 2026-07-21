@@ -1,0 +1,1187 @@
+Service Category,Workstream,Tickets,Target Schema/API,Dependency,Test Coverage,Launch Gate,Health Indicator,Risk Assessment
+Legacy Writing Tool,"ID: LWT-01
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: Not documented in repository history
+Baseline end: Not documented in repository history
+Current progress: Paraphrase and humanizer UI/API surfaces are live; modernization and tracker normalization remain open.
+Revised target: 2026-08-15 proposed stabilization checkpoint","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #41
+GitHub record type: Issue
+GitHub title: tracker: LWT-01 legacy writing paraphrase and humanizer stabilization
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:56:31Z
+GitHub updated: 2026-07-15T19:56:31Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/41
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] LLM provider credentials | owner: Platform owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-07-18
+- [ ] Usage enforcement / credit policy alignment | owner: Product owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-08-01","Schema/API: Tool request contract - paraphrase
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/tools/paraphrase
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/tools/paraphrase
+OpenAPI / doc reference: https://www.shothik.ai/api/docs/swagger.json#paths/~1api~1tools~1paraphrase
+Engineering owner: Platform code owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Tool request contract - humanizer
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/humanizerV5
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/humanizerV5
+OpenAPI / doc reference: Route handler reference: app/api/humanizerV5/* (OpenAPI section pending)
+Engineering owner: Platform code owner Ahsan Habib (@ahsanhab919-ux)","System: LLM provider credentials
+Primary contact: Platform owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), operations contact
+Status: In Progress
+Impact: Critical
+Target resolution: 2026-07-18
+
+System: Usage enforcement / credit policy alignment
+Primary contact: Product owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), payments reviewer
+Status: In Progress
+Impact: High
+Target resolution: 2026-08-01","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: provider timeout fallback, abusive long-input throttling, and premium usage-limit edge cases
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright: Fail (no dedicated paraphrase/humanizer smoke journey)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟢 On Track,"Impact: Medium
+Likelihood: Low
+Mitigation: Keep provider credentials current, add dedicated smoke coverage, and publish explicit premium-limit acceptance tests."
+Legacy Writing Tool,"ID: LWT-02
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: Not documented in repository history
+Baseline end: Not documented in repository history
+Current progress: Summarize and translator surfaces are present in UI/API; tracker and test granularity are still not normalized.
+Revised target: 2026-08-15 proposed stabilization checkpoint","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #42
+GitHub record type: Issue
+GitHub title: tracker: LWT-02 summarize and translator stabilization
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:56:31Z
+GitHub updated: 2026-07-15T19:56:31Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/42
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] LLM provider credentials | owner: Platform owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-07-18
+- [ ] Localization/content QA baseline | owner: Product owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-08-08","Schema/API: Tool request contract - summarize
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/tools/summarize
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/tools/summarize
+OpenAPI / doc reference: https://www.shothik.ai/api/docs/swagger.json#paths/~1api~1tools~1summarize
+Engineering owner: Platform code owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Tool request contract - translator
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/tools/translator
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/tools/translator
+OpenAPI / doc reference: https://www.shothik.ai/api/docs/swagger.json#paths/~1api~1tools~1translator
+Engineering owner: Platform code owner Ahsan Habib (@ahsanhab919-ux)","System: LLM provider credentials
+Primary contact: Platform owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), operations contact
+Status: In Progress
+Impact: Critical
+Target resolution: 2026-07-18
+
+System: Localization/content QA baseline
+Primary contact: Product owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), QA owner
+Status: Not Started
+Impact: Medium
+Target resolution: 2026-08-08","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: long-document summarization bounds, translation safety filters, and multi-language regression checks
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright: Fail (no dedicated summarize/translator smoke journey)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟢 On Track,"Impact: Medium
+Likelihood: Low
+Mitigation: Add regression samples for key languages and publish owner-approved quality thresholds for summarization and translation output."
+Legacy Writing Tool,"ID: LWT-03
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: Not documented in repository history
+Baseline end: Not documented in repository history
+Current progress: AI detector, plagiarism, and grammar flows exist, but coverage and policy validation are explicitly called out as high-priority gaps.
+Revised target: 2026-08-22 proposed reliability checkpoint","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #43
+GitHub record type: Issue
+GitHub title: tracker: LWT-03 detector, plagiarism, and grammar reliability
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:15Z
+GitHub updated: 2026-07-15T20:02:35Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/43
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] Plagiarism modernization rollout | owner: Platform owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-08-22
+- [ ] Critical tool coverage milestone | owner: Release owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-08-22","Schema/API: Tool request contract - AI detector
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/tools/ai-detector
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/tools/ai-detector
+OpenAPI / doc reference: https://www.shothik.ai/api/docs/swagger.json#paths/~1api~1tools~1ai-detector
+Engineering owner: Platform code owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Tool request contract - plagiarism
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/tools/plagiarism
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/tools/plagiarism
+OpenAPI / doc reference: Route family reference: app/api/tools/plagiarism/* (OpenAPI section pending)
+Engineering owner: Platform code owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Tool request contract - grammar
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/tools/grammar
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/tools/grammar
+OpenAPI / doc reference: Route family reference: app/api/tools/grammar/* (OpenAPI section pending)
+Engineering owner: Platform code owner Ahsan Habib (@ahsanhab919-ux)","System: Plagiarism modernization rollout
+Primary contact: Platform owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), QA owner
+Status: In Progress
+Impact: High
+Target resolution: 2026-08-22
+
+System: Critical tool coverage milestone
+Primary contact: Release owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), QA owner
+Status: In Progress
+Impact: High
+Target resolution: 2026-08-22","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: false-positive handling, detector drift calibration, plagiarism provider failure fallback, and grammar issue application edge cases
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright: Fail (no dedicated detector/plagiarism/grammar smoke journey)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟡 Needs Monitoring,"Impact: High
+Likelihood: Medium
+Mitigation: Prioritize this workstream in the coverage improvement plan and add route-contract tests before any quality or policy claims are expanded."
+Agent,"ID: AGT-01
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: 2026-07-14
+Baseline end: Pending production cutover
+Current progress: Agent chat and auth hardening are actively in progress; staging verification is complete but production ownership promotion remains pending.
+Revised target: Pending production environment confirmation; next review 2026-07-22","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #44
+GitHub record type: Issue
+GitHub title: tracker: AGT-01 agent chat auth production promotion
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:16Z
+GitHub updated: 2026-07-15T19:57:16Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/44
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] InsForge production environment confirmation | owner: Release owner Ahsan Habib (@ahsanhab919-ux) | target: Pending external confirmation; next review 2026-07-22
+- [ ] Production migration sequencing | owner: Backend owner Ahsan Habib (@ahsanhab919-ux) | target: Pending deploy-first release sequence completion
+Release-window approval: Approved for the deploy-first production rollout executed on 2026-07-18.","Schema/API: Chat ownership API
+Semantic version: 1.1.0-target
+Production URL: https://www.shothik.ai/api/chat
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/chat
+OpenAPI / doc reference: https://www.shothik.ai/api/docs/swagger.json#paths/~1api~1chat
+Engineering owner: Frontend/auth owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Conversation and message APIs
+Semantic version: 1.1.0-target
+Production URL: https://www.shothik.ai/api/chat/conversations
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/chat/conversations
+OpenAPI / doc reference: https://www.shothik.ai/api/docs/swagger.json#paths/~1api~1chat~1conversations
+Engineering owner: Backend/schema owner Ahsan Habib (@ahsanhab919-ux)","System: InsForge production environment confirmation
+Primary contact: Release owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), platform owner
+Status: Blocked
+Impact: Critical
+Target resolution: Pending external confirmation; next review 2026-07-22
+
+System: Production migration sequencing
+Primary contact: Backend owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), QA owner
+Status: In Progress
+Impact: Critical
+Target resolution: Pending deploy-first release sequence completion","Unit coverage: Auth/chat targeted suites passing; repo baseline is 62.59% statements
+Integration coverage: Auth/chat ownership tests present; module-level percentage not published
+End-to-end coverage: 25% critical smoke coverage; preview login-to-chat smoke exists with protected-preview caveats
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/blob/main/docs/insforge-chat-auth-rollout.md
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: production promotion path, release rollback drills, and authenticated remote smoke without supplied preview bypass secrets
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright smoke: Pass on validated preview path, but protected-preview auth coverage still credential-gated","Security scan: Pass
+Completed: 2026-07-15 staging verification
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/blob/main/docs/insforge-chat-auth-rollout.md
+Remediation: Carry the same evidence into production sign-off and record the sign-off owner.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Document release/compliance reviewer before production promotion.
+
+Performance test: Fail
+Completed: Not formally executed for production
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run authenticated production smoke and latency spot-check after deployment.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain release owner, reviewer/code owner, and QA sign-off per rollout doc.",🟡 Needs Monitoring,"Impact: High
+Likelihood: Medium
+Mitigation: Keep deploy-before-migration sequencing, preserve SQL ownership verification as an exit criterion, and obtain the remaining production approvals."
+Agent,"ID: AGT-02
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: Not documented in repository history
+Baseline end: Not documented in repository history
+Current progress: Twin, Second Me, and Hermes surfaces are broad and permissioned, but backend ownership, vault, and approval flows still rely on mixed legacy patterns.
+Revised target: 2026-09-01 proposed hardening checkpoint","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #45
+GitHub record type: Issue
+GitHub title: tracker: AGT-02 twin, second me, and hermes hardening
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:18Z
+GitHub updated: 2026-07-15T19:57:18Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/45
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] Second Me vault secret provisioning | owner: Platform owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-08-08
+- [ ] Convex-to-InsForge migration plan for twin data | owner: Platform owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-09-01","Schema/API: Twin identity/task API family
+Semantic version: 0.9.0-target
+Production URL: https://www.shothik.ai/api/twin/tasks
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/twin/tasks
+OpenAPI / doc reference: Route family reference: app/api/twin/* (OpenAPI coverage partial)
+Engineering owner: Agent platform owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Twin book/workflow approval API family
+Semantic version: 0.9.0-target
+Production URL: https://www.shothik.ai/api/twin/approvals
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/twin/approvals
+OpenAPI / doc reference: Route family reference: app/api/twin/approvals and app/api/twin/book/*
+Engineering owner: Agent platform owner Ahsan Habib (@ahsanhab919-ux)","System: Second Me vault secret provisioning
+Primary contact: Platform owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), security owner
+Status: Not Started
+Impact: High
+Target resolution: 2026-08-08
+
+System: Convex-to-InsForge migration plan for twin data
+Primary contact: Platform owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), platform owner
+Status: In Progress
+Impact: High
+Target resolution: 2026-09-01","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: approval-required task escalation, secret/vault flows, transfer/unlink abuse controls, and long-running agent recovery paths
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright: Fail (no dedicated Twin/Second Me smoke journey)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟡 Needs Monitoring,"Impact: High
+Likelihood: Medium
+Mitigation: Assign a named agent-platform owner, provision vault secrets, and separate MVP-safe task flows from future autonomous capabilities."
+Agent,"ID: AGT-03
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: Not documented in repository history
+Baseline end: Not documented in repository history
+Current progress: Community, channels, and forum flows are present, but governance, moderation ownership, and platform data migration are not yet normalized.
+Revised target: 2026-09-05 proposed governance checkpoint","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #46
+GitHub record type: Issue
+GitHub title: tracker: AGT-03 community and channels governance
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:20Z
+GitHub updated: 2026-07-15T20:02:39Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/46
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] Moderation policy owner assignment | owner: Product owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-08-15
+- [ ] Community data source-of-truth decision | owner: Backend owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-09-05","Schema/API: Forum and channel interaction APIs
+Semantic version: 0.9.0-target
+Production URL: https://www.shothik.ai/api/forum
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/forum
+OpenAPI / doc reference: Route family reference: app/api/forum/* and app/api/twin/forum/*
+Engineering owner: Community platform owner Ahsan Habib (@ahsanhab919-ux)","System: Moderation policy owner assignment
+Primary contact: Product owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), trust and safety reviewer
+Status: Not Started
+Impact: High
+Target resolution: 2026-08-15
+
+System: Community data source-of-truth decision
+Primary contact: Backend owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), platform owner
+Status: In Progress
+Impact: High
+Target resolution: 2026-09-05","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: forum abuse reporting, channel-level moderation escalation, and agent-posting permission boundaries
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright: Fail (no dedicated community/channel smoke suite)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟡 Needs Monitoring,"Impact: High
+Likelihood: Medium
+Mitigation: Name a moderation owner, document escalation policy, and add permission-based API tests before promoting community-led growth features."
+Research,"ID: RSH-01
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: Not documented in repository history
+Baseline end: Not documented in repository history
+Current progress: Research workspace and research chat surfaces are present; workstream lacks explicit ticketing, owner assignment, and documented launch gates.
+Revised target: 2026-08-29 proposed workflow checkpoint","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #47
+GitHub record type: Issue
+GitHub title: tracker: RSH-01 research workspace release readiness
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:22Z
+GitHub updated: 2026-07-15T20:02:41Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/47
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] LLM provider credentials | owner: Platform owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-07-18
+- [ ] Source provenance / citation policy | owner: Research owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-08-29","Schema/API: Research workspace API
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/research
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/research
+OpenAPI / doc reference: Route family reference: app/api/research/*
+Engineering owner: Research owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Research chat API
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/research/chat
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/research/chat
+OpenAPI / doc reference: Route family reference: app/api/research/chat/*
+Engineering owner: Research owner Ahsan Habib (@ahsanhab919-ux)","System: LLM provider credentials
+Primary contact: Platform owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), operations contact
+Status: In Progress
+Impact: Critical
+Target resolution: 2026-07-18
+
+System: Source provenance / citation policy
+Primary contact: Research owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), QA owner
+Status: Not Started
+Impact: Medium
+Target resolution: 2026-08-29","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: citation accuracy, long-session persistence, and recovery behavior under provider or network interruptions
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright: Fail (no dedicated research workspace smoke journey)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟡 Needs Monitoring,"Impact: Medium
+Likelihood: Medium
+Mitigation: Add provenance acceptance criteria and a named research owner before attaching product-level SLAs to research answers."
+Research,"ID: RSH-02
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: Not documented in repository history
+Baseline end: Not documented in repository history
+Current progress: Sheet workspace UI/API is present, but tracker, owner, and performance verification are not yet formalized.
+Revised target: 2026-09-05 proposed operational checkpoint","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #48
+GitHub record type: Issue
+GitHub title: tracker: RSH-02 sheet workspace operational hardening
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:23Z
+GitHub updated: 2026-07-15T20:02:43Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/48
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] Spreadsheet session persistence model | owner: Backend owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-09-05
+- [ ] Load/performance test baseline for large sheets | owner: Ahsan Habib (@ahsanhab919-ux), QA owner | target: 2026-09-05","Schema/API: Sheet session API
+Semantic version: 0.9.0-target
+Production URL: https://www.shothik.ai/api/sheet/session
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/sheet/session
+OpenAPI / doc reference: Route family reference: app/api/sheet/*
+Engineering owner: Research tools owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Sheet chat API
+Semantic version: 0.9.0-target
+Production URL: https://www.shothik.ai/api/sheet/chat
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/sheet/chat
+OpenAPI / doc reference: Route family reference: app/api/sheet/chat/*
+Engineering owner: Research tools owner Ahsan Habib (@ahsanhab919-ux)","System: Spreadsheet session persistence model
+Primary contact: Backend owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), product owner
+Status: In Progress
+Impact: High
+Target resolution: 2026-09-05
+
+System: Load/performance test baseline for large sheets
+Primary contact: Ahsan Habib (@ahsanhab919-ux), QA owner
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), platform owner
+Status: Not Started
+Impact: Medium
+Target resolution: 2026-09-05","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: large-sheet performance, multi-user concurrency, and persisted session restoration after reconnect
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright: Fail (no dedicated sheet smoke journey)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟡 Needs Monitoring,"Impact: Medium
+Likelihood: Medium
+Mitigation: Add performance guardrails and persist/restore tests before marketing sheet collaboration as production-ready."
+Research,"ID: RSH-03
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: Not documented in repository history
+Baseline end: Not documented in repository history
+Current progress: Slide and presentation generation depends on a separate slide service and has strong UI/service scaffolding, but dependency and launch governance remain open.
+Revised target: 2026-09-12 proposed service-integration checkpoint","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #49
+GitHub record type: Issue
+GitHub title: tracker: RSH-03 slide service integration readiness
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:25Z
+GitHub updated: 2026-07-15T20:02:45Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/49
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] External slide generation microservice | owner: Presentation owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-09-12
+- [ ] Presentation storage/export reliability | owner: Platform owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-09-12","Schema/API: Slide generation service API
+Semantic version: 0.9.0-target
+Production URL: Configured via NEXT_PUBLIC_SLIDE_API_URL (/slides, /slides/{jobId}, /stream)
+Staging URL: Configured via NEXT_PUBLIC_SLIDE_API_URL on preview
+OpenAPI / doc reference: Service adapter reference: services/slide-generation.ts and services/presentation/*
+Engineering owner: Presentation owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Presentation save API
+Semantic version: 0.9.0-target
+Production URL: Configured via NEXT_PUBLIC_API_URL/slide/slides/save
+Staging URL: Configured via NEXT_PUBLIC_API_URL/slide/slides/save on preview
+OpenAPI / doc reference: Service adapter reference: services/presentation/slideEditService.ts
+Engineering owner: Presentation owner Ahsan Habib (@ahsanhab919-ux)","System: External slide generation microservice
+Primary contact: Presentation owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), platform owner
+Status: In Progress
+Impact: Critical
+Target resolution: 2026-09-12
+
+System: Presentation storage/export reliability
+Primary contact: Platform owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), QA owner
+Status: Not Started
+Impact: High
+Target resolution: 2026-09-12","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: external slide service outages, export fidelity regression, and cross-tab edit conflict handling
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright: Fail (no dedicated slide end-to-end smoke journey)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟡 Needs Monitoring,"Impact: High
+Likelihood: Medium
+Mitigation: Define a separate release readiness checklist for the slide service and add failure-mode smoke tests before scaling the feature."
+Remaining Feature,"ID: PRD-01
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: 2026-07-16
+Baseline end: 2026-09-10
+Current progress: Writing Studio and internal book-authoring Phase 1 MVP specification is complete; delivery matrix and schema/API breakdown are now in planning execution.
+Revised target: 2026-09-10","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #50
+GitHub record type: Issue
+GitHub title: tracker: PRD-01 writing studio and books authoring MVP
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:27Z
+GitHub updated: 2026-07-15T19:57:27Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/50
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] InsForge target schema for books | owner: Backend owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-07-30
+- [ ] Book authoring MVP ticket decomposition | owner: Product owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-07-22","Schema/API: Book authoring API family
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/book
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/book
+OpenAPI / doc reference: Route family reference: app/api/book/* and app/api/books/*
+Engineering owner: Books owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Writing Studio quality check API
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/writing-studio/quality-check
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/writing-studio/quality-check
+OpenAPI / doc reference: Route family reference: app/api/writing-studio/*
+Engineering owner: Books owner Ahsan Habib (@ahsanhab919-ux)","System: InsForge target schema for books
+Primary contact: Backend owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), platform owner
+Status: Not Started
+Impact: Critical
+Target resolution: 2026-07-30
+
+System: Book authoring MVP ticket decomposition
+Primary contact: Product owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), engineering manager
+Status: In Progress
+Impact: High
+Target resolution: 2026-07-22","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: Phase 1 internal-authoring flows against InsForge target schema, moderation transitions, and draft recovery after migration
+Mandatory suites: Vitest: Pass on current legacy flows | Type-check: Pass | Playwright: Fail (no Shothik Books authoring journey yet)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟡 Needs Monitoring,"Impact: High
+Likelihood: Medium
+Mitigation: Convert the approved Phase 1 spec into tickets immediately and keep external distribution out of scope until internal publishing is stable."
+Remaining Feature,"ID: PRD-02
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: 2026-07-16
+Baseline end: 2026-09-10
+Current progress: Marketplace, books, and library surfaces already exist; Phase 1 scope now formalizes them as the launch path before external distribution.
+Revised target: 2026-09-10","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #51
+GitHub record type: Issue
+GitHub title: tracker: PRD-02 marketplace and library ownership model
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:28Z
+GitHub updated: 2026-07-15T19:57:28Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/51
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] InsForge ownership model for books and purchases | owner: Backend owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-08-06
+- [ ] Marketplace moderation rules | owner: Product owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-08-13","Schema/API: Marketplace query contract
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/marketplace
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/marketplace
+OpenAPI / doc reference: Current implementation references convex/marketplace.ts and /books/[bookId] pages; dedicated OpenAPI sections pending
+Engineering owner: Marketplace owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Book detail and library ownership contract
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/books/[bookId]
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/books/[bookId]
+OpenAPI / doc reference: Reference: convex/books.ts, convex/marketplace.ts, components/credits/MyLibrarySection.tsx
+Engineering owner: Marketplace owner Ahsan Habib (@ahsanhab919-ux)","System: InsForge ownership model for books and purchases
+Primary contact: Backend owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), marketplace owner
+Status: Not Started
+Impact: Critical
+Target resolution: 2026-08-06
+
+System: Marketplace moderation rules
+Primary contact: Product owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), moderation owner
+Status: Not Started
+Impact: High
+Target resolution: 2026-08-13","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: ownership race conditions, unauthorized full-content access, and marketplace browse/search regressions after migration
+Mandatory suites: Vitest: Pass on current legacy marketplace logic | Type-check: Pass | Playwright: Fail (no internal books marketplace journey yet)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟡 Needs Monitoring,"Impact: High
+Likelihood: Medium
+Mitigation: Treat marketplace and library as a security-sensitive commerce surface and gate launch on explicit ownership and purchase end-to-end tests."
+Remaining Feature,"ID: PRD-03
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: Not documented in repository history
+Baseline end: Not documented in repository history
+Current progress: Credits wallet and payment rails are present across Stripe, Razorpay, and bKash; coverage plan calls these routes out as top-priority risk areas.
+Revised target: 2026-08-29 proposed commerce hardening checkpoint","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #52
+GitHub record type: Issue
+GitHub title: tracker: PRD-03 credits wallet and payments hardening
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:30Z
+GitHub updated: 2026-07-15T20:02:49Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/52
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] Stripe credential set | owner: Payments owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-07-25
+- [ ] Razorpay / bKash credential verification | owner: Payments owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-08-08
+- [ ] Payment route coverage milestone | owner: Ahsan Habib (@ahsanhab919-ux), QA owner | target: 2026-08-29","Schema/API: Stripe credits checkout/webhook API
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/stripe/credits/checkout
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/stripe/credits/checkout
+OpenAPI / doc reference: https://www.shothik.ai/api/docs/swagger.json#paths/~1api~1stripe~1credits~1checkout
+Engineering owner: Payments owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Razorpay credits order/verify API
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/razorpay/credits/order
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/razorpay/credits/order
+OpenAPI / doc reference: Route family reference: app/api/razorpay/credits/*
+Engineering owner: Payments owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: bKash credits checkout/callback API
+Semantic version: 1.0.0-target
+Production URL: https://www.shothik.ai/api/bkash/credits/checkout
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/bkash/credits/checkout
+OpenAPI / doc reference: Route family reference: app/api/bkash/credits/*
+Engineering owner: Payments owner Ahsan Habib (@ahsanhab919-ux)","System: Stripe credential set
+Primary contact: Payments owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), operations contact
+Status: In Progress
+Impact: Critical
+Target resolution: 2026-07-25
+
+System: Razorpay / bKash credential verification
+Primary contact: Payments owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), finance operations reviewer
+Status: Not Started
+Impact: High
+Target resolution: 2026-08-08
+
+System: Payment route coverage milestone
+Primary contact: Ahsan Habib (@ahsanhab919-ux), QA owner
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), release owner
+Status: In Progress
+Impact: High
+Target resolution: 2026-08-29","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: duplicate webhook idempotency, payout edge cases, provider outage fallback, and currency/credits reconciliation across providers
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright: Fail (no end-to-end wallet purchase matrix per provider)","Security scan: Fail
+Completed: Not formally signed off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Map workstream to CI security workflows and capture explicit security sign-off before launch.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create content/commercial/compliance review checklist and assign reviewer.
+
+Performance test: Fail
+Completed: Not formally executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run workstream-specific load/perf verification and record result.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Obtain product, design, engineering, and operations sign-off before release.",🟡 Needs Monitoring,"Impact: High
+Likelihood: Medium
+Mitigation: Keep payments in the highest-priority coverage bucket, verify live credentials in staging first, and require provider-specific reconciliation checks."
+Remaining Feature,"ID: PRD-04
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: Not documented in repository history
+Baseline end: Not documented in repository history
+Current progress: Publishing and distribution flows exist, but external channel delivery depends on PublishDrive and channel operations that are not Phase 1 launch-ready.
+Revised target: Post-Phase 1 only","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #53
+GitHub record type: Issue
+GitHub title: tracker: PRD-04 publishing and external distribution expansion
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:31Z
+GitHub updated: 2026-07-15T19:57:31Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/53
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] PublishDrive contract and API enablement | owner: Publishing owner Ahsan Habib (@ahsanhab919-ux) | target: Pending external dependency confirmation
+- [ ] Phase 1 internal books launch completion | owner: Product owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-09-10
+- [ ] Google Play / channel compliance operations | owner: Publishing owner Ahsan Habib (@ahsanhab919-ux) | target: Post-Phase 1","Schema/API: Publishing submission API
+Semantic version: 0.8.0-legacy
+Production URL: https://www.shothik.ai/api/publish/submit
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/publish/submit
+OpenAPI / doc reference: Route family reference: app/api/publish/* and services/publishDriveService.js
+Engineering owner: Publishing owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: PublishDrive webhook/status API
+Semantic version: 0.8.0-legacy
+Production URL: https://www.shothik.ai/api/webhooks/publishdrive
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/webhooks/publishdrive
+OpenAPI / doc reference: Route family reference: app/api/webhooks/publishdrive/*
+Engineering owner: Publishing owner Ahsan Habib (@ahsanhab919-ux)","System: PublishDrive contract and API enablement
+Primary contact: Publishing owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), release owner
+Status: Blocked
+Impact: Critical
+Target resolution: Pending external dependency confirmation
+
+System: Phase 1 internal books launch completion
+Primary contact: Product owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), books owner
+Status: Blocked
+Impact: Critical
+Target resolution: 2026-09-10
+
+System: Google Play / channel compliance operations
+Primary contact: Publishing owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), legal and operations reviewer
+Status: Not Started
+Impact: High
+Target resolution: Post-Phase 1","Unit coverage: 62.59% repo baseline statements; module-level metric not yet published
+Integration coverage: 45.76% repo baseline functions; module-level metric not yet published
+End-to-end coverage: 0% line-instrumented coverage; smoke-only Playwright coverage
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: channel retry logic, royalty settlement reconciliation, and store-specific rejection/removal remediation flows
+Mandatory suites: Vitest: Pass on current route set | Type-check: Pass | Playwright: Fail (no distribution end-to-end test path)","Security scan: Fail
+Completed: No external distribution security sign-off
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/security.yml
+Remediation: Complete internal books launch first, then run a dedicated publishing/distribution security review.
+
+Compliance check: Fail
+Completed: No channel compliance sign-off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Create publishing operations checklist, rights workflow, and store-compliance review before enabling channels.
+
+Performance test: Fail
+Completed: Not executed
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Validate webhook and retry throughput once internal publishing is stable.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Require product, legal/ops, engineering, and support approval before enabling external distribution.",🔴 At Risk,"Impact: Critical
+Likelihood: High
+Mitigation: Keep this workstream explicitly out of Phase 1, treat it as a post-MVP expansion, and do not route launch commitments through external publishing dependencies."
+Remaining Feature,"ID: PRD-05
+Lead owner: Ahsan Habib (@ahsanhab919-ux)
+Contact: GitHub https://github.com/ahsanhab919-ux; contributor registry documented in docs/delivery/contributor-directory.md
+Baseline start: 2026-07-14
+Baseline end: Staged rollout still active
+Current progress: Authentication, preview protection, and platform security hardening are active and documented; production confirmation and formal approvals remain open.
+Revised target: Release-dependent; next review 2026-07-22","Jira ticket ID: Not used - GitHub-only delivery tracking is the active source of truth
+Jira status: To Do
+Jira assignee: Ahsan Habib (@ahsanhab919-ux)
+Jira created: Not applicable
+Jira updated: 2026-07-16
+Jira link: https://github.com/ahsanhab919-ux/shothik-web/issues
+GitHub issue ID: #54
+GitHub record type: Issue
+GitHub title: tracker: PRD-05 auth, preview protection, and release hardening
+GitHub status: To Do
+GitHub assignee: Ahsan Habib (@ahsanhab919-ux) (delivery-matrix owner assignment)
+GitHub created: 2026-07-15T19:57:33Z
+GitHub updated: 2026-07-15T19:57:33Z
+GitHub link: https://github.com/ahsanhab919-ux/shothik-web/issues/54
+Mapping note: Dedicated delivery-tracker issue synchronized from the current delivery seed.
+Formal approvers:
+- Security: Ahsan Habib (@ahsanhab919-ux)
+- Release: Ahsan Habib (@ahsanhab919-ux)
+- QA: Ahsan Habib (@ahsanhab919-ux)
+- Stakeholder: Ahsan Habib (@ahsanhab919-ux)
+Issue checklist:
+- [ ] Production Vercel environment confirmation | owner: Release owner Ahsan Habib (@ahsanhab919-ux) | target: Pending external confirmation; next review 2026-07-22
+- [ ] GitHub CLI / release automation readiness | owner: Release owner Ahsan Habib (@ahsanhab919-ux) | target: 2026-07-22","Schema/API: Auth and preview-access API family
+Semantic version: 1.1.0-target
+Production URL: https://www.shothik.ai/api/auth/sign-in
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/auth/sign-in
+OpenAPI / doc reference: https://www.shothik.ai/api/docs/swagger.json#paths/~1api~1auth~1sign-in
+Engineering owner: Frontend/auth owner Ahsan Habib (@ahsanhab919-ux)
+
+Schema/API: Health and docs verification API family
+Semantic version: 1.1.0-target
+Production URL: https://www.shothik.ai/api/health
+Staging URL: https://shothik-4y0ad3qm7-shothik.vercel.app/api/health
+OpenAPI / doc reference: https://www.shothik.ai/api/docs/swagger.json#paths/~1api~1health
+Engineering owner: Platform/release owner Ahsan Habib (@ahsanhab919-ux)","System: Production Vercel environment confirmation
+Primary contact: Release owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), operations contact
+Status: Blocked
+Impact: Critical
+Target resolution: Pending external confirmation; next review 2026-07-22
+
+System: GitHub CLI / release automation readiness
+Primary contact: Release owner Ahsan Habib (@ahsanhab919-ux)
+Secondary contact: Ahsan Habib (@ahsanhab919-ux), platform owner
+Status: Not Started
+Impact: Medium
+Target resolution: 2026-07-22","Unit coverage: Auth/security targeted suites present; global baseline is 62.59% statements with restored coverage publishing
+Integration coverage: Auth/security and route-ownership tests present; module-level percentage not published
+End-to-end coverage: 25% smoke instrumentation; protected-preview browser smoke partially automated
+CI/CD reports: https://github.com/ahsanhab919-ux/shothik-web/actions/workflows/ci.yml | https://github.com/ahsanhab919-ux/shothik-web/blob/main/docs/insforge-chat-auth-rollout.md
+Coverage publication note: local `pnpm test:coverage` now passes; latest repo baseline is 62.59% statements, 56.03% branches, 60.45% functions, and 63.27% lines.
+Untested critical paths: production release automation, remote authenticated smoke without operator-supplied bypass token, and post-promotion rollback drills
+Mandatory suites: Vitest: Pass | Type-check: Pass | Playwright smoke: Pass for current preview-safe suite; authenticated protected-preview smoke still environment-gated","Security scan: Pass
+Completed: 2026-07-15 staging hardening evidence
+Sign-off owner: Security approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: https://github.com/ahsanhab919-ux/shothik-web/blob/main/docs/insforge-chat-auth-rollout.md
+Remediation: Carry evidence into production release record.
+
+Compliance check: Fail
+Completed: Not formally signed off
+Sign-off owner: Release approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Record final release/compliance sign-off before production rollout.
+
+Performance test: Fail
+Completed: Not formally executed for production
+Sign-off owner: QA approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Run release smoke, latency spot-checks, and monitor preview/production auth flows post-cutover.
+
+Cross-functional stakeholder approval: Fail
+Completed: Not recorded
+Sign-off owner: Product / stakeholder approver Ahsan Habib (@ahsanhab919-ux)
+Evidence: file:///Users/user/Pictures/shothik.2/shothik-web/docs/delivery/launch-gate-governance-2026-07-18.md
+Remediation: Capture release owner, reviewer/code owner, and QA approvals in the rollout artifact.",🟡 Needs Monitoring,"Impact: High
+Likelihood: Medium
+Mitigation: Keep the release gated on environment confirmation, production smoke, and final sign-off capture; do not shortcut the deploy-before-migration rule."

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import {
   withApiProtection,
   type AuthenticatedUser,
@@ -7,8 +6,10 @@ import {
 import logger from "@/lib/logger";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import {
+  getStripe,
+  isStripeConfigurationError,
+} from "@/lib/stripe/config";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -22,6 +23,8 @@ async function handlePortal(
       { status: 401 },
     );
   }
+
+  const stripe = getStripe();
 
   const subscription = await convex.query(
     api.subscriptions.getUserSubscription,
@@ -44,4 +47,16 @@ async function handlePortal(
   return NextResponse.json({ portalUrl: portalSession.url });
 }
 
-export const POST = withApiProtection(handlePortal, { requireAuth: true });
+export const POST = withApiProtection(async (req, user) => {
+  try {
+    return await handlePortal(req, user);
+  } catch (error) {
+    if (isStripeConfigurationError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
+}, { requireAuth: true });

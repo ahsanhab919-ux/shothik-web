@@ -40,6 +40,7 @@ This repo intentionally excludes:
 - standalone backend microservices
 - legacy root `convex/`
 - vendor bundles and process-only directories from the old monorepo
+- workspace-local cache and generated runner directories such as `.testsprite-home/`
 
 ## Architecture
 
@@ -538,7 +539,8 @@ The workflow currently runs:
 - dependency install with frozen lockfile
 - TypeScript type-check
 - test coverage run
-- production build with safe placeholder env values
+- production build using linked `.env.local` runtime values plus documented
+  compatibility placeholders where non-InsForge services are still required
 - optional Playwright smoke execution on manual dispatch
 
 ### Local Pre-PR Validation
@@ -547,10 +549,12 @@ Run the same core checks locally before pushing:
 
 ```bash
 pnpm install
-pnpm type-check
-pnpm test:coverage
-NEXT_PUBLIC_CONVEX_URL=https://placeholder.convex.cloud STRIPE_SECRET_KEY=sk_test_placeholder pnpm build
+pnpm ci:local
+pnpm report:readiness
 ```
+
+`pnpm report:readiness` writes the refreshed release-readiness artifacts under
+`docs/reports/`.
 
 ### Branch Strategy
 

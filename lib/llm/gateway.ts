@@ -1,30 +1,32 @@
 import { logger } from '@/lib/logger';
 
-type ProviderName = 'kimi' | 'deepseek' | 'gemini';
+type ProviderName = 'kimi' | 'deepseek' | 'gemini' | 'openrouter';
 type ToolName = 'humanize' | 'summarize' | 'cowriter' | 'book-agent' | 'grammar' | 'translator' | 'ai-detector' | 'paraphrase' | 'twin-task';
 
 const TOOL_ROUTING: Record<ToolName, ProviderName> = {
-  humanize: 'gemini',
-  summarize: 'gemini',
-  cowriter: 'gemini',
-  'book-agent': 'gemini',
-  grammar: 'gemini',
-  translator: 'gemini',
-  'ai-detector': 'gemini',
-  paraphrase: 'gemini',
-  'twin-task': 'gemini',
+  humanize: 'openrouter',
+  summarize: 'openrouter',
+  cowriter: 'openrouter',
+  'book-agent': 'openrouter',
+  grammar: 'openrouter',
+  translator: 'openrouter',
+  'ai-detector': 'openrouter',
+  paraphrase: 'openrouter',
+  'twin-task': 'openrouter',
 };
 
 const PROVIDER_COSTS: Record<ProviderName, { input: number; output: number }> = {
   kimi:     { input: 0.6,   output: 2.5  },
   deepseek: { input: 0.14,  output: 0.28 },
   gemini:   { input: 0.075, output: 0.30 },
+  openrouter: { input: 0, output: 0 },
 };
 
 const FALLBACK_CHAIN: Record<ProviderName, ProviderName[]> = {
-  kimi:     ['kimi', 'gemini', 'deepseek'],
-  deepseek: ['deepseek', 'kimi', 'gemini'],
-  gemini:   ['gemini', 'deepseek', 'kimi'],
+  kimi:     ['kimi', 'openrouter', 'gemini', 'deepseek'],
+  deepseek: ['deepseek', 'openrouter', 'kimi', 'gemini'],
+  gemini:   ['gemini', 'openrouter', 'deepseek', 'kimi'],
+  openrouter: ['openrouter', 'gemini', 'deepseek', 'kimi'],
 };
 
 export const TOOL_SYSTEM_INSTRUCTIONS: Partial<Record<ToolName, string>> = {
@@ -199,10 +201,61 @@ async function callGemini(request: GatewayRequest): Promise<GatewayResponse> {
   };
 }
 
+async function callOpenRouter(request: GatewayRequest): Promise<GatewayResponse> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const model = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured');
+
+  const messages = request.systemInstruction
+    ? [
+        { role: 'system', content: request.systemInstruction },
+        { role: 'user', content: request.prompt },
+      ]
+    : [{ role: 'user', content: request.prompt }];
+
+  const body: Record<string, unknown> = {
+    model,
+    messages,
+    temperature: request.temperature ?? 0.7,
+    max_tokens: request.maxTokens ?? 2000,
+  };
+
+  if (request.jsonMode) {
+    body.response_format = { type: 'json_object' };
+  }
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${await res.text()}`);
+
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content?.trim();
+  if (typeof text !== 'string') {
+    throw new Error('OpenRouter returned no text content');
+  }
+  const inputTokens = data.usage?.prompt_tokens || Math.ceil(request.prompt.length / 4);
+  const outputTokens = data.usage?.completion_tokens || Math.ceil(text.length / 4);
+
+  return {
+    text,
+    tokensUsed: inputTokens + outputTokens,
+    inputTokens,
+    outputTokens,
+    provider: 'openrouter',
+    costUsd: 0,
+  };
+}
+
 const PROVIDERS: Record<ProviderName, (r: GatewayRequest) => Promise<GatewayResponse>> = {
   kimi: callKimi,
   deepseek: callDeepSeek,
   gemini: callGemini,
+  openrouter: callOpenRouter,
 };
 
 const LLM_TIMEOUT_MS = 30_000;

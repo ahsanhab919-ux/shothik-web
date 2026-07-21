@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, BookOpen, FilePenLine, FlaskConical, Layers3, Sparkles } from 'lucide-react';
+import AuthComplianceNotice from '@/components/auth/AuthComplianceNotice';
 import { useAuth } from '@/providers/AuthProvider';
 import { normalizeAuthIntent } from '@/lib/auth-flow';
 
@@ -89,9 +90,21 @@ const RegisterPage = () => {
     setIsSubmitting(true);
 
     try {
-      await register(data.name, data.email, data.password, data.country);
-      setSuccess('Registration successful! Redirecting to login...');
-      router.push(`/auth/login?intent=${data.intent}`);
+      const result = await register(data.name, data.email, data.password, data.country);
+      const loginParams = new URLSearchParams({
+        intent: data.intent,
+        registered: "1",
+      });
+      if (result.requiresEmailVerification) {
+        loginParams.set("verifyEmail", "1");
+        loginParams.set("email", data.email);
+      }
+      setSuccess(
+        result.requiresEmailVerification
+          ? "Registration successful! Please verify your email before signing in."
+          : "Registration successful! Redirecting to login...",
+      );
+      router.push(`/auth/login?${loginParams.toString()}`);
     } catch (err) {
       setError('Registration failed. Please try again.');
       setIsSubmitting(false);
@@ -149,7 +162,10 @@ const RegisterPage = () => {
                 name="name"
                 id="name"
                 value={formState.name}
-                onChange={(e) => setFormState((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setFormState((prev) => ({ ...prev, name: nextValue }));
+                }}
                 required
                 aria-invalid={Boolean(fieldErrors.name)}
                 aria-describedby={fieldErrors.name ? 'register-name-error' : undefined}
@@ -165,7 +181,10 @@ const RegisterPage = () => {
                 name="email"
                 id="email"
                 value={formState.email}
-                onChange={(e) => setFormState((prev) => ({ ...prev, email: e.target.value }))}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setFormState((prev) => ({ ...prev, email: nextValue }));
+                }}
                 required
                 autoComplete="email"
                 aria-invalid={Boolean(fieldErrors.email)}
@@ -247,18 +266,35 @@ const RegisterPage = () => {
               </select>
             </div>
 
+            <div className="mt-5">
+              <AuthComplianceNotice mode="register" />
+            </div>
+
             <div className="mt-5 rounded-2xl border border-border bg-muted/30 p-4">
               <label className="inline-flex items-start gap-3">
                 <input
                   type="checkbox"
                   name="terms"
                   checked={formState.terms}
-                  onChange={(e) => setFormState((prev) => ({ ...prev, terms: e.target.checked }))}
+                  onChange={(e) => {
+                    const nextChecked = e.target.checked;
+                    setFormState((prev) => ({ ...prev, terms: nextChecked }));
+                  }}
                   className="mt-1 rounded border-input text-primary shadow-sm focus:border-primary focus:ring focus:ring-primary/30"
                   aria-invalid={Boolean(fieldErrors.terms)}
                   aria-describedby={fieldErrors.terms ? 'register-terms-error' : undefined}
                 />
-                <span className="text-sm text-foreground">I agree to the terms & conditions and understand that my first-run workflow can be changed later.</span>
+                <span className="text-sm text-foreground">
+                  I agree to the{" "}
+                  <Link href="/terms" className="text-primary hover:underline">
+                    Terms &amp; Conditions
+                  </Link>
+                  , acknowledge the{" "}
+                  <Link href="/privacy" className="text-primary hover:underline">
+                    Privacy Policy
+                  </Link>
+                  , and understand that my first-run workflow can be changed later.
+                </span>
               </label>
               {fieldErrors.terms && <p id="register-terms-error" className="mt-2 text-sm text-destructive">{fieldErrors.terms}</p>}
             </div>

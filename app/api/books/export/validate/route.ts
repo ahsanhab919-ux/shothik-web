@@ -1,25 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
-import { getAuthToken } from "@/lib/auth";
 import { isAgentKey, hashAgentKey } from "@/lib/agent-auth";
 import { logger } from "@/lib/logger";
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+import { getAuthenticatedRequestUser } from "@/lib/insforge/request";
+import {
+  getBookDraftForOwnerIdentifiers,
+  getBookDraftForUser,
+} from "@/lib/books/insforge-book-service";
+import { getTwinByKeyHash } from "@/lib/twin/insforge-twin-service";
 const CALIBRE_URL = process.env.CALIBRE_SERVICE_URL || "http://localhost:3003";
 
 export async function POST(req: NextRequest) {
-  const token = getAuthToken(req);
-  if (!token) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+  const authHeader = req.headers.get("authorization");
+  const bearerToken =
+    authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  let authenticatedUserId: string | null = null;
+  let ownerIdentifiers:
+    | {
+        authUserId?: string;
+        legacyUserId?: string;
+      }
+    | null = null;
 
-  if (isAgentKey(token)) {
-    const keyHash = hashAgentKey(token);
-    const agent = await convex.query(api.twin.getByKeyHash, { keyHash });
+  if (bearerToken && isAgentKey(bearerToken)) {
+    const keyHash = hashAgentKey(bearerToken);
+    const agent = await getTwinByKeyHash(keyHash);
     if (!agent || agent.lifecycleState === "suspended") {
       return NextResponse.json({ error: "Agent not found or suspended" }, { status: 403 });
     }
+    ownerIdentifiers = {
+      authUserId: agent.masterAuthUserId,
+      legacyUserId: agent.masterId,
+    };
+  } else {
+    const user = await getAuthenticatedRequestUser(req);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    authenticatedUserId = user.id;
   }
 
   let body: { bookId?: string; fix?: boolean };
@@ -35,7 +52,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const book = await convex.query(api.books.get, { id: bookId as any });
+    const book = authenticatedUserId
+      ? await getBookDraftForUser(bookId, authenticatedUserId)
+      : await getBookDraftForOwnerIdentifiers({
+          bookId,
+          authUserId: ownerIdentifiers?.authUserId,
+          legacyUserId: ownerIdentifiers?.legacyUserId,
+        });
     if (!book) {
       return NextResponse.json({ error: "Book not found" }, { status: 404 });
     }

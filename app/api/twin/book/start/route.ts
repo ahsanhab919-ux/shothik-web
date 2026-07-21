@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateTwinRequest, requireTwinKey } from "@/lib/twin-api-auth";
 import { twinApi, createTwinClient } from "@/lib/twin-convex";
+import {
+  invokeTwinBookWrite,
+  TWIN_BOOK_WRITE_TOOL_NAME,
+} from "@/lib/twin/mcp-book-write";
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateTwinRequest(req);
@@ -29,7 +33,17 @@ export async function POST(req: NextRequest) {
         twinId: auth.twinId,
         masterId: twin.masterId,
         action: "book:write",
-        payload: { title: body.title, genre: body.genre },
+        payload: {
+          operation: "start",
+          title: body.title,
+          description: body.description,
+          category: body.category,
+          language: body.language,
+          governedInvocation: {
+            toolName: TWIN_BOOK_WRITE_TOOL_NAME,
+            confirmationRequired: true,
+          },
+        },
         keyHash: auth.keyHash,
       });
       return NextResponse.json({
@@ -40,27 +54,30 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const bookId = await convex.mutation(twinApi.twin.twinStartBook, {
-      twinId: auth.twinId,
-      title: body.title as string,
-      description: body.description as string | undefined,
-      category: body.category as string | undefined,
-      language: body.language as string | undefined,
-      keyHash: auth.keyHash,
-    });
+    if (!auth.userId) {
+      return NextResponse.json({ error: "Twin owner could not be resolved" }, { status: 401 });
+    }
 
-    await convex.mutation(twinApi.twin.logActivity, {
-      twinId: auth.twinId,
-      action: "book_started",
-      targetResource: `book:${bookId}`,
-      metadata: { title: body.title as string },
-      keyHash: auth.keyHash,
+    const execution = await invokeTwinBookWrite({
+      tenantId: auth.userId,
+      userId: auth.userId,
+      bookWrite: {
+        operation: "start",
+        title: body.title as string,
+        description: body.description as string | undefined,
+        category: body.category as string | undefined,
+        language: body.language as string | undefined,
+      },
+      confirmationToken: "user_confirmed",
+      traceId: `twin-book-write:${String(auth.twinId)}:start`,
     });
 
     return NextResponse.json({
       success: true,
       requiresApproval: false,
-      bookId,
+      bookId: execution.bookId,
+      status: execution.status,
+      invocationId: execution.invocationId,
       message: "Book draft created. Proceed with content upload.",
       nextStep: "POST /api/twin/book/upload with your content",
     });

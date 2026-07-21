@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import AccountGeneral from "@/components/(primary-layout)/(account-page)/AccountGeneralFormSection";
 import AccountWalletSection from "@/components/(primary-layout)/(account-page)/AccountWalletSection";
 import MasterDashboard from "@/components/(primary-layout)/(account-page)/MasterDashboard";
@@ -25,9 +26,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
-export const dynamic = "force-dynamic";
-
-export default function AccountSettings() {
+function AccountSettings() {
   const { push } = useRouter();
   const { user, accessToken } = useSelector((state) => state.auth);
   const [currentTab, setCurrentTab] = useState("general");
@@ -290,3 +289,5 @@ export default function AccountSettings() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(AccountSettings), { ssr: false });

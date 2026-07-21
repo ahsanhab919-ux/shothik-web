@@ -34,7 +34,6 @@ import academicSlidesImg from "@/components/(primary-layout)/(home-v3-page)/atta
 import aiDetectionImg from "@/components/(primary-layout)/(home-v3-page)/attached_assets/generated_images/AI_detector_blue-green_b12ba8ea.webp";
 import dashboardImg from "@/components/(primary-layout)/(home-v3-page)/attached_assets/generated_images/Analytics_command_center_cc3460f4.webp";
 import businessPresentationImg from "@/components/(primary-layout)/(home-v3-page)/attached_assets/generated_images/Business_presentations_data_b07bdcf0.webp";
-import campaignImg from "@/components/(primary-layout)/(home-v3-page)/attached_assets/generated_images/Campaign_brain_neural_87fb1955.webp";
 import creativeImg from "@/components/(primary-layout)/(home-v3-page)/attached_assets/generated_images/Creative_canvas_AI_f5886843.webp";
 import aiRobotImg from "@/components/(primary-layout)/(home-v3-page)/attached_assets/generated_images/Humanizer_transformation_blue-green_8b4c2051.webp";
 import leadGenerationImg from "@/components/(primary-layout)/(home-v3-page)/attached_assets/generated_images/Lead_generation_network_fb03033e.webp";
@@ -48,6 +47,9 @@ import summaryImg from "@/components/(primary-layout)/(home-v3-page)/attached_as
 import translationImg from "@/components/(primary-layout)/(home-v3-page)/attached_assets/generated_images/Translation_globe_connections_35d12fd5.webp";
 import videoImg from "@/components/(primary-layout)/(home-v3-page)/attached_assets/generated_images/Video_production_suite_8ea05291.webp";
 
+const campaignImg =
+  "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=futuristic%20digital%20marketing%20campaign%20control%20center%20with%20neural%20network%20visualization%2C%20teal%20and%20blue%20lighting%2C%20high-end%20SaaS%20dashboard%20aesthetic%2C%20clean%20professional%20composition&image_size=landscape_4_3";
+
 interface GalleryCard {
   id: string;
   category: string;
@@ -57,13 +59,25 @@ interface GalleryCard {
   image: StaticImageData | string;
 }
 
+function renderGalleryIcon(icon: StaticImageData, alt: string) {
+  return (
+    <span className="flex h-8 items-center">
+      <Image
+        src={icon}
+        alt={alt}
+        width={icon.width}
+        height={icon.height}
+        style={{ width: "auto", height: "32px" }}
+      />
+    </span>
+  );
+}
+
 const galleryCards: GalleryCard[] = [
   {
     id: "paraphrasing",
     category: "writing",
-    icon: (
-      <Image src={ParaphraseIcon} alt="Paraphrase" width={32} height={32} />
-    ),
+    icon: renderGalleryIcon(ParaphraseIcon, "Paraphrase"),
     title: "Paraphrasing Engine – Rewrite Smarter, Faster",
     description:
       "Built-in plagiarism check, enhanced editor, multiple modes, tone control. Academic-grade paraphrasing for STEM researchers.",
@@ -72,9 +86,7 @@ const galleryCards: GalleryCard[] = [
   {
     id: "plagiarism",
     category: "writing",
-    icon: (
-      <Image src={AIDetectorIcon} alt="AI Detector" width={32} height={32} />
-    ),
+    icon: renderGalleryIcon(AIDetectorIcon, "AI Detector"),
     title: "Plagiarism Check – Safe, Original Content",
     description:
       "Beat Turnitin detection. Scan billions of sources before submitting—catch plagiarism before your professor does.",
@@ -83,9 +95,7 @@ const galleryCards: GalleryCard[] = [
   {
     id: "ai-detector",
     category: "writing",
-    icon: (
-      <Image src={AIDetectorIcon} alt="AI Detector" width={32} height={32} />
-    ),
+    icon: renderGalleryIcon(AIDetectorIcon, "AI Detector"),
     title: "AI Detector – Know What's Real",
     description:
       "Detect AI-generated sentences from any LLM instantly. Grade with confidence. See which sentences students wrote vs. ChatGPT generated.",
@@ -94,9 +104,7 @@ const galleryCards: GalleryCard[] = [
   {
     id: "humanized-gpt",
     category: "writing",
-    icon: (
-      <Image src={HumanizeGPTIcon} alt="Humanize GPT" width={32} height={32} />
-    ),
+    icon: renderGalleryIcon(HumanizeGPTIcon, "Humanize GPT"),
     title: "Humanized GPT – Get 100% human score.",
     description:
       "Converts AI generated content into human content. Bypass AI detectors like Turnitin, GPTzero, Originality AI and more.",
@@ -105,9 +113,7 @@ const galleryCards: GalleryCard[] = [
   {
     id: "translation",
     category: "writing",
-    icon: (
-      <Image src={TranslatorIcon} alt="Translator" width={32} height={32} />
-    ),
+    icon: renderGalleryIcon(TranslatorIcon, "Translator"),
     title: "Translation Tool – Communicate Globally",
     description:
       "Translation in 100+ Languages. Instantly translate text and documents. Perfect for students, businesses, and global teams.",
@@ -116,7 +122,7 @@ const galleryCards: GalleryCard[] = [
   {
     id: "summarizer",
     category: "writing",
-    icon: <Image src={SummarizeIcon} alt="Summarize" width={32} height={32} />,
+    icon: renderGalleryIcon(SummarizeIcon, "Summarize"),
     title: "Smart Summarizer – Key Insights, Fast",
     description:
       "Save hours of reading. Instantly summarize reports, research papers, and articles into key insights.",

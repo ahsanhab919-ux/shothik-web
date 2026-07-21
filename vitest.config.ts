@@ -1,6 +1,12 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 
+const validationNoiseExcludes = [
+  'brainstom /**',
+  '.testsprite-home/**',
+  'testsprite_tests/**',
+];
+
 export default defineConfig({
   test: {
     environment: 'jsdom',
@@ -15,6 +21,7 @@ export default defineConfig({
       'node_modules/**',
       '.next/**',
       'e2e/**',
+      ...validationNoiseExcludes,
     ],
     coverage: {
       provider: 'v8',
@@ -34,6 +41,7 @@ export default defineConfig({
       exclude: [
         'node_modules/',
         '.next/',
+        ...validationNoiseExcludes,
         '**/*.d.ts',
         '**/*.config.*',
         '**/mock/**',

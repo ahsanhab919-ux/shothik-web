@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       const auth = await authenticateTwinRequest(req);
       if (!requireAuth(auth)) {
         return NextResponse.json(
-          { error: "JWT authentication required when specifying masterId" },
+          { error: "Authenticated session required when specifying masterId" },
           { status: 401 }
         );
       }

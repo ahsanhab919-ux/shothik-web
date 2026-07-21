@@ -63,6 +63,13 @@ function DialogContent({
         (child.type as any)?.displayName === "DialogTitle" ||
         (child.props as any)?.["data-slot"] === "dialog-title"),
   );
+  const hasDialogDescription = React.Children.toArray(children).some(
+    (child) =>
+      React.isValidElement(child) &&
+      (child.type === DialogDescription ||
+        (child.type as any)?.displayName === "DialogDescription" ||
+        (child.props as any)?.["data-slot"] === "dialog-description"),
+  );
 
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -79,6 +86,13 @@ function DialogContent({
         {!hasDialogTitle && (
           <VisuallyHidden.Root asChild>
             <DialogPrimitive.Title>Dialog</DialogPrimitive.Title>
+          </VisuallyHidden.Root>
+        )}
+        {!hasDialogDescription && (
+          <VisuallyHidden.Root asChild>
+            <DialogPrimitive.Description>
+              Dialog content
+            </DialogPrimitive.Description>
           </VisuallyHidden.Root>
         )}
         {children}

@@ -1,0 +1,14 @@
+.git
+.next
+.browser-apps
+.playwright-browsers
+.dbg
+.vercel
+node_modules
+coverage
+playwright-report
+test-results
+testsprite_tests/tmp
+.testsprite-home
+.trae
+.tmp-seed-cover.svg

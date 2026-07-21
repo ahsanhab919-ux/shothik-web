@@ -1,5 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { setShowForgotPasswordModal } from "@/redux/slices/auth";
 import { ChevronLeft } from "lucide-react";
 import Head from "next/head";
@@ -24,6 +29,11 @@ export default function ForgetPasswordModal() {
       <Dialog open={showForgotPasswordModal} onOpenChange={handleClose}>
         <DialogContent className="w-[90%] rounded-lg p-8 sm:w-[400px]">
           <div className="flex flex-col items-center space-y-4">
+            <DialogTitle className="sr-only">Reset password</DialogTitle>
+            <DialogDescription className="sr-only">
+              Enter the email address associated with your account to receive a
+              password reset link.
+            </DialogDescription>
             <PasswordIcon className="mb-4 h-24" />
 
             <h2

@@ -1,12 +1,43 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useEffect, useState } from "react";
 import { Coins, BookOpen, ShoppingCart, TrendingUp, Info } from "lucide-react";
 import Link from "next/link";
 
 export default function ContentSalesCard() {
-  const salesData = useQuery(api.marketplace.getBookSales);
+  const [salesData, setSalesData] = useState<any | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSalesData(null);
+
+    fetch("/api/books/sales")
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to load sales data");
+        }
+        return payload;
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setSalesData(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSalesData({
+            totalSales: 0,
+            totalEarned: 0,
+            books: [],
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (!salesData) {
     return (

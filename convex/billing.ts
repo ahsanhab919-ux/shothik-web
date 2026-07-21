@@ -224,7 +224,7 @@ export const getSubscriptionPlans = query({
 
 export const getUserSubscription = query({
   args: { userId: v.union(v.id("users"), v.string()) },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     const userId =
       typeof args.userId === "string"
         ? args.userId

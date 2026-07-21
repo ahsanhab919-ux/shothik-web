@@ -2,9 +2,12 @@
 
 import { useEffect } from "react";
 
+const WEBMCP_ENABLED = process.env.NEXT_PUBLIC_ENABLE_WEBMCP_WIDGET === "true";
+const WEBMCP_SCRIPT_URL = process.env.NEXT_PUBLIC_WEBMCP_SCRIPT_URL?.trim();
+
 declare global {
   interface Window {
-    WebMCP: any;
+    WebMCP?: any;
     __shothikStudio: {
       getContent: () => string;
       setContent: (html: string) => void;
@@ -36,20 +39,67 @@ function markdownToHtml(md: string): string {
     .join("\n");
 }
 
+function resolveWebMCPConstructor() {
+  if (typeof window.WebMCP === "function") {
+    return window.WebMCP;
+  }
+
+  try {
+    const ctor = window.eval?.(
+      "typeof WebMCP !== 'undefined' ? WebMCP : undefined",
+    );
+    if (typeof ctor === "function") {
+      window.WebMCP = ctor;
+      return ctor;
+    }
+  } catch {
+    // Ignore eval resolution failures and let the caller warn once.
+  }
+
+  return null;
+}
+
+function attachWebMCPGlobalBinding() {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
+
+  if (typeof window.WebMCP === "function") {
+    return;
+  }
+
+  const shim = document.createElement("script");
+  shim.text = `
+    if (typeof window.WebMCP !== 'function' && typeof WebMCP === 'function') {
+      window.WebMCP = WebMCP;
+    }
+  `;
+  document.head.appendChild(shim);
+  shim.remove();
+}
+
 export function WebMCPWidget() {
   useEffect(() => {
+    if (!WEBMCP_ENABLED) return;
+    if (!WEBMCP_SCRIPT_URL) {
+      console.warn(
+        "[writing-studio] WebMCP widget enabled without NEXT_PUBLIC_WEBMCP_SCRIPT_URL; skipping load.",
+      );
+      return;
+    }
+
     const scriptId = "webmcp-script";
-    if (document.getElementById(scriptId)) return;
+    const initializeWidget = () => {
+      attachWebMCPGlobalBinding();
+      const WebMCPConstructor = resolveWebMCPConstructor();
+      if (!WebMCPConstructor) {
+        console.warn(
+          "[writing-studio] WebMCP loaded but did not expose a usable constructor.",
+        );
+        return;
+      }
 
-    const script = document.createElement("script");
-    script.id = scriptId;
-    script.src = "https://webmcp.dev/webmcp.js";
-    script.async = true;
-
-    script.onload = () => {
-      if (!window.WebMCP) return;
-
-      const mcp = new window.WebMCP({
+      const mcp = new WebMCPConstructor({
         color: "#22c55e",
         position: "bottom-right",
         size: "44px",
@@ -264,6 +314,23 @@ export function WebMCPWidget() {
         }
       );
     };
+
+    if (document.getElementById(scriptId)) {
+      initializeWidget();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.src = WEBMCP_SCRIPT_URL;
+    script.async = true;
+    script.onerror = () => {
+      console.warn(
+        `[writing-studio] Failed to load WebMCP widget from ${WEBMCP_SCRIPT_URL}.`,
+      );
+    };
+
+    script.onload = initializeWidget;
 
     document.body.appendChild(script);
 

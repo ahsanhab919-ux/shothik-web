@@ -56,6 +56,7 @@ export default function SpecificAgentPage() {
   // 
 
   const [loadingResearchHistory, setLoadingResearchHistory] = useState(true);
+  const hasConvexResearchRuntime = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL);
 
   const { isSimulating, simulationStatus } = useSelector(researchCoreState);
 
@@ -73,6 +74,25 @@ export default function SpecificAgentPage() {
 
   // Function to render the appropriate component based on agentType
   const renderComponent = () => {
+    const researchUnavailable = (
+      <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+        <div className="rounded-2xl border border-border bg-muted/30 p-10 max-w-md">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <svg className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m5-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Research Agent</h2>
+          <p className="text-muted-foreground mb-6">
+            This workspace is temporarily unavailable while the legacy research runtime is offline.
+          </p>
+          <span className="inline-block rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+            Temporarily Unavailable
+          </span>
+        </div>
+      </div>
+    );
+
     switch (agentType) {
       case "chat":
         return <ChatAgentPage />;
@@ -87,6 +107,10 @@ export default function SpecificAgentPage() {
       case "sheets":
         return <SheetAgentPage specificAgent={agentType} sheetId={id} />;
       case "research":
+        if (!hasConvexResearchRuntime) {
+          return researchUnavailable;
+        }
+
         return (
           <ResearchAgentPage
             loadingResearchHistory={loadingResearchHistory}
@@ -134,7 +158,7 @@ export default function SpecificAgentPage() {
         {renderComponent()}
 
         {/* chat input for research agents */}
-        {agentType === "research" && !isResarchSimulating && (
+        {agentType === "research" && hasConvexResearchRuntime && !isResarchSimulating && (
           <>
             {!loadingResearchHistory && (
               <div className="absolute bottom-[0.7rem] left-0 w-full px-2 sm:px-0">
@@ -145,7 +169,7 @@ export default function SpecificAgentPage() {
         )}
 
         {/* join the beta list footer cta for research only now */}
-        {!isSimulating && simulationStatus === "completed" && (
+        {hasConvexResearchRuntime && !isSimulating && simulationStatus === "completed" && (
           <div className="absolute bottom-0 flex w-full items-center justify-center">
             <FooterCta
               isMobile={isMobile}
