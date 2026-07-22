@@ -139,7 +139,7 @@ export const NAV_TOOLS = [
     description: "Marketing automation tools",
     label: null,
     labelKey: null,
-    link: "/agents/chat",
+    link: "/agents",
     iconColor: "#1976D2",
   },
   {

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { createContext, useContext, useReducer, useMemo } from 'react';
 
 const initialState = {

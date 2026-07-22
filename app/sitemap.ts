@@ -6,7 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const staticPages = [
     { path: "/", priority: 1.0, changeFrequency: "weekly" as const },
-    { path: "/agents/chat", priority: 0.9, changeFrequency: "daily" as const },
+    { path: "/agents", priority: 0.9, changeFrequency: "daily" as const },
     { path: "/paraphrase", priority: 0.9, changeFrequency: "weekly" as const },
     {
       path: "/grammar-checker",

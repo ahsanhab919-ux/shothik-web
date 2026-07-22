@@ -28,7 +28,7 @@ const NAV_ITEM_KEYS = [
   {
     labelKey: 'nav.chat',
     icon: MessageCircle,
-    href: '/agents/chat',
+    href: '/agents',
     match: ['/agents'],
   },
   {

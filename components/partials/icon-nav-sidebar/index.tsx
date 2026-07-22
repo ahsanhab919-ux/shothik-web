@@ -38,10 +38,10 @@ const WRITING_TOOL_KEYS = [
 ];
 
 const AGENT_TOOL_KEYS = [
-  { key: 'sidebar.aiChat', icon: <MessageCircle className="h-4 w-4" />, href: '/agents/chat' },
-  { key: 'sidebar.aiSlides', icon: <Presentation className="h-4 w-4" />, href: '/agents/presentation' },
-  { key: 'sidebar.aiSheets', icon: <Table className="h-4 w-4" />, href: '/agents/sheets' },
-  { key: 'sidebar.deepResearch', icon: <Search className="h-4 w-4" />, href: '/agents/research' },
+  { key: 'sidebar.aiChat', icon: <MessageCircle className="h-4 w-4" />, href: '/agents' },
+  { key: 'sidebar.aiSlides', icon: <Presentation className="h-4 w-4" />, href: '/agents?tab=slides' },
+  { key: 'sidebar.aiSheets', icon: <Table className="h-4 w-4" />, href: '/agents?tab=sheets' },
+  { key: 'sidebar.deepResearch', icon: <Search className="h-4 w-4" />, href: '/agents?tab=research' },
 ];
 
 function NavIcon({
@@ -209,8 +209,8 @@ export default function IconNavSidebar() {
         <NavIcon
           icon={<MessageCircle className="h-5 w-5" />}
           label={t('nav.chat')}
-          href="/agents/chat"
-          isActive={isActive('/agents/chat')}
+          href="/agents"
+          isActive={isActive('/agents')}
           tooltip={t('sidebar.aiChat')}
         />
 

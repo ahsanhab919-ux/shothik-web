@@ -1,3 +1,5 @@
+"use client";
+
 /* eslint-disable react-hooks/exhaustive-deps */
 import FileList from "@/components/common/FileList";
 import { Button } from "@/components/ui/button";
