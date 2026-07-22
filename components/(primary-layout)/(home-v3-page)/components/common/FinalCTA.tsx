@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 
 export default function FinalCTA() {
@@ -11,11 +13,12 @@ export default function FinalCTA() {
         </h2>
 
         <Button
+          asChild
           size="lg"
           className="bg-primary hover:bg-primary/90 text-primary-foreground mb-4"
           data-testid="button-get-started-final"
         >
-          Get Started
+          <Link href="/writing-studio?projects=1">Get Started</Link>
         </Button>
 
         <p className="text-body2 text-muted-foreground">
