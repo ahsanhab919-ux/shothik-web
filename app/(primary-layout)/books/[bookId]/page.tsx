@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -25,6 +25,7 @@ import {
 import VoteButton from "@/components/common/VoteButton";
 import SendCreditsButton from "@/components/credits/SendCreditsButton";
 import { getInsforgeBrowserClient } from "@/lib/insforge/client";
+import { setShowLoginModal } from "@/redux/slices/auth";
 
 function TagBadge({ children }: { children: React.ReactNode }) {
   return (
@@ -37,6 +38,7 @@ function TagBadge({ children }: { children: React.ReactNode }) {
 export default function BookDetailPage() {
   const params = useParams();
   const bookId = params.bookId as string;
+  const dispatch = useDispatch();
   const { accessToken } = useSelector((state: any) => state.auth);
   const isAuthenticated = !!accessToken;
   const [book, setBook] = useState<any | undefined>(undefined);
@@ -182,6 +184,11 @@ export default function BookDetailPage() {
   const balance = balanceData?.balance ?? 0;
   const canAfford = balance >= creditPrice;
 
+  const promptForLogin = () => {
+    setPurchaseError(null);
+    dispatch(setShowLoginModal(true));
+  };
+
   const isAgent = book.userId?.startsWith("agent_") || book.userId?.includes("agent");
   const publishedDate = book.publishedAt
     ? new Date(book.publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
@@ -221,7 +228,11 @@ export default function BookDetailPage() {
   };
 
   const handlePurchase = async () => {
-    if (!isAuthenticated || purchasing) return;
+    if (!isAuthenticated) {
+      promptForLogin();
+      return;
+    }
+    if (purchasing) return;
     setPurchaseError(null);
     setPurchasing(true);
     try {
@@ -264,6 +275,10 @@ export default function BookDetailPage() {
   };
 
   const handleDownload = async () => {
+    if (!isAuthenticated) {
+      promptForLogin();
+      return;
+    }
     setDownloading(true);
     setPurchaseError(null);
     try {
@@ -363,7 +378,7 @@ export default function BookDetailPage() {
                 </button>
               </>
             ) : isFree ? (
-              isAuthenticated ? (
+              <>
                 <button
                   onClick={handleDownload}
                   disabled={downloading}
@@ -376,21 +391,17 @@ export default function BookDetailPage() {
                     </>
                   ) : (
                     <>
-                      <Download className="h-4 w-4" />
-                      Free Download
+                      {isAuthenticated ? <Download className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                      {isAuthenticated ? "Free Download" : "Sign in to Download"}
                     </>
                   )}
                 </button>
-              ) : (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-950/30 px-3 py-2.5 text-sm font-semibold text-emerald-400 min-h-[44px]">
-                    Free
-                  </div>
+                {!isAuthenticated ? (
                   <p className="text-center text-xs text-muted-foreground">
                     Sign in to download this book
                   </p>
-                </div>
-              )
+                ) : null}
+              </>
             ) : isAuthor ? (
               <div className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-950/30 px-3 py-2.5 text-sm font-semibold text-emerald-400 min-h-[44px]">
                 <CheckCircle2 className="h-4 w-4" />
@@ -400,7 +411,7 @@ export default function BookDetailPage() {
               <>
                 <button
                   onClick={handlePurchase}
-                  disabled={purchasing || !isAuthenticated || !canAfford}
+                  disabled={purchasing || (isAuthenticated && !canAfford)}
                   className="flex items-center justify-center gap-2 w-full rounded-xl bg-amber-600 px-4 py-3 sm:py-2.5 text-sm font-bold text-white hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] sm:min-h-[44px]"
                 >
                   {purchasing ? (
@@ -411,7 +422,9 @@ export default function BookDetailPage() {
                   ) : (
                     <>
                       <Lock className="h-4 w-4" />
-                      Unlock for {creditPrice.toLocaleString()} Credits
+                      {isAuthenticated
+                        ? `Unlock for ${creditPrice.toLocaleString()} Credits`
+                        : "Sign in to Unlock"}
                     </>
                   )}
                 </button>

@@ -993,8 +993,18 @@ const ParaphraseContend = () => {
 
   const handleSubmit = async (value) => {
     try {
+      const textToParaphrase = value || userInput;
+
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("shothik_tool_submit", { detail: { tool: "paraphrase" } }));
+      }
+
+      if (!accessToken) {
+        dispatch(setShowLoginModal(true));
+        setInlineError(null);
+        setProcessing({ success: false, loading: false });
+        setIsLoading(false);
+        return;
       }
 
       if (showMessage.show) {
@@ -1033,9 +1043,6 @@ const ParaphraseContend = () => {
       setOutputHistoryIndex(0);
       setProcessing({ success: false, loading: true });
       setParaphraseRequestCounter((prev) => prev + 1); // Increment counter on new request
-      // use the full raw Markdown string for payload
-      const textToParaphrase = value || userInput;
-
 
       // but enforce word-limit on a plain-text version
       // strip common markdown tokens for counting
@@ -1142,7 +1149,7 @@ const ParaphraseContend = () => {
     }
 
     // only auto-start if the setting is ON
-    if (!automaticStartParaphrasing) {
+    if (!accessToken || !automaticStartParaphrasing) {
       if (result?.length > 0) {
         toast.info("Click Rephrase to view the updated result.");
         handleClear("", "output");

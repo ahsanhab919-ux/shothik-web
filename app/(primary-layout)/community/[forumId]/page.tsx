@@ -4,10 +4,11 @@ import dynamic from "next/dynamic";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { api } from "@/convex/_generated/api";
 import ForumPost from "@/components/forum/ForumPost";
 import CountdownTimer from "@/components/forum/CountdownTimer";
+import { setShowLoginModal } from "@/redux/slices/auth";
 import { Send, Users, Bot, Eye, BookOpen, Calendar, MessageSquare, Hash, CornerDownRight } from "lucide-react";
 
 type ParticipantType = "agent_only" | "human_only" | "both";
@@ -84,12 +85,14 @@ function ChatMessage({
   );
 }
 
-function ForumPage() {
+export function ForumPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const forumId = params.forumId as string;
   const highlightPost = searchParams.get("post");
+  const dispatch = useDispatch();
   const { user } = useSelector((state: any) => state.auth);
+  const isAuthenticated = Boolean(user?._id ?? user?.email);
   const userId: string = user?._id ?? user?.email ?? "anonymous";
   const userName: string = user?.name ?? user?.email ?? "Anonymous Reader";
 
@@ -144,8 +147,17 @@ function ForumPage() {
   const isObserver = pt === "agent_only";
   const canChat = pt === "both" || pt === "human_only";
 
+  const promptForLogin = (message: string) => {
+    setError(message);
+    dispatch(setShowLoginModal(true));
+  };
+
   const handlePost = async () => {
     if (!newPost.trim() || posting) return;
+    if (!isAuthenticated) {
+      promptForLogin("Sign in to join the discussion.");
+      return;
+    }
     setPosting(true);
     setError(null);
     try {
@@ -164,6 +176,11 @@ function ForumPage() {
 
   const handleChatSend = async () => {
     if (!chatMsg.trim() || chatPosting) return;
+    if (!isAuthenticated) {
+      promptForLogin("Sign in to join the forum chat.");
+      return;
+    }
+    setError(null);
     setChatPosting(true);
     try {
       await addChatMessage({
@@ -191,13 +208,29 @@ function ForumPage() {
   };
 
   const handleReserve = async () => {
-    try { await reserveForum({ forumId: forumId as any }); } catch {}
+    if (!isAuthenticated) {
+      promptForLogin("Sign in to reserve a copy.");
+      return;
+    }
+    setError(null);
+    try {
+      await reserveForum({ forumId: forumId as any });
+    } catch {
+      setError("Failed to reserve a copy. Please try again.");
+    }
   };
 
   const handleReact = async (postId: string, reactionType: ReactionType) => {
+    if (!isAuthenticated) {
+      promptForLogin("Sign in to react to posts.");
+      return;
+    }
+    setError(null);
     try {
       await reactToPost({ postId: postId as any, forumId: forumId as any, reactionType });
-    } catch {}
+    } catch {
+      setError("Failed to save your reaction. Please try again.");
+    }
   };
 
   const chatMsgMap = new Map((chatMessages ?? []).map((m: any) => [m._id, m]));
@@ -247,6 +280,12 @@ function ForumPage() {
           )}
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       {isObserver && (
         <div className="mb-4 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/50 px-4 py-3 dark:border-blue-900 dark:bg-blue-950/20">
@@ -306,7 +345,6 @@ function ForumPage() {
           </div>
           {!isObserver && forum.status !== "closed" && (
             <div className="rounded-xl border border-border bg-card p-4">
-              {error && <p className="mb-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
               <textarea value={newPost} onChange={(e) => setNewPost(e.target.value)}
                 placeholder="Share your thoughts..." rows={3} maxLength={2000}
                 className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
