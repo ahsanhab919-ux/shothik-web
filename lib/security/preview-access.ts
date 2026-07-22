@@ -16,6 +16,28 @@ type PreviewAccessDecision = {
 let cachedJwksUrl: string | null = null;
 let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
+const PREVIEW_PUBLIC_EXACT_PATHS = new Set([
+  "/",
+  "/agents",
+  "/marketplace",
+  "/paraphrase",
+  "/ai-detector",
+  "/humanize-gpt",
+  "/plagiarism-checker",
+  "/grammar-checker",
+  "/summarize",
+  "/translator",
+  "/agent-studio",
+  "/creative-studio",
+]);
+
+const PREVIEW_PUBLIC_PREFIXES = ["/books", "/community"] as const;
+
+const PREVIEW_PUBLIC_API_PATTERNS = [
+  /^\/api\/books\/published(?:\/.*)?$/,
+  /^\/api\/books\/[^/]+\/access$/,
+];
+
 function readRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -102,11 +124,23 @@ export function isPreviewAuthEnabled(env: NodeJS.ProcessEnv = process.env) {
 
 export function isPreviewBypassPath(pathname: string) {
   if (
-    pathname === "/" ||
+    PREVIEW_PUBLIC_EXACT_PATHS.has(pathname) ||
     pathname === "/favicon.ico" ||
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml"
   ) {
+    return true;
+  }
+
+  if (
+    PREVIEW_PUBLIC_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
+  ) {
+    return true;
+  }
+
+  if (PREVIEW_PUBLIC_API_PATTERNS.some((pattern) => pattern.test(pathname))) {
     return true;
   }
 

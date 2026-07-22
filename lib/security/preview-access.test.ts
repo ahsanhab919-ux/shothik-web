@@ -65,6 +65,15 @@ describe("preview access helpers", () => {
 
   it("knows which preview paths must stay reachable without an app session", () => {
     expect(isPreviewBypassPath("/")).toBe(true);
+    expect(isPreviewBypassPath("/agents")).toBe(true);
+    expect(isPreviewBypassPath("/marketplace")).toBe(true);
+    expect(isPreviewBypassPath("/community")).toBe(true);
+    expect(isPreviewBypassPath("/community/forum-1")).toBe(true);
+    expect(isPreviewBypassPath("/books/book-1")).toBe(true);
+    expect(isPreviewBypassPath("/paraphrase")).toBe(true);
+    expect(isPreviewBypassPath("/api/books/published")).toBe(true);
+    expect(isPreviewBypassPath("/api/books/published/book-1")).toBe(true);
+    expect(isPreviewBypassPath("/api/books/book-1/access")).toBe(true);
     expect(isPreviewBypassPath("/auth/login")).toBe(true);
     expect(isPreviewBypassPath("/api/auth/sign-in")).toBe(true);
     expect(isPreviewBypassPath("/api/health")).toBe(true);

@@ -32,6 +32,7 @@ Align public navigation with the product rule that discovery pages stay public a
 2. Updated public chat and agent entry links to point to `/agents` or `/agents?tab=...` instead of protected workspace routes.
 3. Updated sitemap discovery from `/agents/chat` to `/agents`.
 4. Left protected workspace routes unchanged so authenticated use still happens inside the existing guarded surfaces.
+5. Extended preview-auth bypass rules so staging preview deployments keep the approved public pages and read-only books APIs publicly reachable.
 
 ## Files Changed
 
@@ -40,6 +41,8 @@ Align public navigation with the product rule that discovery pages stay public a
 - `components/partials/mobile-bottom-nav/index.tsx`
 - `config/navigation/index.tsx`
 - `app/sitemap.ts`
+- `lib/security/preview-access.ts`
+- `lib/security/preview-access.test.ts`
 - `app/(primary-layout)/agents/page.test.jsx`
 - `app/sitemap.test.ts`
 
