@@ -89,6 +89,38 @@ export function normalizeAuthIntent(value: string | null | undefined): AuthInten
   }
 }
 
+export function inferAuthIntentFromRedirect(
+  redirectTo: string | null | undefined,
+): AuthIntent | null {
+  if (!isSafeInternalPath(redirectTo)) {
+    return null;
+  }
+
+  try {
+    const target = new URL(redirectTo, "https://example.com");
+    const routeIntent = normalizeAuthIntent(target.searchParams.get("intent"));
+
+    if (routeIntent !== "continue") {
+      return routeIntent;
+    }
+
+    if (target.pathname === "/twin" || target.pathname.startsWith("/twin/")) {
+      return "twin";
+    }
+
+    if (
+      target.pathname === "/writing-studio" ||
+      target.pathname.startsWith("/writing-studio/")
+    ) {
+      return "writing_studio";
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function isSafeInternalPath(path: string | null | undefined): path is string {
   return Boolean(path && path.startsWith("/") && !path.startsWith("//") && !path.includes("://"));
 }

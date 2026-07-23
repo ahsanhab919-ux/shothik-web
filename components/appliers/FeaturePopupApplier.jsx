@@ -25,6 +25,7 @@ const FeaturePopupApplier = () => {
   const router = useRouter();
   const dispatch = useDispatch();
   const { features } = useSelector((state) => state.features_with_credentials);
+  const isAuthRoute = pathname?.startsWith("/auth") ?? false;
   const [currentFeature, setCurrentFeature] = useState(null);
   const [popup, setPopup] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -41,7 +42,7 @@ const FeaturePopupApplier = () => {
         page: 1,
       });
     },
-    enabled: hasPaymentSystemBaseUrl,
+    enabled: hasPaymentSystemBaseUrl && !isAuthRoute,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     staleTime: 10 * 60 * 1000, // Consider data fresh for 10 minutes
@@ -174,7 +175,7 @@ const FeaturePopupApplier = () => {
         durationTimeoutRef.current = null;
       }
     };
-  }, [pathname, features]);
+  }, [isAuthRoute, pathname, features]);
 
   const handleClose = () => {
     setIsOpen(false);

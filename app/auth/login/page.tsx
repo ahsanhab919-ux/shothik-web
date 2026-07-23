@@ -9,6 +9,7 @@ import AuthComplianceNotice from "@/components/auth/AuthComplianceNotice";
 import { ArrowRight, BookOpen, FilePenLine, FlaskConical, Layers3, Sparkles } from "lucide-react";
 import {
   getLoginFlowVariant,
+  inferAuthIntentFromRedirect,
   isSafeInternalPath,
   normalizeAuthIntent,
   saveAuthFlowState,
@@ -86,7 +87,7 @@ const LoginPage = () => {
     const [isSendingVerificationEmail, setIsSendingVerificationEmail] = useState(false);
 
     const [loginVariant, setLoginVariant] = useState<LoginFlowVariant>("contextual");
-    const initialIntent = normalizeAuthIntent(searchParams.get("intent"));
+    const intentParam = searchParams.get("intent");
     const redirectTo = searchParams.get("redirect");
     const registeredEmail = searchParams.get("email");
     const shouldVerifyEmail = searchParams.get("verifyEmail") === "1";
@@ -96,11 +97,19 @@ const LoginPage = () => {
             searchParams.get("insforge_status") === "success" &&
             searchParams.get("insforge_type") === "verify_email"
         );
-    const [intent, setIntent] = useState<AuthIntent>(initialIntent);
+    const resolvedIntent =
+        normalizeAuthIntent(intentParam) === "continue"
+            ? inferAuthIntentFromRedirect(redirectTo) ?? "continue"
+            : normalizeAuthIntent(intentParam);
+    const [intent, setIntent] = useState<AuthIntent>(resolvedIntent);
 
     useEffect(() => {
         setLoginVariant(getLoginFlowVariant());
     }, []);
+
+    useEffect(() => {
+        setIntent(resolvedIntent);
+    }, [resolvedIntent]);
 
     useEffect(() => {
         const rememberedEmail = getRememberedLoginEmail();

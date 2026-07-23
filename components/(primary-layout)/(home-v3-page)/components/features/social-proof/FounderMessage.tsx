@@ -1,8 +1,30 @@
 "use client";
 
 import Image from "next/image";
+import { BriefcaseBusiness, GraduationCap, Rocket, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import shothikInterface from "@/components/(primary-layout)/(home-v3-page)/attached_assets/image_1760596886557.png";
+
+const companionMilestones = [
+  {
+    icon: GraduationCap,
+    title: "Learn faster",
+    description: "Turn class notes, essays, and early drafts into polished submissions with guided academic structure.",
+    badge: "Students",
+  },
+  {
+    icon: BriefcaseBusiness,
+    title: "Work smarter",
+    description: "Shape proposals, reports, and stakeholder updates with the same context-aware writing assistant.",
+    badge: "Professionals",
+  },
+  {
+    icon: Rocket,
+    title: "Ship bigger ideas",
+    description: "Move from research and strategy into launch-ready publishing workflows without changing tools.",
+    badge: "Founders",
+  },
+] as const;
 
 export default function FounderMessage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -75,14 +97,54 @@ export default function FounderMessage() {
             </p>
           </div>
           <div className="relative order-2 lg:order-1">
-            <div className="flex aspect-[4/3] items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-8 shadow-[0_20px_60px_rgba(24,119,242,0.2)]">
-              <div className="text-center text-white/40">
-                <p className="text-body2 text-muted-foreground font-normal">
-                  Secondary screenshot will be placed here
-                </p>
-                <p className="text-caption text-muted-foreground mt-2 block">
-                  Add your feature showcase image
-                </p>
+            <div className="glass-panel relative overflow-hidden rounded-2xl p-6 shadow-[0_20px_60px_rgba(24,119,242,0.2)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-brand/10 via-transparent to-sky-500/10" />
+              <div className="relative flex h-full flex-col justify-between gap-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-caption font-semibold uppercase tracking-[0.18em] text-brand">
+                      One workspace across every stage
+                    </p>
+                    <h3 className="mt-3 text-xl font-semibold text-foreground md:text-2xl">
+                      Build confidence from your first draft to your next big launch.
+                    </h3>
+                  </div>
+                  <div className="rounded-2xl bg-brand/10 p-3 text-brand">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                </div>
+
+                <div className="grid gap-3">
+                  {companionMilestones.map(({ badge, description, icon: Icon, title }) => (
+                    <div
+                      key={title}
+                      className="rounded-2xl border border-white/10 bg-background/70 p-4 backdrop-blur-sm"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 rounded-xl bg-brand/10 p-2 text-brand">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-foreground md:text-base">
+                              {title}
+                            </h4>
+                            <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-medium text-brand">
+                              {badge}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                            {description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-2xl border border-dashed border-brand/30 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
+                  Keep your writing, research, and publishing momentum in one connected workflow without starting over.
+                </div>
               </div>
             </div>
           </div>

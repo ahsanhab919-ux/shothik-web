@@ -168,6 +168,29 @@ describe("LoginPage", () => {
     expect(replace).toHaveBeenCalledWith("/auth/post-login?redirect=%2Fagents%2Fchat");
   });
 
+  it("auto-selects the research workflow when the redirect target points to research mode", () => {
+    currentSearchParams = {
+      redirect: "/writing-studio?intent=research",
+    };
+
+    render(<LoginPage />);
+
+    const summaryCard = screen
+      .getByText(/Selected first step/i)
+      .closest("div");
+
+    expect(summaryCard).not.toBeNull();
+    expect(within(summaryCard!).getByText("Start a research paper")).toBeInTheDocument();
+    expect(
+      within(summaryCard!).getByText("/writing-studio?intent=research"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Research Paper/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("link", { name: /Create a new account/i })).toHaveAttribute(
+      "href",
+      "/auth/register?intent=research&redirect=%2Fwriting-studio%3Fintent%3Dresearch",
+    );
+  });
+
   it("shows a rate-limited inline alert when login is throttled", async () => {
     login.mockRejectedValue(new Error("Too many authentication attempts. Please wait before trying again."));
 

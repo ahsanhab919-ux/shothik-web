@@ -4,6 +4,7 @@ import {
   clearAuthFlowState,
   getAuthFlowState,
   getLoginFlowVariant,
+  inferAuthIntentFromRedirect,
   inferAuthRoutingDecision,
   normalizeAuthIntent,
   saveAuthFlowState,
@@ -71,6 +72,14 @@ describe("auth-flow", () => {
     expect(normalizeAuthIntent("assignment")).toBe("assignment");
     expect(normalizeAuthIntent("unknown")).toBe("continue");
     expect(normalizeAuthIntent(null)).toBe("continue");
+  });
+
+  it("infers login intent from protected redirect targets when they imply a specific workflow", () => {
+    expect(inferAuthIntentFromRedirect("/writing-studio?intent=research")).toBe("research");
+    expect(inferAuthIntentFromRedirect("/writing-studio?intent=assignment")).toBe("assignment");
+    expect(inferAuthIntentFromRedirect("/writing-studio?projects=1")).toBe("writing_studio");
+    expect(inferAuthIntentFromRedirect("/twin")).toBe("twin");
+    expect(inferAuthIntentFromRedirect("/agents/chat")).toBeNull();
   });
 
   it("persists and clears auth flow state", () => {

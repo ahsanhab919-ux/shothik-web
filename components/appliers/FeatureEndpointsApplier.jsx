@@ -4,11 +4,15 @@ import { setFeatureEndpoints, setFeatureEndpointsLoading } from "@/redux/slices/
 import { hasPaymentSystemBaseUrl } from "@/lib/api-payment";
 import { fetchPublicFeatureEndpoints } from "@/services/feature-endpoint.service";
 import { useQuery } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 
 const FeatureEndpointsApplier = () => {
   const dispatch = useDispatch();
+  const pathname = usePathname();
+  const shouldFetchFeatureEndpoints =
+    hasPaymentSystemBaseUrl && !(pathname?.startsWith("/auth") ?? false);
 
   // Fetch all feature endpoints (public API, no auth required)
   const { data: featureEndpointsResponse, isLoading: featureEndpointsQueryLoading } = useQuery({
@@ -21,7 +25,7 @@ const FeatureEndpointsApplier = () => {
         page: 1,
       });
     },
-    enabled: hasPaymentSystemBaseUrl,
+    enabled: shouldFetchFeatureEndpoints,
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchOnMount: true, // Refetch when component mounts
     staleTime: 10 * 60 * 1000, // Consider data fresh for 10 minutes
