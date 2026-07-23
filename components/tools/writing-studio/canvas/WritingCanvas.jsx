@@ -27,7 +27,7 @@ export function WritingCanvas() {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-2xl mx-auto py-12 px-8 min-h-full">
         <BubbleMenu editor={editor}>
-          <div className="flex items-center gap-0.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl p-1 backdrop-blur-sm">
+          <div className="glass-panel flex items-center gap-0.5 rounded-xl p-1">
             <Button
               size="sm"
               variant="ghost"

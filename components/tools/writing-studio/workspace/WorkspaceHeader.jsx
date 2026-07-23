@@ -40,7 +40,7 @@ export function WorkspaceHeader({ activeTab, onTabChange, title, onTitleChange, 
   const accentColor = TYPE_COLORS[projectType] || "var(--color-brand)";
 
   return (
-    <header className="h-14 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 bg-white/80 dark:bg-brand-surface/50 backdrop-blur-md z-30 relative shrink-0">
+    <header className="glass-chrome h-14 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 z-30 relative shrink-0">
       <div className="flex items-center gap-3 w-1/3 min-w-0">
         {onBack && (
           <button

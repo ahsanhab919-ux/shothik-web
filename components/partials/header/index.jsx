@@ -142,7 +142,7 @@ export default function Header({ className, layout }) {
     return (
       <header
         className={cn(
-          "bg-card relative z-50 h-12 border-b backdrop-blur-lg lg:h-16",
+          "glass-chrome relative z-50 h-12 border-b lg:h-16",
           className,
         )}
       >
@@ -233,7 +233,7 @@ export default function Header({ className, layout }) {
     return (
       <header
         className={cn(
-          "bg-card relative z-50 h-12 border-b backdrop-blur-lg lg:h-16",
+          "glass-chrome relative z-50 h-12 border-b lg:h-16",
           className,
         )}
       >

@@ -77,7 +77,7 @@ export default function WhyShothik() {
               className="h-full"
               data-testid={`card-pillar-${index}`}
             >
-              <Card className="flex h-full flex-col rounded-xl border-white/30 bg-white/25 p-8 shadow-lg backdrop-blur-[8px] backdrop-saturate-[180%] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl md:p-10 dark:border-white/[0.08] dark:bg-white/[0.02] dark:shadow-[0_8px_32px_rgba(0,167,111,0.12)] dark:hover:shadow-[0_12px_48px_rgba(0,167,111,0.2)]">
+              <Card className="glass-hero flex h-full flex-col rounded-xl p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl md:p-10 dark:hover:shadow-[0_12px_48px_rgba(0,167,111,0.2)]">
                 <div
                   className="mb-6 inline-flex w-fit rounded-lg p-4"
                   style={{

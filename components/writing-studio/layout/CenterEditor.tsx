@@ -154,7 +154,7 @@ export function CenterEditor({
       }}
     >
       {/* Toolbar */}
-      <div className="h-12 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 sticky top-0 bg-white/80 dark:bg-brand-surface/80 backdrop-blur-sm z-20 shrink-0">
+      <div className="glass-chrome h-12 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 sticky top-0 z-20 shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
             <ToolbarButton

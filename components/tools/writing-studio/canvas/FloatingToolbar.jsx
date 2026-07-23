@@ -47,7 +47,7 @@ export function FloatingToolbar() {
   );
 
   return (
-    <div className="h-11 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-center px-4 gap-3 sticky top-0 bg-white/80 dark:bg-brand-surface/80 backdrop-blur-sm z-20">
+    <div className="glass-chrome h-11 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-center px-4 gap-3 sticky top-0 z-20">
       <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 gap-0.5">
         <ToolBtn
           onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}

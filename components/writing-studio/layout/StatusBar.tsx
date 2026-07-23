@@ -46,7 +46,7 @@ export function StatusBar({
   const count = grammarSuggestions.length;
 
   return (
-    <div className="h-10 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 bg-zinc-50 dark:bg-brand-surface/60 backdrop-blur-sm relative z-50">
+    <div className="glass-chrome glass-no-shadow h-10 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 relative z-50">
       {/* Left: Metrics */}
       <div className="flex items-center gap-5 text-[10px] font-medium text-zinc-500">
         <span className="flex items-center gap-1.5">

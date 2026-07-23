@@ -420,7 +420,7 @@ function RightPreviewPanel({ projectContent, selectedFont }) {
         <button className="size-10 rounded-full bg-white dark:bg-zinc-800 shadow-xl border border-zinc-200 dark:border-zinc-700 flex items-center justify-center hover:text-brand transition-all" aria-label="Previous page">
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <div className="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md px-6 py-2 rounded-full shadow-xl border border-zinc-200 dark:border-zinc-700 flex items-center gap-4">
+        <div className="glass-panel px-6 py-2 rounded-full flex items-center gap-4">
           <span className="text-xs font-bold text-zinc-500">Page 1</span>
         </div>
         <button className="size-10 rounded-full bg-white dark:bg-zinc-800 shadow-xl border border-zinc-200 dark:border-zinc-700 flex items-center justify-center hover:text-brand transition-all" aria-label="Next page">

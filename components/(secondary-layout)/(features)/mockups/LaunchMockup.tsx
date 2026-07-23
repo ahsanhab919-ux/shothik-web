@@ -72,7 +72,7 @@ export default function LaunchMockup({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute top-0 right-0 bottom-0 left-0 rounded-lg border border-white/30 bg-white/25 backdrop-blur-[8px] backdrop-saturate-[180%] dark:border-white/[0.08] dark:bg-white/[0.02]" />
+      <div className="glass-hero pointer-events-none absolute top-0 right-0 bottom-0 left-0 rounded-lg" />
 
       <div className="absolute top-4 right-4 z-[2] flex items-center gap-2 rounded bg-black/60 px-4 py-2 backdrop-blur-[10px]">
         <Play size={14} color={accentColor} />

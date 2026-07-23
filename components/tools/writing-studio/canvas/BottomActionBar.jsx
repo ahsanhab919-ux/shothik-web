@@ -121,7 +121,7 @@ export function BottomActionBar() {
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={springTransition}
-      className="sticky bottom-0 z-30 bg-background/95 backdrop-blur-xl border-t"
+      className="glass-chrome sticky bottom-0 z-30 border-t"
     >
       <div className="flex items-center justify-center gap-0.5 px-2 py-1.5 overflow-x-auto scrollbar-hide">
         {BOTTOM_TOOLS.map((tool) => {

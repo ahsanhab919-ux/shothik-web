@@ -66,7 +66,7 @@ export default function MediaMockup({ accentColor, className }: MediaMockupProps
         </div>
       </div>
 
-      <div className="absolute top-0 left-0 right-0 bottom-0 bg-white/25 dark:bg-white/[0.02] backdrop-blur-[8px] backdrop-saturate-[180%] border border-white/30 dark:border-white/[0.08] pointer-events-none rounded-lg" />
+      <div className="glass-hero absolute top-0 left-0 right-0 bottom-0 pointer-events-none rounded-lg" />
 
       <div className="absolute top-4 right-4 flex items-center gap-2 px-4 py-2 bg-black/60 rounded backdrop-blur-[10px] z-[2]">
         <Play size={14} color={accentColor} />

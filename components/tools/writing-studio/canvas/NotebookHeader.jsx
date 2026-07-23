@@ -59,7 +59,7 @@ export function NotebookHeader() {
   const readingTime = Math.max(1, Math.ceil(wordCount / 250));
 
   return (
-    <header className="h-14 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 bg-white dark:bg-brand-surface/50 backdrop-blur-md z-30 relative shrink-0">
+    <header className="glass-chrome h-14 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 z-30 relative shrink-0">
       <div className="flex items-center gap-3 w-1/3 min-w-0">
         <BookOpen className="h-5 w-5 text-brand shrink-0" />
         <div className="flex flex-col min-w-0">

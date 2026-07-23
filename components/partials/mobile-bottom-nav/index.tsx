@@ -57,7 +57,7 @@ export default function MobileBottomNav() {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur-md md:hidden"
+      className="glass-chrome fixed bottom-0 left-0 right-0 z-40 border-t border-border md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex items-stretch justify-around">

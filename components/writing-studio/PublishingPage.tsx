@@ -17,7 +17,7 @@ export function PublishingPage({ project, onBackToEditor, onSaveDraft }: Publish
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-brand-canvas">
-      <header className="sticky top-0 z-30 border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-brand-canvas/90 backdrop-blur">
+      <header className="glass-chrome sticky top-0 z-30 border-b border-zinc-200 dark:border-zinc-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-brand mb-1">

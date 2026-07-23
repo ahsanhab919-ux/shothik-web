@@ -260,7 +260,7 @@ export default function WritingHomeDashboard({ onOpenProject, onNewProject }) {
 
   return (
     <div className="flex flex-col h-full bg-background" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <div className="border-b border-border bg-card/80 backdrop-blur-md px-6 py-5">
+      <div className="glass-chrome border-b border-border px-6 py-5">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -343,7 +343,7 @@ export default function WritingHomeDashboard({ onOpenProject, onNewProject }) {
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="max-w-6xl mx-auto">
           {guidance && (
-            <div className="mb-6 rounded-2xl border border-border bg-card/80 p-5">
+            <div className="glass-panel mb-6 rounded-2xl p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">

@@ -118,11 +118,29 @@
 
   /* Themed scrollbars (Firefox + WebKit) */
   :root {
+    --glass-border: rgba(255, 255, 255, 0.28);
+    --glass-chrome-bg: rgba(255, 255, 255, 0.8);
+    --glass-panel-bg: rgba(255, 255, 255, 0.72);
+    --glass-hero-bg: rgba(255, 255, 255, 0.25);
+    --glass-shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --glass-shadow-panel: 0 12px 32px rgba(15, 23, 42, 0.12);
+    --glass-shadow-hero: 0 20px 60px rgba(24, 119, 242, 0.16);
+    --glass-blur-sm: 8px;
+    --glass-blur-md: 12px;
+    --glass-blur-lg: 20px;
+    --glass-saturation: 180%;
     --sb-track: var(--background);
     --sb-thumb: var(--muted);
   }
 
   :root.dark {
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-chrome-bg: rgba(8, 8, 8, 0.72);
+    --glass-panel-bg: rgba(8, 8, 8, 0.62);
+    --glass-hero-bg: rgba(255, 255, 255, 0.03);
+    --glass-shadow-soft: 0 8px 24px rgba(2, 6, 23, 0.4);
+    --glass-shadow-panel: 0 12px 32px rgba(2, 6, 23, 0.45);
+    --glass-shadow-hero: 0 20px 60px rgba(24, 119, 242, 0.3);
     --sb-track: var(--background);
     --sb-thumb: var(--muted);
   }
@@ -174,4 +192,36 @@
   @import "../assets/styles/utilities/loading.css";
   @import "../assets/styles/utilities/intersection-observer.css";
   @import "../assets/styles/utilities/shine.css";
+
+  .glass-chrome {
+    background-color: var(--glass-chrome-bg);
+    backdrop-filter: blur(var(--glass-blur-md));
+    -webkit-backdrop-filter: blur(var(--glass-blur-md));
+    box-shadow: var(--glass-shadow-soft);
+  }
+
+  .glass-panel {
+    background-color: var(--glass-panel-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur-md));
+    -webkit-backdrop-filter: blur(var(--glass-blur-md));
+    box-shadow: var(--glass-shadow-panel);
+  }
+
+  .glass-hero {
+    background-color: var(--glass-hero-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturation));
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturation));
+    box-shadow: var(--glass-shadow-hero);
+  }
+
+  .glass-no-shadow {
+    box-shadow: none;
+  }
+
+  .glass-rich {
+    backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturation));
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturation));
+  }
 }

@@ -139,7 +139,7 @@ function LeftSidebar({ isOpen, onToggle }) {
 
 function EditorToolbar({ leftOpen, rightOpen, onToggleLeft, onToggleRight }) {
   return (
-    <div className="h-12 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 sticky top-0 bg-white/80 dark:bg-brand-surface/80 backdrop-blur-sm z-20">
+    <div className="glass-chrome h-12 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 sticky top-0 z-20">
       <button
         onClick={onToggleLeft}
         className={cn("p-1.5 rounded text-zinc-400 hover:text-brand transition-colors", !leftOpen && "text-brand")}
