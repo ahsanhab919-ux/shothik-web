@@ -91,6 +91,12 @@ Status: Completed.
   - run the targeted Vitest and TypeScript commands used in this report in CI or pre-deploy validation
   - verify the homepage and an authenticated Writing Studio surface in staging after deployment
 
+## Deployment Execution
+
+- Created scoped commit `cd3dbd6` with message `refactor(ui): standardize glass surfaces`.
+- Pushed the commit to `origin/staging/insforge-chat-auth`.
+- Performed post-push browser verification against `https://staging.shothikgpt.com`.
+
 ## Changed Files
 
 - `app/globals.css`
@@ -148,6 +154,14 @@ Status: Completed.
 - Verified `/writing-studio?intent=research` redirects to the auth flow, which is consistent with the current protected-route behavior for unauthenticated sessions.
 - Investigated the homepage hydration warning and confirmed it is dominated by injected `data-trae-ref` attributes not present in repository source, indicating an instrumented browser environment rather than an app-authored mismatch.
 
+### Staging Browser Validation
+
+- Verified `https://staging.shothikgpt.com/` loads successfully.
+- Verified the homepage hero and product-card sections render successfully after deployment.
+- Verified the writing/mockup section still renders and remains publicly accessible.
+- Verified `https://staging.shothikgpt.com/writing-studio?intent=research` redirects unauthenticated users to `auth/login` while preserving the intended destination.
+- Verified the login page can still switch to the `Research Paper` intent and show the expected post-login destination.
+
 ## Execution Checkpoints
 
 ### Check-In 1: Baseline Alignment
@@ -185,6 +199,20 @@ Status: Completed.
   - Impact: unauthenticated browser validation cannot exercise authenticated editor surfaces directly.
   - Mitigation: combined source migration review, diagnostics, targeted tests, and TypeScript validation for those surfaces.
 
+### Follow-Up Risks Observed During Staging Validation
+
+- **Homepage placeholder showcase content**
+  - Impact: a visible section still shows placeholder copy (`Secondary screenshot will be placed here`, `Add your feature showcase image`) in staging.
+  - Mitigation: document as a content/polish follow-up outside the glass rollout scope.
+
+- **Intent not auto-selected on login initial render**
+  - Impact: opening `/writing-studio?intent=research` preserves the redirect target, but the login UI initially defaults to `Continue` until the user manually selects `Research Paper`.
+  - Mitigation: document as a workflow-polish follow-up outside the styling rollout scope.
+
+- **Non-blocking third-party/request noise on login**
+  - Impact: aborted analytics, Vercel feedback, and payment-service requests add console/network noise during the login flow.
+  - Mitigation: document for future auth-page request hygiene review.
+
 ## Post-Implementation Review
 
 ### Success Criteria Outcome
@@ -200,11 +228,13 @@ Status: Completed.
 - No code-level regressions were detected in the targeted Vitest and TypeScript checks.
 - The browser smoke pass did not reveal app-authored failures attributable to the glass refactor.
 - The only runtime warning observed during browser validation was tied to injected `data-trae-ref` attributes from the instrumented browser environment, not to repository source.
+- Staging deployment verification confirmed the public homepage and protected Writing Studio entry flow still behave correctly after rollout.
 
 ### Remaining Gaps
 
 - Some lower-priority translucent or blurred one-off surfaces outside the migrated Writing Studio and mockup families still use legacy inline utility strings.
 - Auth gating on `/writing-studio` prevented browser-level verification of authenticated editor surfaces in this unauthenticated session; those surfaces are covered here by source-level migration, diagnostics, and unit/integration validation.
+- Staging still shows placeholder content in one homepage showcase block and does not auto-apply the research intent selection on initial login-page render.
 
 ### Resolution Assessment
 
